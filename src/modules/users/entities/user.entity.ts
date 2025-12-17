@@ -16,17 +16,17 @@ export class User {
   @PrimaryGeneratedColumn('uuid')
   id: string;
 
-  @Column({ unique: true })
-  display_name: string;
+  @Column()
+  first_name: string;
+
+  @Column()
+  last_name: string;
 
   @Column({ unique: true, nullable: true })
   email: string;
 
   @Column({ type: 'varchar', length: 20, unique: true, nullable: true })
   phone_number: string;
-
-  @Column({ nullable: true })
-  avatar_url: string;
 
   @Column({ nullable: false})
   password_hash: string;
@@ -42,13 +42,13 @@ export class User {
   @Column({ default: false })
   is_verified: boolean;
 
-  @Column()
+  @Column({ default: null })
   verification_code: string;
 
   @Column({ default: false })
   is_active: boolean;
 
-  @Column()
+  @Column({default: null})
   last_login: Date;
 
   @CreateDateColumn()
@@ -56,5 +56,8 @@ export class User {
 
   @UpdateDateColumn()
   updatedAt: Date;
+
+  @DeleteDateColumn()
+  deletedAt: Date;
 
 } 

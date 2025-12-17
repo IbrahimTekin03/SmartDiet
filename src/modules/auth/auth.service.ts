@@ -17,10 +17,13 @@ import { Repository } from 'typeorm';
 import { Role } from '../acl/entities/role.entity';
 import { AdminRegisterDto } from './dto/admin.register.dto';
 import { LoginDto } from './dto/login.dto';
+import { UserProfile } from '../users/entities/user.profile.entity';
 
 @Injectable()
 export class AuthService {
   constructor(
+    @InjectRepository(UserProfile)
+    private readonly userProfileRepository: Repository<UserProfile>,
     @InjectRepository(User)
     private readonly userRepository: Repository<User>,
     @InjectRepository(Role)
@@ -38,7 +41,7 @@ export class AuthService {
         { email: emailOrPhoneNumber },
         { phone_number: emailOrPhoneNumber },
       ],
-      select: ['id', 'phone_number','display_name','email'],
+      select: ['id', 'phone_number','first_name','email'],
       relations: ['roles'],
     });
 
@@ -92,7 +95,7 @@ export class AuthService {
 
     // 1) Kullanıcı adı kontrolü
     const usernameCheck = await this.userRepository.findOne({
-      where: { display_name: registerDto.display_name },
+      where: { first_name: registerDto.first_name },
     });
     if (usernameCheck) {
       throw new UnauthorizedException(
@@ -129,15 +132,25 @@ export class AuthService {
 
     // Yeni kullanıcı oluştur
     const newUser = this.userRepository.create({
-      display_name: registerDto.display_name,
+      first_name: registerDto.first_name,
+      last_name: registerDto.last_name,
       email: registerDto.email ?? null,
       phone_number: registerDto.phone_number ?? null,
-      avatar_url: registerDto.avatar_url,
+      password_hash: registerDto.password,
       roles: defaultUserRole ? [defaultUserRole] : [],
     });
+    
 
     const savedUser = await this.userRepository.save(newUser);
-    
+
+    const newProfile = this.userProfileRepository.create({
+      user_id: savedUser.id,
+      first_name: registerDto.first_name,
+      last_name: registerDto.last_name,
+      birth_date: registerDto.birth_date,
+      gender: registerDto.gender,
+      avatar_url: registerDto.avatar_url ?? null,
+    });    
     // Kayıt olan kullanıcıyı rolleriyle birlikte yükle
     const {...createdUser} = savedUser;
 
@@ -153,7 +166,7 @@ export class AuthService {
     const existingUser = await this.userRepository.findOne({
       where: [
         { email: registerDto.email },
-        { display_name: registerDto.display_name },
+        { first_name: registerDto.first_name },
         { phone_number: registerDto.phone_number },
       ],
     });
@@ -164,7 +177,7 @@ export class AuthService {
           await this.i18n.translate('common.auth.email_exists'),
         );
       }
-      if (existingUser.display_name === registerDto.display_name) {
+      if (existingUser.first_name === registerDto.first_name) {
         throw new UnauthorizedException(
           await this.i18n.translate('common.auth.username_exists'),
         );
@@ -187,10 +200,10 @@ export class AuthService {
 
     // Yeni kullanıcı oluştur
     const newUser = this.userRepository.create({
-      display_name: registerDto.display_name,
+      first_name: registerDto.first_name,
+      last_name: registerDto.last_name,
       email: registerDto.email,
       phone_number: registerDto.phone_number,
-      avatar_url: registerDto.avatar_url,
       roles: [role],
     });
 
@@ -233,7 +246,7 @@ export class AuthService {
     // Kullanıcı bilgilerini al
     const user = await this.userRepository.findOne({
       where: { id: userId },
-      select: ['id', 'display_name', 'email', 'phone_number','roles'],
+      select: ['id', 'first_name', 'email', 'phone_number','roles'],
     });
 
     if (!user) {
@@ -243,7 +256,7 @@ export class AuthService {
     }
 
     // Yeni tokenlar oluştur
-    const payload = { sub: user.id, username: user.display_name, sessionId };
+    const payload = { sub: user.id, username: user.first_name, sessionId };
     
     const accessToken = this.jwtService.sign(payload);
     const newRefreshToken = this.jwtService.sign(payload, {

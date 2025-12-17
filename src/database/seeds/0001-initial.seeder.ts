@@ -53,13 +53,20 @@ export default class InitialSeeder0001 implements Seeder {
     }
 
     // Admin user
-    const adminUser = await userRepository.findOne({ where: { display_name: 'admin' }, relations: ['roles'] });
+    const adminUser = await userRepository.findOne({ where: { email: 'admin@example.com' }, relations: ['roles'] });
     if (!adminUser) {
       const created = userRepository.create({
-        display_name: 'admin',
+        first_name: 'Admin',
+        last_name: 'User',
         email: 'admin@example.com',
         phone_number: '+905555555555',
         roles: [ensuredAdminRole!],
+        password_hash: 'admin123',
+        is_active: true,
+        is_verified: true,
+        verification_code: '000000',
+        last_login: new Date(),
+
       });
       await userRepository.save(created);
     } else {

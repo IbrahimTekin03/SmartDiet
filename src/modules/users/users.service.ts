@@ -73,7 +73,7 @@ export class UsersService {
 
   async findByUsername(username: string): Promise<User> {
     return this.userRepository.findOne({
-      where: { display_name: username },
+      where: { first_name: username },
       relations: ['roles'],
     });
   }

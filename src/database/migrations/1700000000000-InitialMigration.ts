@@ -48,6 +48,8 @@ export class InitialMigration1700000000000 implements MigrationInterface {
     await queryRunner.query(`
       CREATE TABLE "users" (
         "id" UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+        "first_name" VARCHAR(100) NOT NULL,
+        "last_name" VARCHAR(100) NOT NULL,
         "role_id" UUID REFERENCES "roles"("id") ON DELETE RESTRICT,
         "email" VARCHAR(255) UNIQUE NOT NULL,
         "password_hash" VARCHAR(255) NOT NULL,
@@ -71,8 +73,6 @@ export class InitialMigration1700000000000 implements MigrationInterface {
         "avatar_url" TEXT,
         "birth_date" DATE,
         "gender" gender_enum,
-        "bio" TEXT,
-        "address" TEXT,
         "created_at" TIMESTAMPTZ DEFAULT NOW(),
         "updated_at" TIMESTAMPTZ DEFAULT NOW()
       )

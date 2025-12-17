@@ -46,69 +46,83 @@ export class OtpService {
 		return bcrypt.hash(code, saltRounds);
 	}
 
-	async requestOtp(identityType: OtpIdentityType, identity: string, purpose: OtpPurpose) {
-		// request rate limiti kontolü
-		const windowSince = this.addMinutes(new Date(), -RESEND_WINDOW_MINUTES);
-		const recent = await this.otpRepo.find({
-			where: { identity_type: identityType, identity, purpose, created_at: MoreThan(windowSince) },
-			order: { created_at: 'DESC' },
-		});
-		const totalSent = recent.reduce((acc, r) => acc + (r.sent_count || 0), 0);
-		if (totalSent >= MAX_SENT_PER_WINDOW) {
-			throw new HttpException('OTP rate limit exceeded', HttpStatus.TOO_MANY_REQUESTS);
-		}
+async requestOtp(identityType: OtpIdentityType, identity: string, purpose: OtpPurpose) {
+    // 1. ÖNCE KULLANICIYI KONTROL ET (Yeni Eklenen Kısım)
+    // Eğer kullanıcı yoksa boşuna OTP üretmeyelim
+    const user = await (identityType === OtpIdentityType.Email
+        ? this.userRepo.findOne({ where: { email: identity } })
+        : this.userRepo.findOne({ where: { phone_number: identity } }));
 
-		// son istek kilitliyse, blokla
-		const last = recent[0];
-		if (last?.locked_until && this.isAfter(last.locked_until, new Date())) {
-			throw new HttpException('Temporarily locked. Please try later.', HttpStatus.TOO_MANY_REQUESTS);
-		}
+    if (!user) {
+        throw new BadRequestException('User not found');
+    }
 
-		const now = new Date();
-		let record = await this.otpRepo.findOne({
-			where: {
-				identity_type: identityType,
-				identity,
-				purpose,
-				expires_at: MoreThan(now),
-				consumed_at: null,
-			},
-			order: { created_at: 'DESC' },
-		});
+    // 2. RATE LIMIT KONTROLLERİ (Mevcut Kodun)
+    const windowSince = this.addMinutes(new Date(), -RESEND_WINDOW_MINUTES);
+    const recent = await this.otpRepo.find({
+        where: { identity_type: identityType, identity, purpose, created_at: MoreThan(windowSince) },
+        order: { created_at: 'DESC' },
+    });
 
-		const code = this.generateNumericCode(OTP_LENGTH);
-		const codeHash = await this.hashCode(code);
-		const newExpiresAt = this.addMinutes(new Date(), OTP_TTL_MINUTES);
+    const totalSent = recent.reduce((acc, r) => acc + (r.sent_count || 0), 0);
+    if (totalSent >= MAX_SENT_PER_WINDOW) {
+        throw new HttpException('OTP rate limit exceeded', HttpStatus.TOO_MANY_REQUESTS);
+    }
 
-		if (record) {
-		// aynı purpose ve identity için request varsa count artır
-			record.code_hash = codeHash;
-			record.expires_at = newExpiresAt;
-			record.sent_count = (record.sent_count || 0) + 1;
-			await this.otpRepo.save(record);
-		} else {
-			record = this.otpRepo.create({
-				identity_type: identityType,
-				identity,
-				purpose,
-				code_hash: codeHash,
-				salt: null,
-				expires_at: newExpiresAt,
-				attempt_count: 0,
-				sent_count: 1,
-				locked_until: null,
-				consumed_at: null,
-			});
-			await this.otpRepo.save(record);
-		}
+    const last = recent[0];
+    if (last?.locked_until && this.isAfter(last.locked_until, new Date())) {
+        throw new HttpException('Temporarily locked. Please try later.', HttpStatus.TOO_MANY_REQUESTS);
+    }
 
-		// type mail ise mail gönder
-		if (identityType === OtpIdentityType.Email) {
-			await this.mailService.sendOtpMail(identity, code);
-		}
+    // 3. OTP ÜRETİMİ VE KAYIT (Mevcut Kodun)
+    const now = new Date();
+    let record = await this.otpRepo.findOne({
+        where: {
+            identity_type: identityType,
+            identity,
+            purpose,
+            expires_at: MoreThan(now),
+            consumed_at: null,
+        },
+        order: { created_at: 'DESC' },
+    });
 
-		return { ok: true };
-	}
+    const code = this.generateNumericCode(OTP_LENGTH);
+    const codeHash = await this.hashCode(code);
+    const newExpiresAt = this.addMinutes(new Date(), OTP_TTL_MINUTES);
+
+    if (record) {
+        record.code_hash = codeHash;
+        record.expires_at = newExpiresAt;
+        record.sent_count = (record.sent_count || 0) + 1;
+        await this.otpRepo.save(record);
+    } else {
+        record = this.otpRepo.create({
+            identity_type: identityType,
+            identity,
+            purpose,
+            code_hash: codeHash,
+            salt: null,
+            expires_at: newExpiresAt,
+            attempt_count: 0,
+            sent_count: 1,
+            locked_until: null,
+            consumed_at: null,
+        });
+        await this.otpRepo.save(record);
+    }
+
+
+    user.verification_code = code;
+    await this.userRepo.save(user);
+
+    // 5. BİLDİRİM GÖNDERİMİ (Mevcut Kodun)
+    if (identityType === OtpIdentityType.Email) {
+        await this.mailService.sendOtpMail(identity, code);
+    }
+
+    return { ok: true };
+}
 
 	async verifyOtp(identityType: OtpIdentityType, identity: string, code: string, purpose: OtpPurpose) {
 		// en son kullanılmayan kodu bul
@@ -154,6 +168,11 @@ export class OtpService {
 				user.is_active = true;
 				await this.userRepo.save(user);
 			}
+			if (!user.is_verified) {
+				user.is_verified = true;
+				await this.userRepo.save(user);
+			}
+
 			const loginResult = await this.authService.login(user);
 			return { ok: true, user: { id: loginResult.user.id }, accessToken: loginResult.accessToken, refreshToken: loginResult.refreshToken, deviceId: undefined };
 		}

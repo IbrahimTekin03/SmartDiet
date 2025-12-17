@@ -14,11 +14,12 @@ import { Role } from '../acl/entities/role.entity';
 import { OtpCode } from './otp/entities/otp-code.entity';
 import { OtpService } from './otp/otp.service';
 import { MailModule } from '../mail/mail.module';
+import { UserProfile } from '../users/entities/user.profile.entity';
 
 @Module({
   imports: [
     UsersModule,
-    TypeOrmModule.forFeature([User, Role, OtpCode]),
+    TypeOrmModule.forFeature([User, Role, OtpCode, UserProfile]),
     PassportModule,
     JwtModule.registerAsync({
       imports: [ConfigModule],

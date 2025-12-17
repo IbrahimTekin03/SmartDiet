@@ -17,4 +17,8 @@ export class LoginDto {
   @IsOptional()
   @IsString()
   phone_number?: string;
+
+  @ApiProperty({ description: 'Password', example: 'StrongP@ssw0rd' })
+  @IsString()
+  password: string;
 }

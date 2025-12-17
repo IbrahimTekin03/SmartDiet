@@ -7,9 +7,10 @@ import { AclController } from './acl.controller';
 import { User } from '../users/entities/user.entity';
 import { RolesGuard } from './guards/roles.guard';
 import { PermissionsGuard } from './guards/permissions.guard';
+import { UserProfile } from '../users/entities/user.profile.entity';
 
 @Module({
-  imports: [TypeOrmModule.forFeature([Role, Permission, User])],
+  imports: [TypeOrmModule.forFeature([Role, Permission, User, UserProfile])],
   controllers: [AclController],
   providers: [AclService, RolesGuard, PermissionsGuard],
   exports: [AclService, TypeOrmModule],
