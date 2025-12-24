@@ -1,0 +1,213 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* =======================================================
+   RESET & BASE (Vite default BOZAN şeyler yok!)
+======================================================= */
+
+html,
+body,
+#root {
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  background: var(--bg);
+  color: var(--text);
+  overflow-x: hidden;
+  font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI",
+    Roboto, Ubuntu, Cantarell, "Helvetica Neue", Arial, sans-serif;
+}
+
+/* linkler mor / mavi olmasın */
+a {
+  color: inherit;
+  text-decoration: none;
+}
+
+/* mobil highlight kapat (premium hissi) */
+* {
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* motion hassasiyeti */
+@media (prefers-reduced-motion: reduce) {
+  * {
+    animation: none !important;
+    transition: none !important;
+  }
+}
+
+/* =======================================================
+   THEME TOKENS (FAST & SMOOTH)
+======================================================= */
+
+:root {
+  /* DARK THEME */
+  --bg: #07090b;
+
+  --panel: rgba(255, 255, 255, 0.06);
+  --panel-2: rgba(255, 255, 255, 0.08);
+
+  --stroke: rgba(255, 255, 255, 0.10);
+  --stroke-2: rgba(255, 255, 255, 0.16);
+
+  --text: rgba(255, 255, 255, 0.92);
+  --muted: rgba(255, 255, 255, 0.60);
+
+  --accent: #22c55e;
+  --accent-2: #10b981;
+
+  --shadow: 0 30px 90px rgba(0, 0, 0, 0.55);
+  --glow: 0 0 0 1px rgba(34, 197, 94, 0.22) inset,
+          0 26px 90px rgba(34, 197, 94, 0.18);
+
+  --radius: 18px;
+  --ease: cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
+:root[data-theme="light"] {
+  /* LIGHT THEME – sıradan beyaz değil */
+  --bg: #f6fbff;
+
+  --panel: rgba(255, 255, 255, 0.80);
+  --panel-2: rgba(255, 255, 255, 0.94);
+
+  --stroke: rgba(2, 10, 25, 0.10);
+  --stroke-2: rgba(2, 10, 25, 0.16);
+
+  --text: rgba(2, 10, 25, 0.92);
+  --muted: rgba(2, 10, 25, 0.58);
+
+  --accent: #16a34a;
+  --accent-2: #06b6d4;
+
+  --shadow: 0 24px 70px rgba(2, 10, 25, 0.12);
+  --glow: 0 0 0 1px rgba(6, 182, 212, 0.22) inset,
+          0 28px 90px rgba(6, 182, 212, 0.18);
+}
+
+/* =======================================================
+   GLOBAL TRANSITIONS (FPS FRIENDLY)
+======================================================= */
+
+* {
+  transition:
+    color 200ms var(--ease),
+    background-color 200ms var(--ease),
+    border-color 200ms var(--ease),
+    box-shadow 200ms var(--ease),
+    transform 200ms var(--ease),
+    opacity 200ms var(--ease);
+}
+
+/* =======================================================
+   UTILITIES (HOME.TSX İÇİN GEREKLİ)
+======================================================= */
+
+/* soft glass panel */
+.sd-panel {
+  background: var(--panel);
+  border: 1px solid var(--stroke);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+}
+
+/* glow accent */
+.sd-glow {
+  box-shadow: var(--glow), var(--shadow);
+}
+
+/* subtle hover lift */
+.sd-lift:hover {
+  transform: translateY(-2px);
+}
+
+/* =======================================================
+   ANIMATIONS (Home.tsx ile uyumlu)
+======================================================= */
+
+@keyframes inUp {
+  from {
+    opacity: 0;
+    transform: translateY(14px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes progress {
+  0% {
+    transform: translateX(-6%);
+    filter: brightness(1);
+  }
+  50% {
+    transform: translateX(0%);
+    filter: brightness(1.08);
+  }
+  100% {
+    transform: translateX(-6%);
+    filter: brightness(1);
+  }
+}
+
+@keyframes floatSlow {
+  0% {
+    transform: translate(0, 0) scale(1);
+  }
+  50% {
+    transform: translate(18px, 14px) scale(1.03);
+  }
+  100% {
+    transform: translate(0, 0) scale(1);
+  }
+}
+
+@keyframes floatSlow2 {
+  0% {
+    transform: translate(0, 0) scale(1);
+  }
+  50% {
+    transform: translate(-16px, -10px) scale(1.03);
+  }
+  100% {
+    transform: translate(0, 0) scale(1);
+  }
+}
+
+@keyframes themeWipe {
+  from {
+    clip-path: circle(0% at 92% 10%);
+    opacity: 0.25;
+  }
+  to {
+    clip-path: circle(140% at 92% 10%);
+    opacity: 0;
+  }
+}
+
+.animate-inUp {
+  animation: inUp 520ms ease-out both;
+}
+
+.animate-progress {
+  animation: progress 2.8s ease-in-out infinite;
+}
+
+.animate-floatSlow {
+  animation: floatSlow 11s ease-in-out infinite;
+}
+
+.animate-floatSlow2 {
+  animation: floatSlow2 13s ease-in-out infinite;
+}
+
+.theme-wipe {
+  animation: themeWipe 520ms ease-out both;
+}

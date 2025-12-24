@@ -1,0 +1,50 @@
+{
+  "welcome": "NestJS Base Backend'e Hoş Geldiniz",
+  "errors": {
+    "unauthorized": "Yetkisiz erişim",
+    "forbidden": "Bu işlem için yetkiniz yok",
+    "not_found": "Kaynak bulunamadı",
+    "validation": "Doğrulama hatası",
+    "internal_server": "Sunucu hatası"
+  },
+  "auth": {
+    "login_success": "Giriş başarılı",
+    "login_failed": "Giriş başarısız",
+    "logout_success": "Çıkış başarılı",
+    "register_success": "Kayıt başarılı",
+    "email_already_exists": "Bu e-posta adresi zaten kullanılıyor",
+    "user_not_found": "Kullanıcı bulunamadı",
+    "invalid_credentials": "Geçersiz kullanıcı adı veya şifre",
+    "token_expired": "Token süresi doldu",
+    "invalid_token": "Geçersiz token",
+    "refresh_token_success": "Token yenileme başarılı",
+    "password_reset_email_sent": "Şifre sıfırlama e-postası gönderildi",
+    "password_reset_success": "Şifre sıfırlama başarılı",
+    "invalid_refresh_token": "Geçersiz yenileme tokeni",
+    "invalid_session": "Geçersiz oturum",
+    "email_exists": "Bu e-posta adresi zaten kullanılıyor",
+    "username_exists": "Bu kullanıcı adı zaten kullanılıyor"
+  },
+  "user": {
+    "created": "Kullanıcı oluşturuldu",
+    "updated": "Kullanıcı güncellendi",
+    "deleted": "Kullanıcı silindi",
+    "not_found": "Kullanıcı bulunamadı"
+  },
+  "role": {
+    "created": "Rol oluşturuldu",
+    "updated": "Rol güncellendi",
+    "deleted": "Rol silindi",
+    "not_found": "Rol bulunamadı"
+  },
+  "permission": {
+    "created": "İzin oluşturuldu",
+    "updated": "İzin güncellendi",
+    "deleted": "İzin silindi",
+    "not_found": "İzin bulunamadı"
+  },
+  "mail": {
+    "sent": "E-posta gönderildi",
+    "failed": "E-posta gönderilemedi"
+  }
+} 
