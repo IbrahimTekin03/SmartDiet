@@ -1,0 +1,51 @@
+{
+  "welcome": "Welcome to NestJS Base Backend",
+  "errors": {
+    "unauthorized": "Unauthorized access",
+    "forbidden": "You don't have permission for this action",
+    "not_found": "Resource not found",
+    "validation": "Validation error",
+    "internal_server": "Server error"
+  },
+  "auth": {
+    "login_success": "Login successful",
+    "login_failed": "Login failed",
+    "logout_success": "Logout successful",
+    "register_success": "Registration successful",
+    "email_already_exists": "This email is already in use",
+    "user_not_found": "User not found",
+    "invalid_credentials": "Invalid username or password",
+    "token_expired": "Token expired",
+    "invalid_token": "Invalid token",
+    "refresh_token_success": "Token refresh successful",
+    "password_reset_email_sent": "Password reset email sent",
+    "password_reset_success": "Password reset successful",
+    "invalid_refresh_token": "Invalid refresh token",
+    "invalid_session": "Invalid session",
+    "email_exists": "This email is already in use",
+    "phone_number_exists": "This phone number is already in use",
+    "username_exists": "This username is already in use"
+  },
+  "user": {
+    "created": "User created",
+    "updated": "User updated",
+    "deleted": "User deleted",
+    "not_found": "User not found"
+  },
+  "role": {
+    "created": "Role created",
+    "updated": "Role updated",
+    "deleted": "Role deleted",
+    "not_found": "Role not found"
+  },
+  "permission": {
+    "created": "Permission created",
+    "updated": "Permission updated",
+    "deleted": "Permission deleted",
+    "not_found": "Permission not found"
+  },
+  "mail": {
+    "sent": "Email sent",
+    "failed": "Email sending failed"
+  }
+}

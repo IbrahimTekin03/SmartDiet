@@ -1,0 +1,21 @@
+:root {
+  --bg: #0e0f12;
+  --surface: #14161b;
+  --text: #e8eaed;
+  --muted: #a3a7b3;
+
+  --primary: #22c55e;       /* yeşil – sağlık */
+  --primary-soft: #86efac;
+  --accent: #38bdf8;        /* mavi – güven */
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--text);
+  font-family: system-ui, -apple-system, BlinkMacSystemFont;
+}
