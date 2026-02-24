@@ -36,6 +36,16 @@ export class AuthService {
     @Inject('REDIS_ENABLED') private readonly redisEnabled: boolean,
   ) {}
 
+  private getAge(birthDate: Date): number {
+    const today = new Date();
+    let age = today.getFullYear() - birthDate.getFullYear();
+    const monthDiff = today.getMonth() - birthDate.getMonth();
+    if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birthDate.getDate())) {
+      age -= 1;
+    }
+    return age;
+  }
+
   async validateUser(emailOrPhoneNumber: string, plainPassword: string): Promise<any> {
     const user = await this.userRepository.findOne({
       where: [
@@ -123,6 +133,14 @@ export class AuthService {
       throw new UnauthorizedException(
         await this.i18n.translate('common.auth.email_or_phone_required'),
       );
+    }
+
+    const birthDate = new Date(registerDto.birth_date);
+    if (Number.isNaN(birthDate.getTime())) {
+      throw new BadRequestException('Birth date format is invalid');
+    }
+    if (this.getAge(birthDate) < 18) {
+      throw new BadRequestException('You must be at least 18 years old');
     }
 
     // Eâ€‘posta verilmiÅŸse kontrol et
@@ -421,6 +439,13 @@ export class AuthService {
       profile.last_name = dto.last_name;
     }
     if (dto.birth_date) {
+      const birthDate = new Date(dto.birth_date);
+      if (Number.isNaN(birthDate.getTime())) {
+        throw new BadRequestException('Birth date format is invalid');
+      }
+      if (this.getAge(birthDate) < 18) {
+        throw new BadRequestException('You must be at least 18 years old');
+      }
       profile.birth_date = dto.birth_date as any;
     }
     if (dto.gender) {

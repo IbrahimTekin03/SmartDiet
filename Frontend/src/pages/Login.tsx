@@ -1,8 +1,70 @@
-import { useEffect, useState } from "react";
+﻿import { useEffect, useMemo, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 
 type Theme = "dark" | "light";
 type Lang = "tr" | "en";
+type OtpChannel = "email" | "sms";
+type CopyText = {
+  brandSub: string;
+  signUp: string;
+  secureLogin: string;
+  titleA: string;
+  titleB: string;
+  subtitle: string;
+  pillA: string;
+  pillAText: string;
+  pillB: string;
+  pillBText: string;
+  pillC: string;
+  pillCText: string;
+  cardTitle: string;
+  cardSub: string;
+  identifier: string;
+  identifierPh: string;
+  password: string;
+  hide: string;
+  show: string;
+  nextStep: string;
+  nextStepBusy: string;
+  noAccount: string;
+  toRegister: string;
+  idReq: string;
+  idInvalid: string;
+  passwordReq: string;
+  loginFail: string;
+  genericErr: string;
+  otpTitle: string;
+  otpSub: string;
+  otpByEmail: string;
+  otpBySms: string;
+  sendCode: string;
+  sendingCode: string;
+  codeLabel: string;
+  codePh: string;
+  verifyCode: string;
+  verifyingCode: string;
+  resendCode: string;
+  resendIn: string;
+  cancelOtp: string;
+  otpHint: string;
+  otpInvalid: string;
+  otpSentTo: string;
+  otpExpiresIn: string;
+  otpExpired: string;
+  missingOtpEmail: string;
+  missingOtpPhone: string;
+  smsNotConfigured: string;
+  otpExpiry: string;
+  errOtpInvalidCode: string;
+  errOtpExpired: string;
+  errOtpUsed: string;
+  errOtpLocked: string;
+  errOtpRateLimit: string;
+  errOtpCooldown: string;
+  errOtpDeviceRate: string;
+  errUserNotFound: string;
+  errNetwork: string;
+};
 
 type LoginPayload = {
   email?: string;
@@ -10,44 +72,20 @@ type LoginPayload = {
   password: string;
 };
 
-const COPY: Record<
-  Lang,
-  {
-    brandSub: string;
-    signUp: string;
-    secureLogin: string;
-    titleA: string;
-    titleB: string;
-    subtitle: string;
-    pillA: string;
-    pillAText: string;
-    pillB: string;
-    pillBText: string;
-    pillC: string;
-    pillCText: string;
-    cardTitle: string;
-    cardSub: string;
-    emailMode: string;
-    phoneMode: string;
-    email: string;
-    phone: string;
-    password: string;
-    hide: string;
-    show: string;
-    loginBusy: string;
-    login: string;
-    noAccount: string;
-    toRegister: string;
-    contactReq: string;
-    invalidEmail: string;
-    invalidPhone: string;
-    passwordReq: string;
-    loginFail: string;
-    genericErr: string;
-    emailPh: string;
-    phonePh: string;
-  }
-> = {
+type SessionUser = {
+  email?: string;
+  phone_number?: string;
+};
+
+const LAST_IDENTIFIER_KEY = "sd_last_login_identifier";
+const LAST_OTP_CHANNEL_KEY = "sd_last_otp_channel";
+const DEVICE_ID_KEY = "sd_device_id";
+const OTP_TTL_SECONDS = 300;
+
+const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+const PHONE_REGEX = /^\+?[0-9\s()-]{10,}$/;
+
+const COPY: Record<Lang, CopyText> = {
   tr: {
     brandSub: "Klinik ve Diyet Yonetimi",
     signUp: "Kayit Ol",
@@ -62,26 +100,52 @@ const COPY: Record<
     pillC: "Mesaj",
     pillCText: "Anlik iletisim",
     cardTitle: "Giris Yap",
-    cardSub: "E-posta veya telefon ile giris yapabilirsin.",
-    emailMode: "Email",
-    phoneMode: "Telefon",
-    email: "E-posta",
-    phone: "Telefon",
+    cardSub: "Mail veya telefon ve sifreni gir. Son adimda OTP ile dogrula.",
+    identifier: "Mail",
+    identifierPh: "Mail veya telefon girin",
     password: "Sifre",
     hide: "Gizle",
     show: "Goster",
-    loginBusy: "Giris yapiliyor...",
-    login: "Giris Yap",
+    nextStep: "Devam Et",
+    nextStepBusy: "Kontrol ediliyor...",
     noAccount: "Hesabin yok mu?",
     toRegister: "Kayit ol",
-    contactReq: "E-posta veya telefon alanlarindan en az birini doldurmalisin.",
-    invalidEmail: "Gecerli bir e-posta gir.",
-    invalidPhone: "Gecerli bir telefon gir. Ornek: +905555555555",
+    idReq: "Mail veya telefon zorunlu.",
+    idInvalid: "Gecerli bir mail ya da telefon gir.",
     passwordReq: "Sifre zorunlu.",
     loginFail: "Giris basarisiz. Bilgileri kontrol et.",
     genericErr: "Bir hata olustu.",
-    emailPh: "ornek@example.com",
-    phonePh: "+905555555555",
+    otpTitle: "Dogrulama Yontemi",
+    otpSub: "Hesaba girmeden once kod gonderim turunu sec.",
+    otpByEmail: "Mail ile dogrula",
+    otpBySms: "SMS gonder",
+    sendCode: "Kodu Gonder",
+    sendingCode: "Kod gonderiliyor...",
+    codeLabel: "Dogrulama Kodu",
+    codePh: "123456",
+    verifyCode: "Kodu Dogrula ve Gir",
+    verifyingCode: "Dogrulaniyor...",
+    resendCode: "Kodu Tekrar Gonder",
+    resendIn: "Tekrar gonderim",
+    cancelOtp: "Iptal",
+    otpHint: "Kod gonderildi. Gelen 6 haneli kodu gir.",
+    otpInvalid: "Kod 6 haneli olmalidir.",
+    otpSentTo: "Kod gonderildi:",
+    otpExpiresIn: "Kodun gecerlilik suresi",
+    otpExpired: "Kod suresi doldu. Lutfen yeniden kod isteyin.",
+    missingOtpEmail: "Bu hesapta OTP icin e-posta bulunamadi.",
+    missingOtpPhone: "Bu hesapta OTP icin telefon bulunamadi.",
+    smsNotConfigured: "SMS servisi aktif degil. Mail secimi ile devam et.",
+    otpExpiry: "Kod gecerlilik suresi: 5 dakika",
+    errOtpInvalidCode: "Hatali kod girdiniz.",
+    errOtpExpired: "Kod gecersiz veya suresi dolmus.",
+    errOtpUsed: "Bu kod kullanilmis. Lutfen yeni kod isteyin.",
+    errOtpLocked: "Cok fazla hatali deneme yapildi. Lutfen daha sonra tekrar deneyin.",
+    errOtpRateLimit: "Cok sik kod istediniz. Biraz bekleyip tekrar deneyin.",
+    errOtpCooldown: "Tekrar kod istemek icin biraz bekleyin.",
+    errOtpDeviceRate: "Bu cihazdan cok fazla kod istendi. Lutfen daha sonra tekrar deneyin.",
+    errUserNotFound: "Kullanici bulunamadi.",
+    errNetwork: "Sunucuya ulasilamiyor. Baglantiyi kontrol edip tekrar deneyin.",
   },
   en: {
     brandSub: "Clinic and Nutrition Management",
@@ -97,34 +161,149 @@ const COPY: Record<
     pillC: "Messages",
     pillCText: "Real-time communication",
     cardTitle: "Sign In",
-    cardSub: "You can sign in with email or phone.",
-    emailMode: "Email",
-    phoneMode: "Phone",
-    email: "Email",
-    phone: "Phone",
+    cardSub: "Enter email/phone and password. Complete OTP before entering account.",
+    identifier: "Email",
+    identifierPh: "Enter email or phone",
     password: "Password",
     hide: "Hide",
     show: "Show",
-    loginBusy: "Signing in...",
-    login: "Sign In",
+    nextStep: "Continue",
+    nextStepBusy: "Checking...",
     noAccount: "Don't have an account?",
     toRegister: "Sign up",
-    contactReq: "You must fill at least one: email or phone.",
-    invalidEmail: "Enter a valid email.",
-    invalidPhone: "Enter a valid phone number. Example: +905555555555",
+    idReq: "Email or phone is required.",
+    idInvalid: "Enter a valid email or phone.",
     passwordReq: "Password is required.",
-    loginFail: "Login failed. Check your information.",
+    loginFail: "Login failed. Check your credentials.",
     genericErr: "An error occurred.",
-    emailPh: "example@email.com",
-    phonePh: "+905555555555",
+    otpTitle: "Verification Method",
+    otpSub: "Choose how to receive the code before entering account.",
+    otpByEmail: "Verify by email",
+    otpBySms: "Send SMS",
+    sendCode: "Send Code",
+    sendingCode: "Sending code...",
+    codeLabel: "Verification Code",
+    codePh: "123456",
+    verifyCode: "Verify Code and Sign In",
+    verifyingCode: "Verifying...",
+    resendCode: "Resend Code",
+    resendIn: "Resend in",
+    cancelOtp: "Cancel",
+    otpHint: "Code sent. Enter the 6-digit code.",
+    otpInvalid: "Code must be 6 digits.",
+    otpSentTo: "Code sent to:",
+    otpExpiresIn: "Code validity",
+    otpExpired: "Code expired. Please request a new one.",
+    missingOtpEmail: "No email found for OTP delivery.",
+    missingOtpPhone: "No phone found for OTP delivery.",
+    smsNotConfigured: "SMS service is not configured. Continue with email.",
+    otpExpiry: "Code validity: 5 minutes",
+    errOtpInvalidCode: "The verification code is incorrect.",
+    errOtpExpired: "The code is invalid or expired.",
+    errOtpUsed: "This code was already used. Please request a new one.",
+    errOtpLocked: "Too many incorrect attempts. Please try again later.",
+    errOtpRateLimit: "Too many code requests. Please wait and try again.",
+    errOtpCooldown: "Please wait before requesting a new code.",
+    errOtpDeviceRate: "Too many requests from this device. Please try again later.",
+    errUserNotFound: "User not found.",
+    errNetwork: "Server is unreachable. Check your connection and try again.",
   },
 };
+
+function guessIdentifierType(identifier: string): "email" | "phone" | "invalid" {
+  const v = identifier.trim();
+  if (!v) return "invalid";
+  if (EMAIL_REGEX.test(v)) return "email";
+  if (PHONE_REGEX.test(v)) return "phone";
+  return "invalid";
+}
+
+function readLastIdentifier(): string {
+  return localStorage.getItem(LAST_IDENTIFIER_KEY) || "";
+}
+
+function readLastChannel(): OtpChannel {
+  return localStorage.getItem(LAST_OTP_CHANNEL_KEY) === "sms" ? "sms" : "email";
+}
+
+function getOrCreateDeviceId(): string {
+  const existing = localStorage.getItem(DEVICE_ID_KEY);
+  if (existing) return existing;
+
+  const generated =
+    typeof crypto !== "undefined" && "randomUUID" in crypto
+      ? crypto.randomUUID()
+      : `web-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
+  localStorage.setItem(DEVICE_ID_KEY, generated);
+  return generated;
+}
+
+function formatCountdown(totalSeconds: number): string {
+  const safe = Math.max(0, totalSeconds);
+  const minutes = Math.floor(safe / 60);
+  const seconds = safe % 60;
+  return `${minutes}:${String(seconds).padStart(2, "0")}`;
+}
+
+function maskIdentity(identity: string, identityType: 1 | 2 | null): string {
+  const value = String(identity || "").trim();
+  if (!value) return "";
+
+  const isEmail = identityType === 1 || value.includes("@");
+  if (isEmail) {
+    const [local, domain] = value.split("@");
+    if (!domain) return `${value[0] || "*"}***`;
+    const first = local?.[0] || "*";
+    return `${first}***@${domain}`;
+  }
+
+  if (value.length <= 4) return "***";
+  const prefixLen = value.startsWith("+") ? 3 : 2;
+  const prefix = value.slice(0, prefixLen);
+  const suffix = value.slice(-2);
+  return `${prefix}***${suffix}`;
+}
+
+function extractApiMessage(data: unknown, fallback: string): string {
+  if (!data || typeof data !== "object") return fallback;
+  const raw = (data as { message?: unknown }).message;
+  if (Array.isArray(raw)) return raw.join(" - ");
+  if (typeof raw === "string" && raw.trim()) return raw;
+  return fallback;
+}
+
+function mapApiError(message: string, t: CopyText): string {
+  const raw = String(message || "").trim();
+  if (!raw) return t.genericErr;
+
+  const normalized = raw.toLowerCase();
+
+  if (normalized.includes("invalid otp") || normalized.includes("inavlid otp")) return t.errOtpInvalidCode;
+  if (normalized.includes("otp not found") || normalized.includes("expired")) return t.errOtpExpired;
+  if (normalized.includes("otp already used")) return t.errOtpUsed;
+  if (normalized.includes("temporarily locked")) return t.errOtpLocked;
+  if (normalized.includes("otp rate limit exceeded")) return t.errOtpRateLimit;
+  if (normalized.includes("otp device rate limit exceeded")) return t.errOtpDeviceRate;
+  if (normalized.includes("otp resend cooldown active")) return t.errOtpCooldown;
+  if (normalized.includes("please wait before requesting a new otp")) return t.errOtpCooldown;
+  if (normalized.includes("too many requests")) return t.errOtpRateLimit;
+  if (normalized.includes("sms service is not configured")) return t.smsNotConfigured;
+  if (normalized.includes("e-posta veya telefon") || normalized.includes("email or phone")) return t.idReq;
+  if (normalized.includes("user not found")) return t.errUserNotFound;
+  if (normalized.includes("failed to fetch") || normalized.includes("networkerror")) return t.errNetwork;
+  if (normalized.includes("unauthorized")) return t.loginFail;
+  if (normalized.includes("invalid credentials")) return t.loginFail;
+
+  return raw;
+}
 
 export default function Login() {
   const navigate = useNavigate();
 
   const API_BASE = "http://localhost:3000";
   const LOGIN_URL = `${API_BASE}/api/auth/login`;
+  const REQUEST_OTP_URL = `${API_BASE}/api/auth/request-otp`;
+  const VERIFY_OTP_URL = `${API_BASE}/api/auth/verify-otp`;
 
   const [theme] = useState<Theme>(() => {
     const saved = localStorage.getItem("sd_theme") as Theme | null;
@@ -136,47 +315,149 @@ export default function Login() {
   });
   const isDark = theme === "dark";
   const t = COPY[lang];
+  const deviceId = useMemo(() => getOrCreateDeviceId(), []);
+
+  const [identifier, setIdentifier] = useState(readLastIdentifier());
+  const [password, setPassword] = useState("");
+  const [showPass, setShowPass] = useState(false);
+
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
+
+  const [otpOpen, setOtpOpen] = useState(false);
+  const [otpChannel, setOtpChannel] = useState<OtpChannel>(readLastChannel());
+  const [otpSent, setOtpSent] = useState(false);
+  const [otpCode, setOtpCode] = useState("");
+  const [otpIdentityType, setOtpIdentityType] = useState<1 | 2 | null>(null);
+  const [otpIdentity, setOtpIdentity] = useState("");
+  const [otpCooldown, setOtpCooldown] = useState(0);
+  const [otpExpiresAt, setOtpExpiresAt] = useState<number | null>(null);
+  const [otpSecondsLeft, setOtpSecondsLeft] = useState(0);
+  const [otpInfo, setOtpInfo] = useState("");
+  const [otpError, setOtpError] = useState("");
+  const [otpSending, setOtpSending] = useState(false);
+  const [otpVerifying, setOtpVerifying] = useState(false);
+  const [pendingUser, setPendingUser] = useState<SessionUser | null>(null);
 
   useEffect(() => {
     document.documentElement.setAttribute("data-theme", theme);
   }, [theme]);
 
-  const [mode, setMode] = useState<"email" | "phone">("email");
-  const [email, setEmail] = useState("");
-  const [phone, setPhone] = useState("");
-  const [password, setPassword] = useState("");
-  const [showPass, setShowPass] = useState(false);
-  const [loading, setLoading] = useState(false);
-  const [errors, setErrors] = useState<Record<string, string>>({});
-  const [serverError, setServerError] = useState("");
+  useEffect(() => {
+    if (localStorage.getItem("access_token")) navigate("/", { replace: true });
+  }, [navigate]);
 
-  const validate = () => {
-    const e: Record<string, string> = {};
-    const eMail = email.trim();
-    const p = phone.trim();
+  useEffect(() => {
+    if (otpCooldown <= 0) return;
+    const timer = window.setTimeout(() => setOtpCooldown((v) => Math.max(v - 1, 0)), 1000);
+    return () => window.clearTimeout(timer);
+  }, [otpCooldown]);
 
-    if (!eMail && !p) e.contact = t.contactReq;
-    if (eMail && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(eMail)) e.email = t.invalidEmail;
-    if (p && !/^\+?[0-9\s()-]{10,}$/.test(p)) e.phone_number = t.invalidPhone;
-    if (!password) e.password = t.passwordReq;
+  useEffect(() => {
+    if (!otpSent || !otpExpiresAt) {
+      setOtpSecondsLeft(0);
+      return;
+    }
 
-    setErrors(e);
-    return Object.keys(e).length === 0;
+    const tick = () => {
+      const seconds = Math.max(0, Math.ceil((otpExpiresAt - Date.now()) / 1000));
+      setOtpSecondsLeft(seconds);
+    };
+
+    tick();
+    const timer = window.setInterval(tick, 1000);
+    return () => window.clearInterval(timer);
+  }, [otpSent, otpExpiresAt]);
+
+  const availableChannels = useMemo(() => {
+    const email = String(pendingUser?.email || "").trim();
+    const phone = String(pendingUser?.phone_number || "").trim();
+    return {
+      email: EMAIL_REGEX.test(email),
+      sms: PHONE_REGEX.test(phone),
+    };
+  }, [pendingUser]);
+
+  const maskedOtpTarget = useMemo(() => maskIdentity(otpIdentity, otpIdentityType), [otpIdentity, otpIdentityType]);
+
+  const buildOtpTarget = (channel: OtpChannel) => {
+    if (!pendingUser) throw new Error(t.genericErr);
+
+    if (channel === "email") {
+      const candidate = String(pendingUser.email || "").trim();
+      if (!EMAIL_REGEX.test(candidate)) throw new Error(t.missingOtpEmail);
+      return { identityType: 1 as const, identity: candidate };
+    }
+
+    const candidate = String(pendingUser.phone_number || "").trim();
+    if (!PHONE_REGEX.test(candidate)) throw new Error(t.missingOtpPhone);
+    return { identityType: 2 as const, identity: candidate };
   };
 
-  const submit = async (ev: React.FormEvent) => {
+  const requestOtp = async (identityType: 1 | 2, identity: string) => {
+    const res = await fetch(REQUEST_OTP_URL, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "x-device-id": deviceId,
+      },
+      body: JSON.stringify({
+        identityType,
+        identity,
+        purpose: 2,
+      }),
+    });
+
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) {
+      throw new Error(extractApiMessage(data, t.genericErr));
+    }
+  };
+
+  const validateCredentials = () => {
+    if (!identifier.trim()) return t.idReq;
+    if (guessIdentifierType(identifier) === "invalid") return t.idInvalid;
+    if (!password) return t.passwordReq;
+    return "";
+  };
+
+  const openOtpModal = (user: SessionUser) => {
+    const nextChannel: OtpChannel = EMAIL_REGEX.test(String(user.email || "")) ? "email" : "sms";
+    setPendingUser(user);
+    setOtpChannel(nextChannel);
+    setOtpOpen(true);
+    setOtpSent(false);
+    setOtpCode("");
+    setOtpIdentityType(null);
+    setOtpIdentity("");
+    setOtpCooldown(0);
+    setOtpExpiresAt(null);
+    setOtpSecondsLeft(0);
+    setOtpInfo("");
+    setOtpError("");
+  };
+
+  const handleCredentialSubmit = async (ev: React.FormEvent) => {
     ev.preventDefault();
-    setServerError("");
-    if (!validate()) return;
+    setError("");
+
+    const validationError = validateCredentials();
+    if (validationError) {
+      setError(validationError);
+      return;
+    }
+
+    localStorage.setItem(LAST_IDENTIFIER_KEY, identifier.trim());
+
+    const idType = guessIdentifierType(identifier);
+    const payload: LoginPayload = {
+      password,
+      email: idType === "email" ? identifier.trim() : undefined,
+      phone_number: idType === "phone" ? identifier.trim() : undefined,
+    };
 
     setLoading(true);
     try {
-      const payload: LoginPayload = {
-        password,
-        email: email.trim() || undefined,
-        phone_number: phone.trim() || undefined,
-      };
-
       const res = await fetch(LOGIN_URL, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -185,7 +466,80 @@ export default function Login() {
 
       const data = await res.json().catch(() => ({}));
       if (!res.ok) {
-        const msg = data?.message?.join?.(" - ") || data?.message || t.loginFail;
+        const msg = extractApiMessage(data, t.loginFail);
+        throw new Error(msg);
+      }
+
+      const result = data?.data ?? data;
+      const user = (result?.user ?? {}) as SessionUser;
+      openOtpModal(user);
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : "";
+      setError(mapApiError(message, t));
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleSendOtp = async () => {
+    setOtpError("");
+    setOtpInfo("");
+    setOtpSending(true);
+    try {
+      const target = buildOtpTarget(otpChannel);
+      await requestOtp(target.identityType, target.identity);
+
+      localStorage.setItem(LAST_OTP_CHANNEL_KEY, otpChannel);
+      setOtpIdentityType(target.identityType);
+      setOtpIdentity(target.identity);
+      setOtpSent(true);
+      setOtpCooldown(60);
+      setOtpExpiresAt(Date.now() + OTP_TTL_SECONDS * 1000);
+      setOtpInfo(t.otpHint);
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : "";
+      setOtpError(mapApiError(message, t));
+    } finally {
+      setOtpSending(false);
+    }
+  };
+
+  const handleVerifyOtp = async (ev: React.FormEvent) => {
+    ev.preventDefault();
+    setOtpError("");
+
+    if (!otpIdentityType || !otpIdentity) {
+      setOtpError(t.genericErr);
+      return;
+    }
+    if (otpSecondsLeft <= 0) {
+      setOtpError(t.otpExpired);
+      return;
+    }
+    if (!/^\d{6}$/.test(otpCode.trim())) {
+      setOtpError(t.otpInvalid);
+      return;
+    }
+
+    setOtpVerifying(true);
+    try {
+      const res = await fetch(VERIFY_OTP_URL, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "x-device-id": deviceId,
+        },
+        body: JSON.stringify({
+          identityType: otpIdentityType,
+          identity: otpIdentity,
+          code: otpCode.trim(),
+          purpose: 2,
+        }),
+      });
+
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        const msg = extractApiMessage(data, t.genericErr);
         throw new Error(msg);
       }
 
@@ -198,28 +552,28 @@ export default function Login() {
       if (refreshToken) localStorage.setItem("refresh_token", refreshToken);
       if (user) localStorage.setItem("sd_user", JSON.stringify(user));
 
+      setOtpOpen(false);
       navigate("/");
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : "";
-      if (message.toLowerCase().includes("failed to fetch")) {
-        setServerError(lang === "tr" ? "Sunucuya baglanilamadi. Backend calisiyor mu kontrol et." : "Could not connect to server. Check if backend is running.");
-      } else {
-        setServerError(message || t.genericErr);
-      }
+      setOtpError(mapApiError(message, t));
     } finally {
-      setLoading(false);
+      setOtpVerifying(false);
     }
   };
 
-  const clearContactErrors = () => {
-    setErrors((prev) => {
-      const c = { ...prev };
-      delete c.contact;
-      delete c.email;
-      delete c.phone_number;
-      return c;
-    });
-    setServerError("");
+  const handleResend = async () => {
+    if (otpCooldown > 0 || !otpIdentityType || !otpIdentity) return;
+    setOtpError("");
+    try {
+      await requestOtp(otpIdentityType, otpIdentity);
+      setOtpCooldown(60);
+      setOtpExpiresAt(Date.now() + OTP_TTL_SECONDS * 1000);
+      setOtpInfo(t.otpHint);
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : "";
+      setOtpError(mapApiError(message, t));
+    }
   };
 
   return (
@@ -290,72 +644,26 @@ export default function Login() {
 
         <section>
           <div className={isDark ? "rounded-[26px] border border-white/10 bg-white/5 p-5 shadow-[0_40px_140px_rgba(0,0,0,0.65)] backdrop-blur sm:p-7" : "rounded-[26px] border border-[#325d51]/25 bg-[#eaf2ed]/84 p-5 shadow-[0_40px_120px_rgba(8,22,20,0.12)] backdrop-blur sm:p-7"}>
-            <div className="mb-5 flex items-start justify-between gap-4">
-              <div>
-                <div className={isDark ? "text-base font-extrabold text-white" : "text-base font-extrabold text-[#0e2d27]"}>{t.cardTitle}</div>
-                <div className={isDark ? "mt-1 text-xs text-zinc-400" : "mt-1 text-xs text-[#4d6b62]"}>{t.cardSub}</div>
-              </div>
-
-              <div className={isDark ? "inline-flex rounded-2xl border border-white/10 bg-black/20 p-1" : "inline-flex rounded-2xl border border-[#325d51]/25 bg-[#eaf2ed]/84 p-1"}>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setMode("email");
-                    clearContactErrors();
-                  }}
-                  className={[
-                    "rounded-xl px-3 py-2 text-xs font-extrabold transition",
-                    mode === "email"
-                      ? isDark
-                        ? "bg-emerald-500/20 text-emerald-100"
-                        : "bg-emerald-600/15 text-emerald-800"
-                      : isDark
-                        ? "text-zinc-300 hover:bg-white/5"
-                        : "text-[#36544c] hover:bg-[#d7e4de]",
-                  ].join(" ")}
-                >
-                  {t.emailMode}
-                </button>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setMode("phone");
-                    clearContactErrors();
-                  }}
-                  className={[
-                    "rounded-xl px-3 py-2 text-xs font-extrabold transition",
-                    mode === "phone"
-                      ? isDark
-                        ? "bg-emerald-500/20 text-emerald-100"
-                        : "bg-emerald-600/15 text-emerald-800"
-                      : isDark
-                        ? "text-zinc-300 hover:bg-white/5"
-                        : "text-[#36544c] hover:bg-[#d7e4de]",
-                  ].join(" ")}
-                >
-                  {t.phoneMode}
-                </button>
-              </div>
+            <div className="mb-5">
+              <div className={isDark ? "text-base font-extrabold text-white" : "text-base font-extrabold text-[#0e2d27]"}>{t.cardTitle}</div>
+              <div className={isDark ? "mt-1 text-xs text-zinc-400" : "mt-1 text-xs text-[#4d6b62]"}>{t.cardSub}</div>
             </div>
 
-            {serverError ? <div className="mb-4 rounded-xl border border-rose-500/25 bg-rose-500/10 px-4 py-3 text-sm text-rose-100">{serverError}</div> : null}
+            {error ? <div className="mb-4 rounded-xl border border-rose-500/25 bg-rose-500/10 px-4 py-3 text-sm text-rose-100">{error}</div> : null}
 
-            <form onSubmit={submit} className="space-y-4" autoComplete="on">
-              {mode === "email" ? (
-                <Field isDark={isDark} label={t.email} value={email} onChange={(v) => {
-                  setEmail(v);
-                  setErrors((p) => ({ ...p, email: "", contact: "" }));
-                  setServerError("");
-                }} placeholder={t.emailPh} error={errors.email} autoComplete="email" name="email" />
-              ) : (
-                <Field isDark={isDark} label={t.phone} value={phone} onChange={(v) => {
-                  setPhone(v);
-                  setErrors((p) => ({ ...p, phone_number: "", contact: "" }));
-                  setServerError("");
-                }} placeholder={t.phonePh} error={errors.phone_number} autoComplete="tel" name="phone" />
-              )}
-
-              {errors.contact ? <div className="text-xs text-rose-200">{errors.contact}</div> : null}
+            <form onSubmit={handleCredentialSubmit} className="space-y-4" autoComplete="on">
+              <Field
+                isDark={isDark}
+                label={t.identifier}
+                value={identifier}
+                onChange={(v) => {
+                  setIdentifier(v);
+                  setError("");
+                }}
+                placeholder={t.identifierPh}
+                autoComplete="username"
+                name="identifier"
+              />
 
               <div>
                 <label className={isDark ? "mb-2 block text-xs font-semibold text-zinc-200" : "mb-2 block text-xs font-semibold text-[#36544c]"}>{t.password}</label>
@@ -364,8 +672,7 @@ export default function Login() {
                     value={password}
                     onChange={(e) => {
                       setPassword(e.target.value);
-                      setErrors((p) => ({ ...p, password: "" }));
-                      setServerError("");
+                      setError("");
                     }}
                     type={showPass ? "text" : "password"}
                     placeholder="********"
@@ -374,8 +681,7 @@ export default function Login() {
                     className={[
                       "w-full rounded-2xl border px-4 py-3 pr-12 text-sm outline-none transition",
                       isDark ? "bg-black/20 text-white" : "bg-white text-[#0e2d27]",
-                      errors.password ? "border-rose-500/40" : isDark ? "border-white/10" : "border-[#325d51]/25",
-                      "focus:border-emerald-400/40 focus:ring-4 focus:ring-emerald-500/10",
+                      "border-[#325d51]/25 focus:border-emerald-400/40 focus:ring-4 focus:ring-emerald-500/10",
                     ].join(" ")}
                   />
                   <button
@@ -386,7 +692,6 @@ export default function Login() {
                     {showPass ? t.hide : t.show}
                   </button>
                 </div>
-                {errors.password ? <div className="mt-2 text-xs text-rose-200">{errors.password}</div> : null}
               </div>
 
               <button
@@ -394,7 +699,7 @@ export default function Login() {
                 type="submit"
                 className="mt-2 w-full rounded-2xl bg-gradient-to-r from-emerald-400 to-teal-300 px-5 py-3 text-sm font-extrabold text-zinc-950 shadow-[0_18px_60px_rgba(16,185,129,0.20)] transition hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-60"
               >
-                {loading ? t.loginBusy : t.login}
+                {loading ? t.nextStepBusy : t.nextStep}
               </button>
 
               <div className={isDark ? "pt-2 text-center text-xs text-zinc-400" : "pt-2 text-center text-xs text-[#4d6b62]"}>
@@ -407,6 +712,129 @@ export default function Login() {
           </div>
         </section>
       </main>
+
+      {otpOpen ? (
+        <div className="fixed inset-0 z-50 grid place-items-center bg-black/60 p-4">
+          <div className={isDark ? "w-full max-w-md rounded-2xl border border-white/10 bg-[#0d1114] p-5 shadow-[0_30px_120px_rgba(0,0,0,0.55)]" : "w-full max-w-md rounded-2xl border border-[#325d51]/20 bg-white p-5 shadow-[0_30px_120px_rgba(0,0,0,0.25)]"}>
+            <div className="mb-4 flex items-start justify-between gap-3">
+              <div>
+                <h3 className={isDark ? "text-lg font-extrabold text-white" : "text-lg font-extrabold text-[#0e2d27]"}>{t.otpTitle}</h3>
+                <p className={isDark ? "mt-1 text-xs text-zinc-400" : "mt-1 text-xs text-[#4d6b62]"}>{t.otpSub}</p>
+              </div>
+              <button
+                onClick={() => {
+                  setOtpOpen(false);
+                  setPendingUser(null);
+                }}
+                className={isDark ? "rounded-lg border border-white/10 bg-white/5 px-2.5 py-1 text-xs text-zinc-200" : "rounded-lg border border-[#325d51]/20 bg-[#eef5f1] px-2.5 py-1 text-xs text-[#36544c]"}
+              >
+                {t.cancelOtp}
+              </button>
+            </div>
+
+            {!otpSent ? (
+              <div className="space-y-4">
+                <div className="grid gap-2">
+                  <button
+                    type="button"
+                    disabled={!availableChannels.email || otpSending}
+                    onClick={() => setOtpChannel("email")}
+                    className={[
+                      "w-full rounded-xl border px-4 py-3 text-left text-sm font-bold transition disabled:cursor-not-allowed disabled:opacity-50",
+                      otpChannel === "email"
+                        ? isDark
+                          ? "border-emerald-400/40 bg-emerald-500/15 text-emerald-100"
+                          : "border-emerald-700/30 bg-emerald-100 text-emerald-900"
+                        : isDark
+                          ? "border-white/10 bg-white/5 text-zinc-200"
+                          : "border-[#325d51]/20 bg-[#f4f8f6] text-[#36544c]",
+                    ].join(" ")}
+                  >
+                    {t.otpByEmail}
+                  </button>
+
+                  <button
+                    type="button"
+                    disabled={!availableChannels.sms || otpSending}
+                    onClick={() => setOtpChannel("sms")}
+                    className={[
+                      "w-full rounded-xl border px-4 py-3 text-left text-sm font-bold transition disabled:cursor-not-allowed disabled:opacity-50",
+                      otpChannel === "sms"
+                        ? isDark
+                          ? "border-emerald-400/40 bg-emerald-500/15 text-emerald-100"
+                          : "border-emerald-700/30 bg-emerald-100 text-emerald-900"
+                        : isDark
+                          ? "border-white/10 bg-white/5 text-zinc-200"
+                          : "border-[#325d51]/20 bg-[#f4f8f6] text-[#36544c]",
+                    ].join(" ")}
+                  >
+                    {t.otpBySms}
+                  </button>
+                </div>
+
+                {otpError ? <div className="rounded-xl border border-rose-500/30 bg-rose-500/10 px-3 py-2 text-xs text-rose-100">{otpError}</div> : null}
+
+                <button
+                  type="button"
+                  onClick={handleSendOtp}
+                  disabled={otpSending}
+                  className="w-full rounded-xl bg-gradient-to-r from-emerald-400 to-teal-300 px-4 py-3 text-sm font-extrabold text-zinc-950"
+                >
+                  {otpSending ? t.sendingCode : t.sendCode}
+                </button>
+              </div>
+            ) : (
+              <form onSubmit={handleVerifyOtp} className="space-y-4">
+                {otpInfo ? <div className="rounded-xl border border-emerald-500/30 bg-emerald-500/10 px-3 py-2 text-xs text-emerald-100">{otpInfo}</div> : null}
+                {maskedOtpTarget ? (
+                  <div className={isDark ? "text-xs text-zinc-300" : "text-xs text-[#36544c]"}>
+                    {t.otpSentTo} <span className="font-semibold">{maskedOtpTarget}</span>
+                  </div>
+                ) : null}
+
+                {otpSecondsLeft > 0 ? (
+                  <div className={isDark ? "text-xs text-zinc-400" : "text-xs text-[#4d6b62]"}>
+                    {t.otpExpiresIn}: <span className="font-semibold">{formatCountdown(otpSecondsLeft)}</span>
+                  </div>
+                ) : (
+                  <div className="rounded-xl border border-rose-500/30 bg-rose-500/10 px-3 py-2 text-xs text-rose-100">{t.otpExpired}</div>
+                )}
+
+                <Field
+                  isDark={isDark}
+                  label={t.codeLabel}
+                  value={otpCode}
+                  onChange={(v) => {
+                    setOtpCode(v.replace(/\D/g, "").slice(0, 6));
+                    setOtpError("");
+                  }}
+                  placeholder={t.codePh}
+                  name="otp_code"
+                />
+
+                {otpError ? <div className="rounded-xl border border-rose-500/30 bg-rose-500/10 px-3 py-2 text-xs text-rose-100">{otpError}</div> : null}
+
+                <button
+                  disabled={otpVerifying || otpSecondsLeft <= 0}
+                  type="submit"
+                  className="w-full rounded-xl bg-gradient-to-r from-emerald-400 to-teal-300 px-4 py-3 text-sm font-extrabold text-zinc-950"
+                >
+                  {otpVerifying ? t.verifyingCode : t.verifyCode}
+                </button>
+
+                <button
+                  type="button"
+                  onClick={handleResend}
+                  disabled={otpCooldown > 0}
+                  className={isDark ? "w-full rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-sm font-bold text-zinc-100 disabled:cursor-not-allowed disabled:opacity-60" : "w-full rounded-xl border border-[#325d51]/20 bg-[#f4f8f6] px-4 py-3 text-sm font-bold text-[#36544c] disabled:cursor-not-allowed disabled:opacity-60"}
+                >
+                  {otpCooldown > 0 ? `${t.resendIn} ${otpCooldown}s` : t.resendCode}
+                </button>
+              </form>
+            )}
+          </div>
+        </div>
+      ) : null}
     </div>
   );
 }
@@ -417,7 +845,6 @@ function Field({
   value,
   onChange,
   placeholder,
-  error,
   type = "text",
   autoComplete,
   name,
@@ -427,7 +854,6 @@ function Field({
   value: string;
   onChange: (v: string) => void;
   placeholder?: string;
-  error?: string;
   type?: string;
   autoComplete?: string;
   name?: string;
@@ -445,11 +871,9 @@ function Field({
         className={[
           "w-full rounded-2xl border px-4 py-3 text-sm outline-none transition",
           isDark ? "bg-black/20 text-white" : "bg-white text-[#0e2d27]",
-          error ? "border-rose-500/40" : isDark ? "border-white/10" : "border-[#325d51]/25",
-          "focus:border-emerald-400/40 focus:ring-4 focus:ring-emerald-500/10",
+          "border-[#325d51]/25 focus:border-emerald-400/40 focus:ring-4 focus:ring-emerald-500/10",
         ].join(" ")}
       />
-      {error ? <div className="mt-2 text-xs text-rose-200">{error}</div> : null}
     </div>
   );
 }
@@ -465,4 +889,3 @@ function InfoPill({ isDark, icon, title, desc }: { isDark: boolean; icon: string
     </div>
   );
 }
-

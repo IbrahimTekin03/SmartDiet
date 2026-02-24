@@ -4,6 +4,7 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 import { ThrottlerModule } from '@nestjs/throttler';
 import { AcceptLanguageResolver, I18nModule, QueryResolver } from 'nestjs-i18n';
 import * as path from 'path';
+import * as fs from 'fs';
 import { AuthModule } from './modules/auth/auth.module';
 import { UsersModule } from './modules/users/users.module';
 import { MailModule } from './modules/mail/mail.module';
@@ -14,6 +15,10 @@ import { AclModule } from './modules/acl/acl.module';
 import { MeasurementsModule } from './modules/measurements/measurements.module';
 import { APP_GUARD } from '@nestjs/core';
 import { ThrottlerGuard } from '@nestjs/throttler';
+
+const DIST_I18N_PATH = path.join(__dirname, 'i18n');
+const SRC_I18N_PATH = path.join(process.cwd(), 'src', 'i18n');
+const I18N_PATH = fs.existsSync(DIST_I18N_PATH) ? DIST_I18N_PATH : SRC_I18N_PATH;
 
 @Module({
   imports: [
@@ -53,7 +58,7 @@ import { ThrottlerGuard } from '@nestjs/throttler';
     I18nModule.forRoot({
       fallbackLanguage: 'tr',
       loaderOptions: {
-        path: path.join(__dirname, 'i18n'),
+        path: I18N_PATH,
         watch: true,
       },
       resolvers: [

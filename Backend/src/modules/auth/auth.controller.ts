@@ -107,8 +107,12 @@ export class AuthController {
   @Post('request-otp')
   @ApiOperation({ summary: 'OTP talep et' })
   @ApiResponse({ status: 200, description: 'OTP oluşturuldu ve gönderildi', type: ResponseDto })
-  async requestOtp(@Body() dto: RequestOtpDto) {
-    const result = await this.otpService.requestOtp(dto.identityType, dto.identity, dto.purpose);
+  async requestOtp(@Request() req, @Body() dto: RequestOtpDto) {
+    const result = await this.otpService.requestOtp(dto.identityType, dto.identity, dto.purpose, {
+      ip: this.resolveClientIp(req),
+      deviceId: this.readHeader(req, 'x-device-id'),
+      userAgent: this.readHeader(req, 'user-agent'),
+    });
     return ResponseDto.success('OTP oluşturuldu', result);
   }
 
@@ -250,5 +254,18 @@ export class AuthController {
   async getDashboardSummary(@Request() req) {
     const summary = await this.authService.getDashboardSummary(req.user.id);
     return ResponseDto.success('Dashboard summary', summary);
+  }
+
+  private readHeader(req: any, key: string): string {
+    const value = req?.headers?.[key];
+    if (Array.isArray(value)) return String(value[0] || '').trim();
+    return String(value || '').trim();
+  }
+
+  private resolveClientIp(req: any): string {
+    const forwardedFor = this.readHeader(req, 'x-forwarded-for');
+    if (forwardedFor) return forwardedFor.split(',')[0].trim();
+
+    return String(req?.ip || req?.connection?.remoteAddress || '').trim();
   }
 } 

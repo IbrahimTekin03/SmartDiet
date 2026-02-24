@@ -17,6 +17,21 @@ type RegisterPayload = {
 
 const PASSWORD_REGEX = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{8,}$/;
 
+function isAtLeast18(dateStr: string): boolean {
+  const [yearRaw, monthRaw, dayRaw] = dateStr.split("-");
+  const year = Number(yearRaw);
+  const month = Number(monthRaw);
+  const day = Number(dayRaw);
+  if (!year || !month || !day) return false;
+
+  const now = new Date();
+  let age = now.getFullYear() - year;
+  const monthDiff = now.getMonth() + 1 - month;
+  if (monthDiff < 0 || (monthDiff === 0 && now.getDate() < day)) age -= 1;
+
+  return age >= 18;
+}
+
 const COPY: Record<
   Lang,
   {
@@ -60,6 +75,7 @@ const COPY: Record<
     lastReq: string;
     birthReq: string;
     birthFormat: string;
+    ageRule: string;
     genderReq: string;
     passReq: string;
     passRule: string;
@@ -111,6 +127,7 @@ const COPY: Record<
     lastReq: "Soyisim zorunlu.",
     birthReq: "Dogum tarihi zorunlu.",
     birthFormat: "Gecerli format: YYYY-MM-DD",
+    ageRule: "Kayit icin en az 18 yasinda olmalisin.",
     genderReq: "Cinsiyet zorunlu.",
     passReq: "Sifre zorunlu.",
     passRule: "Sifre: en az 8 karakter, buyuk, kucuk, rakam ve ozel karakter icermeli.",
@@ -161,6 +178,7 @@ const COPY: Record<
     lastReq: "Last name is required.",
     birthReq: "Birth date is required.",
     birthFormat: "Valid format: YYYY-MM-DD",
+    ageRule: "You must be at least 18 years old to register.",
     genderReq: "Gender is required.",
     passReq: "Password is required.",
     passRule: "Password must include 8+ chars, upper, lower, number and special character.",
@@ -220,6 +238,8 @@ export default function Register() {
       e.birth_date = t.birthReq;
     } else if (!/^\d{4}-\d{2}-\d{2}$/.test(form.birth_date)) {
       e.birth_date = t.birthFormat;
+    } else if (!isAtLeast18(form.birth_date)) {
+      e.birth_date = t.ageRule;
     }
 
     if (!form.gender) e.gender = t.genderReq;
@@ -306,8 +326,9 @@ export default function Register() {
         email: "",
         phone_number: "",
       });
-    } catch (err: any) {
-      setServerError(err?.message || t.genericErr);
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : "";
+      setServerError(message || t.genericErr);
     } finally {
       setLoading(false);
     }
