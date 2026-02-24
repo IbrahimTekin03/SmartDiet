@@ -1,6 +1,5 @@
 import { Seeder, SeederFactoryManager } from 'typeorm-extension';
 import { DataSource } from 'typeorm';
-import * as bcrypt from 'bcrypt';
 import { Role } from '../../modules/acl/entities/role.entity';
 import { Permission } from '../../modules/acl/entities/permission.entity';
 import { User } from '../../modules/users/entities/user.entity';
@@ -13,15 +12,14 @@ export default class InitialSeeder0001 implements Seeder {
     const permissionRepository = dataSource.getRepository(Permission);
     const userRepository = dataSource.getRepository(User);
 
-    // Permissions
     const basePermissions: Array<Partial<Permission>> = [
-      { name: 'user.create', description: 'Kullanıcı oluşturma', group: 'user' },
-      { name: 'user.read', description: 'Kullanıcı görüntüleme', group: 'user' },
-      { name: 'user.update', description: 'Kullanıcı güncelleme', group: 'user' },
-      { name: 'user.delete', description: 'Kullanıcı silme', group: 'user' },
-      { name: 'role.create', description: 'Rol oluşturma', group: 'role' },
-      { name: 'role.read', description: 'Rol görüntüleme', group: 'role' },
-      { name: 'role.update', description: 'Rol güncelleme', group: 'role' },
+      { name: 'user.create', description: 'Kullanici olusturma', group: 'user' },
+      { name: 'user.read', description: 'Kullanici goruntuleme', group: 'user' },
+      { name: 'user.update', description: 'Kullanici guncelleme', group: 'user' },
+      { name: 'user.delete', description: 'Kullanici silme', group: 'user' },
+      { name: 'role.create', description: 'Rol olusturma', group: 'role' },
+      { name: 'role.read', description: 'Rol goruntuleme', group: 'role' },
+      { name: 'role.update', description: 'Rol guncelleme', group: 'role' },
       { name: 'role.delete', description: 'Rol silme', group: 'role' },
     ];
 
@@ -33,27 +31,45 @@ export default class InitialSeeder0001 implements Seeder {
     }
 
     const allPermissions = await permissionRepository.find();
+    const readPermissions = allPermissions.filter((p) => p.name.endsWith('.read'));
 
-    // Roles
-    const adminRole = await roleRepository.findOne({ where: { name: 'admin' }, relations: ['permissions'] });
-    const userRole = await roleRepository.findOne({ where: { name: 'user' }, relations: ['permissions'] });
-
-    let ensuredAdminRole = adminRole;
+    let ensuredAdminRole = await roleRepository.findOne({
+      where: { name: 'admin' },
+      relations: ['permissions'],
+    });
     if (!ensuredAdminRole) {
-      ensuredAdminRole = roleRepository.create({ name: 'admin', description: 'Sistem yöneticisi', permissions: allPermissions });
+      ensuredAdminRole = roleRepository.create({
+        name: 'admin',
+        description: 'Sistem yoneticisi',
+        permissions: allPermissions,
+      });
       ensuredAdminRole = await roleRepository.save(ensuredAdminRole);
     } else if (!ensuredAdminRole.permissions || ensuredAdminRole.permissions.length !== allPermissions.length) {
       ensuredAdminRole.permissions = allPermissions;
       ensuredAdminRole = await roleRepository.save(ensuredAdminRole);
     }
 
-    if (!userRole) {
-      const readPermissions = allPermissions.filter((p) => p.name.endsWith('.read'));
-      await roleRepository.save({ name: 'user', description: 'Standart kullanıcı', permissions: readPermissions });
+    const roleDefinitions = [
+      { name: 'user', description: 'Standart kullanici' },
+      { name: 'client', description: 'Danisan kullanici' },
+      { name: 'dietitian', description: 'Diyetisyen kullanici' },
+    ];
+
+    for (const roleDef of roleDefinitions) {
+      const role = await roleRepository.findOne({ where: { name: roleDef.name } });
+      if (!role) {
+        await roleRepository.save({
+          name: roleDef.name,
+          description: roleDef.description,
+          permissions: readPermissions,
+        });
+      }
     }
 
-    // Admin user
-    const adminUser = await userRepository.findOne({ where: { email: 'admin@example.com' }, relations: ['roles'] });
+    const adminUser = await userRepository.findOne({
+      where: { email: 'admin@example.com' },
+      relations: ['roles'],
+    });
     if (!adminUser) {
       const created = userRepository.create({
         first_name: 'Admin',
@@ -66,7 +82,6 @@ export default class InitialSeeder0001 implements Seeder {
         is_verified: true,
         verification_code: '000000',
         last_login: new Date(),
-
       });
       await userRepository.save(created);
     } else {
@@ -76,5 +91,17 @@ export default class InitialSeeder0001 implements Seeder {
         await userRepository.save(adminUser);
       }
     }
+
+    const mertUser = await userRepository.findOne({
+      where: { email: 'mertb2627@gmail.com' },
+      relations: ['roles'],
+    });
+    if (mertUser && ensuredAdminRole) {
+      const hasAdminRole = mertUser.roles?.some((r) => r.name === 'admin');
+      if (!hasAdminRole) {
+        mertUser.roles = [...(mertUser.roles || []), ensuredAdminRole];
+        await userRepository.save(mertUser);
+      }
+    }
   }
-} 
+}

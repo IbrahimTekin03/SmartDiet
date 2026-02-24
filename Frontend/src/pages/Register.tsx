@@ -4,6 +4,7 @@ import { Link, useNavigate } from "react-router-dom";
 type Theme = "dark" | "light";
 type Lang = "tr" | "en";
 type Gender = "male" | "female";
+type AccountType = "client" | "dietitian";
 
 type RegisterPayload = {
   first_name: string;
@@ -11,6 +12,7 @@ type RegisterPayload = {
   password: string;
   birth_date: string;
   gender: Gender;
+  account_type: AccountType;
   email?: string;
   phone_number?: string;
 };
@@ -61,6 +63,9 @@ const COPY: Record<
     phonePh: string;
     birthDate: string;
     gender: string;
+    accountType: string;
+    clientType: string;
+    dietitianType: string;
     male: string;
     female: string;
     password: string;
@@ -113,6 +118,9 @@ const COPY: Record<
     phonePh: "+905555555555",
     birthDate: "Dogum Tarihi",
     gender: "Cinsiyet",
+    accountType: "Hesap Tipi",
+    clientType: "Normal Kullanici",
+    dietitianType: "Diyetisyen",
     male: "Erkek",
     female: "Kadin",
     password: "Sifre",
@@ -164,6 +172,9 @@ const COPY: Record<
     phonePh: "+905555555555",
     birthDate: "Birth Date",
     gender: "Gender",
+    accountType: "Account Type",
+    clientType: "Client",
+    dietitianType: "Dietitian",
     male: "Male",
     female: "Female",
     password: "Password",
@@ -217,6 +228,7 @@ export default function Register() {
     password: "",
     birth_date: "",
     gender: "male",
+    account_type: "client",
     email: "",
     phone_number: "",
   });
@@ -291,6 +303,7 @@ export default function Register() {
         password: form.password,
         birth_date: form.birth_date.trim(),
         gender: form.gender,
+        account_type: form.account_type,
         email: form.email?.trim() || undefined,
         phone_number: form.phone_number?.trim() || undefined,
       };
@@ -323,6 +336,7 @@ export default function Register() {
         password: "",
         birth_date: "",
         gender: "male",
+        account_type: "client",
         email: "",
         phone_number: "",
       });
@@ -485,6 +499,44 @@ export default function Register() {
                     </button>
                   </div>
                   {errors.gender ? <div className="mt-2 text-xs text-rose-200">{errors.gender}</div> : null}
+                </div>
+              </div>
+
+              <div>
+                <label className={isDark ? "mb-2 block text-xs font-semibold text-zinc-200" : "mb-2 block text-xs font-semibold text-[#36544c]"}>{t.accountType}</label>
+                <div className="grid grid-cols-2 gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setField("account_type", "client")}
+                    className={[
+                      "rounded-2xl border px-4 py-3 text-sm font-extrabold transition",
+                      form.account_type === "client"
+                        ? isDark
+                          ? "border-emerald-400/30 bg-emerald-500/15 text-emerald-100"
+                          : "border-[#1b7358]/35 bg-[#dff0e8] text-[#145443]"
+                        : isDark
+                          ? "border-white/10 bg-white/5 text-zinc-200 hover:bg-white/10"
+                          : "border-[#325d51]/25 bg-white text-[#36544c] hover:bg-[#d7e4de]",
+                    ].join(" ")}
+                  >
+                    {t.clientType}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setField("account_type", "dietitian")}
+                    className={[
+                      "rounded-2xl border px-4 py-3 text-sm font-extrabold transition",
+                      form.account_type === "dietitian"
+                        ? isDark
+                          ? "border-emerald-400/30 bg-emerald-500/15 text-emerald-100"
+                          : "border-[#1b7358]/35 bg-[#dff0e8] text-[#145443]"
+                        : isDark
+                          ? "border-white/10 bg-white/5 text-zinc-200 hover:bg-white/10"
+                          : "border-[#325d51]/25 bg-white text-[#36544c] hover:bg-[#d7e4de]",
+                    ].join(" ")}
+                  >
+                    {t.dietitianType}
+                  </button>
                 </div>
               </div>
 

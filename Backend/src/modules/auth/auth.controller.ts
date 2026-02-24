@@ -2,6 +2,7 @@ import {
   Body,
   Controller,
   Get,
+  Param,
   Post,
   Request,
   UseGuards,
@@ -24,10 +25,12 @@ import { LoginDto } from './dto/login.dto';
 import { RolesGuard } from '../acl/guards/roles.guard';
 import { Roles } from '../acl/decorators/roles.decorator';
 import { AdminRegisterDto } from './dto/admin.register.dto';
+import { SubmitDietitianVerificationDto } from './dto/submit-dietitian-verification.dto';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { diskStorage } from 'multer';
 import { extname, join } from 'path';
 import * as fs from 'fs';
+import { OtpIdentityType, OtpPurpose } from './otp/entities/otp-code.entity';
 
 @ApiTags('auth')
 @Controller('auth')
@@ -51,9 +54,35 @@ export class AuthController {
       return ResponseDto.error('E-posta veya telefon numarası gereklidir');
     }
 
+    const identityType = loginDto.email ? OtpIdentityType.Email : OtpIdentityType.Phone;
+    const identity = String(loginDto.email || loginDto.phone_number || '').trim();
+    const otpCheck = await this.otpService.shouldRequireOtp(
+      identityType,
+      identity,
+      OtpPurpose.Login,
+      {
+        ip: this.resolveClientIp(req),
+        deviceId: this.readHeader(req, 'x-device-id'),
+        userAgent: this.readHeader(req, 'user-agent'),
+      },
+    );
+
+    if (otpCheck.otpRequired) {
+      const message = await this.i18n.translate('common.auth.login_success');
+      return ResponseDto.success(message, {
+        otpRequired: true,
+        user: this.authService.buildSessionUser(req.user),
+      });
+    }
+
     const result = await this.authService.login(req.user);
     const message = await this.i18n.translate('common.auth.login_success');
-    return ResponseDto.success(message, result);
+    return ResponseDto.success(message, {
+      ...result,
+      otpRequired: false,
+      otpTrusted: true,
+      otpTrustedTtlSeconds: otpCheck.trustedTtlSeconds,
+    });
   }
 
   @Post('register')
@@ -119,9 +148,51 @@ export class AuthController {
   @Post('verify-otp')
   @ApiOperation({ summary: 'OTP doğrula' })
   @ApiResponse({ status: 200, description: 'OTP doğrulandı', type: ResponseDto })
-  async verifyOtp(@Body() dto: VerifyOtpDto) {
-    const result = await this.otpService.verifyOtp(dto.identityType, dto.identity, dto.code, dto.purpose);
+  async verifyOtp(@Request() req, @Body() dto: VerifyOtpDto) {
+    const result = await this.otpService.verifyOtp(dto.identityType, dto.identity, dto.code, dto.purpose, {
+      ip: this.resolveClientIp(req),
+      deviceId: this.readHeader(req, 'x-device-id'),
+      userAgent: this.readHeader(req, 'user-agent'),
+    });
     return ResponseDto.success('OTP doğrulandı', result);
+  }
+
+  @Post('dietitian/verification')
+  @UseGuards(JwtAuthGuard)
+  @ApiOperation({ summary: 'Diyetisyen dogrulama bilgilerini gonder' })
+  @ApiResponse({ status: 200, description: 'Dogrulama talebi alindi', type: ResponseDto })
+  async submitDietitianVerification(@Request() req, @Body() dto: SubmitDietitianVerificationDto) {
+    const result = await this.authService.submitDietitianVerification(req.user.id, dto);
+    return ResponseDto.success('Dogrulama talebi alindi', result);
+  }
+
+  @Get('dietitian/verification-status')
+  @UseGuards(JwtAuthGuard)
+  @ApiOperation({ summary: 'Diyetisyen dogrulama durumunu getir' })
+  @ApiResponse({ status: 200, description: 'Dogrulama durumu', type: ResponseDto })
+  async getDietitianVerificationStatus(@Request() req) {
+    const result = await this.authService.getDietitianVerificationStatus(req.user.id);
+    return ResponseDto.success('Dogrulama durumu', result);
+  }
+
+  @Get('admin/dietitian-applications')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('admin')
+  @ApiOperation({ summary: 'Bekleyen diyetisyen basvurularini listele' })
+  @ApiResponse({ status: 200, description: 'Bekleyen basvurular', type: ResponseDto })
+  async listDietitianApplications() {
+    const result = await this.authService.listPendingDietitianApplications();
+    return ResponseDto.success('Bekleyen basvurular', result);
+  }
+
+  @Post('admin/dietitian-applications/:userId/approve')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('admin')
+  @ApiOperation({ summary: 'Diyetisyen basvurusunu onayla' })
+  @ApiResponse({ status: 200, description: 'Basvuru onaylandi', type: ResponseDto })
+  async approveDietitianApplication(@Request() req, @Param('userId') userId: string) {
+    const result = await this.authService.approveDietitianApplication(req.user.id, userId);
+    return ResponseDto.success('Basvuru onaylandi', result);
   }
 
   @Post('admin/register')

@@ -12,6 +12,7 @@ import {
 } from 'class-validator';
 import { ValidateIf } from 'class-validator';
 import { Gender } from 'src/modules/users/enums/gender.enum';
+import { AccountType } from 'src/modules/users/entities/user.profile.entity';
 
 export class RegisterDto {
   @ApiProperty({
@@ -83,4 +84,13 @@ export class RegisterDto {
   @IsNotEmpty()
   @IsString()
   phone_number?: string;
+
+  @ApiPropertyOptional({
+    description: 'Hesap tipi',
+    enum: AccountType,
+    example: AccountType.Client,
+  })
+  @IsOptional()
+  @IsEnum(AccountType)
+  account_type?: AccountType;
 }

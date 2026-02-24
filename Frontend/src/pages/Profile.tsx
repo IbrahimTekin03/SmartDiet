@@ -190,9 +190,14 @@ export default function Profile() {
     fetch(`${API_BASE}/api/auth/profile`, {
       headers: { Authorization: `Bearer ${token}` },
     })
-      .then((r) => {
-        if (!r.ok) throw new Error("unauthorized");
-        return r.json();
+      .then(async (r) => {
+        const data = await r.json().catch(() => ({}));
+        if (!r.ok) {
+          const err = new Error(data?.message || "request_failed") as Error & { status?: number };
+          err.status = r.status;
+          throw err;
+        }
+        return data;
       })
       .then((d) => {
         const profile = d?.data ?? d;
@@ -209,7 +214,11 @@ export default function Profile() {
           });
         }
       })
-      .catch(() => navigate("/login"))
+      .catch((err: Error & { status?: number }) => {
+        if (err?.status === 401 || err?.status === 403) {
+          navigate("/login");
+        }
+      })
       .finally(() => setLoadingProfile(false));
   }, [navigate]);
 

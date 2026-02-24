@@ -460,7 +460,10 @@ export default function Login() {
     try {
       const res = await fetch(LOGIN_URL, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          "x-device-id": deviceId,
+        },
         body: JSON.stringify(payload),
       });
 
@@ -471,6 +474,19 @@ export default function Login() {
       }
 
       const result = data?.data ?? data;
+      if (result?.otpRequired === false && result?.accessToken) {
+        const accessToken = result?.accessToken;
+        const refreshToken = result?.refreshToken;
+        const user = result?.user;
+
+        if (accessToken) localStorage.setItem("access_token", accessToken);
+        if (refreshToken) localStorage.setItem("refresh_token", refreshToken);
+        if (user) localStorage.setItem("sd_user", JSON.stringify(user));
+
+        navigate("/");
+        return;
+      }
+
       const user = (result?.user ?? {}) as SessionUser;
       openOtpModal(user);
     } catch (err: unknown) {

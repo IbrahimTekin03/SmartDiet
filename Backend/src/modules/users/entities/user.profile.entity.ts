@@ -7,6 +7,18 @@ import {
 } from 'typeorm';
 import { Gender } from '../enums/gender.enum';
 
+export enum AccountType {
+  Client = 'client',
+  Dietitian = 'dietitian',
+}
+
+export enum DietitianVerificationStatus {
+  NotSubmitted = 'not_submitted',
+  Pending = 'pending',
+  Approved = 'approved',
+  Rejected = 'rejected',
+}
+
 @Entity('user_profiles')
 export class UserProfile {
   @PrimaryColumn('uuid')
@@ -26,6 +38,40 @@ export class UserProfile {
 
   @Column({ type: 'enum', enum: Gender })
   gender: Gender;
+
+  @Column({ type: 'enum', enum: AccountType, default: AccountType.Client })
+  account_type: AccountType;
+
+  @Column({
+    type: 'enum',
+    enum: DietitianVerificationStatus,
+    default: DietitianVerificationStatus.NotSubmitted,
+  })
+  dietitian_verification_status: DietitianVerificationStatus;
+
+  @Column({ nullable: true })
+  clinic_name: string | null;
+
+  @Column({ nullable: true })
+  clinic_city: string | null;
+
+  @Column({ nullable: true })
+  clinic_address: string | null;
+
+  @Column({ nullable: true })
+  clinic_license_no: string | null;
+
+  @Column({ nullable: true })
+  verification_note: string | null;
+
+  @Column({ type: 'timestamptz', nullable: true })
+  verification_submitted_at: Date | null;
+
+  @Column({ type: 'timestamptz', nullable: true })
+  verification_reviewed_at: Date | null;
+
+  @Column({ nullable: true })
+  verification_reviewed_by: string | null;
 
   @CreateDateColumn()
   createdAt: Date;

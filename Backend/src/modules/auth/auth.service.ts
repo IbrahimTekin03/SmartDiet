@@ -13,12 +13,17 @@ import { RedisService } from '../redis/redis.service';
 import { v4 as uuidv4 } from 'uuid';
 import { InjectRepository } from '@nestjs/typeorm';
 import { User } from '../users/entities/user.entity';
-import { Repository } from 'typeorm';
+import { In, Repository } from 'typeorm';
 import { Role } from '../acl/entities/role.entity';
 import { AdminRegisterDto } from './dto/admin.register.dto';
 import { LoginDto } from './dto/login.dto';
-import { UserProfile } from '../users/entities/user.profile.entity';
+import {
+  AccountType,
+  DietitianVerificationStatus,
+  UserProfile,
+} from '../users/entities/user.profile.entity';
 import { UpdateProfileDto } from './dto/update-profile.dto';
+import { SubmitDietitianVerificationDto } from './dto/submit-dietitian-verification.dto';
 
 @Injectable()
 export class AuthService {
@@ -44,6 +49,44 @@ export class AuthService {
       age -= 1;
     }
     return age;
+  }
+
+  private hasRole(user: Pick<User, 'roles'> | any, roleName: string): boolean {
+    return (user?.roles || []).some((r: Role) => r?.name === roleName);
+  }
+
+  private async ensureBootstrapAdmin(user: User): Promise<User> {
+    if (!user?.email) return user;
+
+    const bootstrapAdminEmail = String(
+      this.configService.get('BOOTSTRAP_ADMIN_EMAIL') || 'mertb2627@gmail.com',
+    )
+      .trim()
+      .toLowerCase();
+
+    if (user.email.toLowerCase() !== bootstrapAdminEmail) return user;
+    if (this.hasRole(user, 'admin')) return user;
+
+    const adminRole = await this.roleRepository.findOne({ where: { name: 'admin' } });
+    if (!adminRole) return user;
+
+    user.roles = [...(user.roles || []), adminRole];
+    await this.userRepository.save(user);
+    return user;
+  }
+
+  buildSessionUser(user: any) {
+    const fullName = [user?.first_name, user?.last_name].filter(Boolean).join(' ').trim();
+    return {
+      id: user?.id,
+      first_name: user?.first_name,
+      last_name: user?.last_name,
+      display_name: fullName,
+      full_name: fullName,
+      email: user?.email,
+      phone_number: user?.phone_number,
+      roles: user?.roles || [],
+    };
   }
 
   async validateUser(emailOrPhoneNumber: string, plainPassword: string): Promise<any> {
@@ -82,6 +125,8 @@ export class AuthService {
   }
 
   async login(user: any) {
+    user = await this.ensureBootstrapAdmin(user as User);
+
     const sessionId = uuidv4();
     const accessExpiresIn = this.configService.get('JWT_EXPIRATION') ?? '15m';
     const refreshExpiresIn = this.configService.get('JWT_REFRESH_EXPIRATION') ?? '7d';
@@ -92,8 +137,13 @@ export class AuthService {
       this.configService.get('JWT_REFRESH_SECRET') ?? this.configService.get('JWT_SECRET');
 
     const roleNames = (user.roles || []).map((r) => r.name);
-    const fullName = [user.first_name, user.last_name].filter(Boolean).join(' ').trim();
-    const payload = { sub: user.id, display_name: fullName, sessionId, roles: roleNames };
+    const sessionUser = this.buildSessionUser(user);
+    const payload = {
+      sub: user.id,
+      display_name: sessionUser.display_name,
+      sessionId,
+      roles: roleNames,
+    };
     
     const accessToken = this.jwtService.sign(payload, { expiresIn: accessExpiresIn });
     const refreshToken = this.jwtService.sign(payload, {
@@ -114,16 +164,7 @@ export class AuthService {
     return {
       accessToken,
       refreshToken,
-      user: {
-        id: user.id,
-        first_name: user.first_name,
-        last_name: user.last_name,
-        display_name: fullName,
-        full_name: fullName,
-        email: user.email,
-        phone_number: user.phone_number,
-        roles: user.roles,
-      },
+      user: sessionUser,
     };
   }
 
@@ -167,8 +208,23 @@ export class AuthService {
       }
     }
 
-    // VarsayÄ±lan USER rolÃ¼nÃ¼ bul
-    const defaultUserRole = await this.roleRepository.findOne({ where: { name: 'user' } });
+    const requestedAccountType =
+      registerDto.account_type === AccountType.Dietitian ? AccountType.Dietitian : AccountType.Client;
+    const requestedRoleName =
+      requestedAccountType === AccountType.Dietitian ? 'dietitian' : 'client';
+
+    let assignedRole = await this.roleRepository.findOne({ where: { name: requestedRoleName } });
+    if (!assignedRole) {
+      assignedRole = this.roleRepository.create({
+        name: requestedRoleName,
+        description:
+          requestedRoleName === 'dietitian' ? 'Diyetisyen kullanici' : 'Danisan kullanici',
+      });
+      assignedRole = await this.roleRepository.save(assignedRole);
+    }
+    if (!assignedRole) {
+      assignedRole = await this.roleRepository.findOne({ where: { name: 'user' } });
+    }
 
     // Yeni kullanÄ±cÄ± oluÅŸtur
     const hashedPassword = await bcrypt.hash(registerDto.password, 10);
@@ -178,7 +234,7 @@ export class AuthService {
       email: registerDto.email ?? null,
       phone_number: registerDto.phone_number ?? null,
       password_hash: hashedPassword,
-      roles: defaultUserRole ? [defaultUserRole] : [],
+      roles: assignedRole ? [assignedRole] : [],
     });
     
 
@@ -191,6 +247,19 @@ export class AuthService {
       birth_date: registerDto.birth_date,
       gender: registerDto.gender,
       avatar_url: registerDto.avatar_url ?? null,
+      account_type: requestedAccountType,
+      dietitian_verification_status:
+        requestedAccountType === AccountType.Dietitian
+          ? DietitianVerificationStatus.NotSubmitted
+          : DietitianVerificationStatus.Approved,
+      clinic_name: null,
+      clinic_city: null,
+      clinic_address: null,
+      clinic_license_no: null,
+      verification_note: null,
+      verification_submitted_at: null,
+      verification_reviewed_at: null,
+      verification_reviewed_by: null,
     });
     await this.userProfileRepository.save(newProfile);
     // KayÄ±t olan kullanÄ±cÄ±yÄ± rolleriyle birlikte yÃ¼kle
@@ -365,6 +434,17 @@ export class AuthService {
       avatar_url: profile?.avatar_url ?? null,
       birth_date: profile?.birth_date ?? null,
       gender: profile?.gender ?? null,
+      account_type: profile?.account_type ?? AccountType.Client,
+      dietitian_verification_status:
+        profile?.dietitian_verification_status ?? DietitianVerificationStatus.NotSubmitted,
+      clinic_name: profile?.clinic_name ?? null,
+      clinic_city: profile?.clinic_city ?? null,
+      clinic_address: profile?.clinic_address ?? null,
+      clinic_license_no: profile?.clinic_license_no ?? null,
+      verification_note: profile?.verification_note ?? null,
+      verification_submitted_at: profile?.verification_submitted_at ?? null,
+      verification_reviewed_at: profile?.verification_reviewed_at ?? null,
+      verification_reviewed_by: profile?.verification_reviewed_by ?? null,
     };
   }
 
@@ -389,6 +469,16 @@ export class AuthService {
       birth_date: null,
       gender: null,
       avatar_url: null,
+      account_type: AccountType.Client,
+      dietitian_verification_status: DietitianVerificationStatus.Approved,
+      clinic_name: null,
+      clinic_city: null,
+      clinic_address: null,
+      clinic_license_no: null,
+      verification_note: null,
+      verification_submitted_at: null,
+      verification_reviewed_at: null,
+      verification_reviewed_by: null,
     });
     return this.userProfileRepository.save(profile);
   }
@@ -456,6 +546,124 @@ export class AuthService {
     await this.userProfileRepository.save(profile);
 
     return this.getProfile(userId);
+  }
+
+  async submitDietitianVerification(userId: string, dto: SubmitDietitianVerificationDto) {
+    const user = await this.userRepository.findOne({
+      where: { id: userId },
+      relations: ['roles'],
+    });
+    if (!user) {
+      throw new UnauthorizedException(await this.i18n.translate('common.auth.user_not_found'));
+    }
+
+    const dietitianRole = await this.roleRepository.findOne({ where: { name: 'dietitian' } });
+    if (dietitianRole && !this.hasRole(user, 'dietitian')) {
+      user.roles = [...(user.roles || []), dietitianRole];
+      await this.userRepository.save(user);
+    }
+
+    const profile = await this.ensureUserProfile(userId);
+    profile.account_type = AccountType.Dietitian;
+    profile.dietitian_verification_status = DietitianVerificationStatus.Pending;
+    profile.clinic_name = dto.clinic_name.trim();
+    profile.clinic_city = dto.clinic_city.trim();
+    profile.clinic_address = dto.clinic_address.trim();
+    profile.clinic_license_no = dto.clinic_license_no.trim();
+    profile.verification_note = dto.verification_note?.trim() || null;
+    profile.verification_submitted_at = new Date();
+    profile.verification_reviewed_at = null;
+    profile.verification_reviewed_by = null;
+    await this.userProfileRepository.save(profile);
+
+    return {
+      ok: true,
+      status: profile.dietitian_verification_status,
+      submitted_at: profile.verification_submitted_at,
+    };
+  }
+
+  async getDietitianVerificationStatus(userId: string) {
+    const profile = await this.ensureUserProfile(userId);
+    return {
+      account_type: profile.account_type ?? AccountType.Client,
+      status: profile.dietitian_verification_status ?? DietitianVerificationStatus.NotSubmitted,
+      clinic_name: profile.clinic_name ?? null,
+      clinic_city: profile.clinic_city ?? null,
+      clinic_address: profile.clinic_address ?? null,
+      clinic_license_no: profile.clinic_license_no ?? null,
+      verification_note: profile.verification_note ?? null,
+      submitted_at: profile.verification_submitted_at ?? null,
+      reviewed_at: profile.verification_reviewed_at ?? null,
+      reviewed_by: profile.verification_reviewed_by ?? null,
+    };
+  }
+
+  async listPendingDietitianApplications() {
+    const profiles = await this.userProfileRepository.find({
+      where: {
+        account_type: AccountType.Dietitian,
+        dietitian_verification_status: DietitianVerificationStatus.Pending,
+      },
+      order: { verification_submitted_at: 'ASC' },
+    });
+
+    const userIds = profiles.map((p) => p.user_id);
+    if (userIds.length === 0) return [];
+
+    const users = await this.userRepository.find({
+      where: { id: In(userIds) },
+      relations: ['roles'],
+    });
+    const usersById = new Map(users.map((u) => [u.id, u]));
+
+    return profiles.map((p) => {
+      const user = usersById.get(p.user_id);
+      return {
+        user_id: p.user_id,
+        first_name: user?.first_name ?? '',
+        last_name: user?.last_name ?? '',
+        email: user?.email ?? null,
+        phone_number: user?.phone_number ?? null,
+        roles: (user?.roles || []).map((r) => r.name),
+        clinic_name: p.clinic_name,
+        clinic_city: p.clinic_city,
+        clinic_address: p.clinic_address,
+        clinic_license_no: p.clinic_license_no,
+        verification_note: p.verification_note,
+        submitted_at: p.verification_submitted_at,
+      };
+    });
+  }
+
+  async approveDietitianApplication(adminId: string, userId: string) {
+    const profile = await this.userProfileRepository.findOne({ where: { user_id: userId } });
+    if (!profile || profile.account_type !== AccountType.Dietitian) {
+      throw new BadRequestException('Dietitian application not found');
+    }
+
+    profile.dietitian_verification_status = DietitianVerificationStatus.Approved;
+    profile.verification_reviewed_at = new Date();
+    profile.verification_reviewed_by = adminId;
+    await this.userProfileRepository.save(profile);
+
+    const user = await this.userRepository.findOne({ where: { id: userId }, relations: ['roles'] });
+    if (user) {
+      const dietitianRole = await this.roleRepository.findOne({ where: { name: 'dietitian' } });
+      if (dietitianRole && !this.hasRole(user, 'dietitian')) {
+        user.roles = [...(user.roles || []), dietitianRole];
+      }
+      user.is_active = true;
+      user.is_verified = true;
+      await this.userRepository.save(user);
+    }
+
+    return {
+      ok: true,
+      user_id: userId,
+      status: profile.dietitian_verification_status,
+      reviewed_at: profile.verification_reviewed_at,
+    };
   }
 
   private async tableExists(tableName: string): Promise<boolean> {

@@ -1,5 +1,6 @@
 ﻿import {
   Injectable,
+  Inject,
   BadRequestException,
   UnauthorizedException,
   HttpException,
@@ -13,6 +14,7 @@ import { ConfigService } from '@nestjs/config';
 import { MailService } from '../../mail/mail.service';
 import { AuthService } from '../auth.service';
 import { User } from '../../users/entities/user.entity';
+import { RedisService } from '../../redis/redis.service';
 
 const OTP_TTL_MINUTES = 5;
 const OTP_LENGTH = 6;
@@ -23,6 +25,7 @@ const LOCK_MINUTES = 15;
 const MIN_RESEND_INTERVAL_SECONDS = 60;
 const MAX_DEVICE_REQUESTS_PER_WINDOW = 5;
 const DEVICE_RATE_WINDOW_MINUTES = 10;
+const OTP_TRUST_TTL_SECONDS = 60 * 60 * 24 * 7;
 
 type OtpRequestContext = {
   ip?: string;
@@ -33,6 +36,7 @@ type OtpRequestContext = {
 @Injectable()
 export class OtpService {
   private readonly requestRateBuckets = new Map<string, number[]>();
+  private readonly trustedBuckets = new Map<string, number>();
 
   constructor(
     @InjectRepository(OtpCode)
@@ -42,6 +46,8 @@ export class OtpService {
     private readonly configService: ConfigService,
     private readonly mailService: MailService,
     private readonly authService: AuthService,
+    private readonly redisService: RedisService,
+    @Inject('REDIS_ENABLED') private readonly redisEnabled: boolean,
   ) {}
 
   private addMinutes(base: Date, minutes: number): Date {
@@ -77,6 +83,60 @@ export class OtpService {
     const ip = String(context?.ip || 'unknown').trim();
     const userAgent = String(context?.userAgent || 'unknown').trim().slice(0, 80);
     return `ip:${ip}|ua:${userAgent}`;
+  }
+
+  private buildTrustKey(
+    identityType: OtpIdentityType,
+    identity: string,
+    purpose: OtpPurpose,
+    context?: OtpRequestContext,
+  ): string {
+    const fingerprint = this.buildClientFingerprint(context);
+    return `otp:trust:${purpose}:${identityType}:${identity}:${fingerprint}`;
+  }
+
+  private async getTrustedTtlSeconds(key: string): Promise<number> {
+    if (this.redisEnabled) {
+      const ttl = await this.redisService.ttl(key);
+      return ttl > 0 ? ttl : 0;
+    }
+
+    const expiresAt = this.trustedBuckets.get(key);
+    if (!expiresAt) return 0;
+    const seconds = Math.floor((expiresAt - Date.now()) / 1000);
+    if (seconds <= 0) {
+      this.trustedBuckets.delete(key);
+      return 0;
+    }
+    return seconds;
+  }
+
+  private async markTrusted(key: string, ttlSeconds: number): Promise<void> {
+    if (this.redisEnabled) {
+      await this.redisService.set(key, '1', ttlSeconds);
+      return;
+    }
+    this.trustedBuckets.set(key, Date.now() + ttlSeconds * 1000);
+  }
+
+  async shouldRequireOtp(
+    identityType: OtpIdentityType,
+    identity: string,
+    purpose: OtpPurpose,
+    context?: OtpRequestContext,
+  ) {
+    if (purpose !== OtpPurpose.Login) {
+      return { otpRequired: true, trustedTtlSeconds: 0 };
+    }
+
+    const normalizedIdentity = this.normalizeIdentity(identityType, identity);
+    const trustKey = this.buildTrustKey(identityType, normalizedIdentity, purpose, context);
+    const trustedTtlSeconds = await this.getTrustedTtlSeconds(trustKey);
+
+    return {
+      otpRequired: trustedTtlSeconds <= 0,
+      trustedTtlSeconds,
+    };
   }
 
   private enforceDeviceRateLimit(
@@ -212,9 +272,15 @@ export class OtpService {
     return { ok: true };
   }
 
-  async verifyOtp(identityType: OtpIdentityType, identity: string, code: string, purpose: OtpPurpose) {
+  async verifyOtp(
+    identityType: OtpIdentityType,
+    identity: string,
+    code: string,
+    purpose: OtpPurpose,
+    context?: OtpRequestContext,
+  ) {
     const now = new Date();
-    const normalizedIdentity = identity.trim();
+    const normalizedIdentity = this.normalizeIdentity(identityType, identity);
 
     const otp = await this.otpRepo.findOne({
       where: {
@@ -245,6 +311,11 @@ export class OtpService {
 
     otp.consumed_at = now;
     await this.otpRepo.save(otp);
+
+    if (purpose === OtpPurpose.Login) {
+      const trustKey = this.buildTrustKey(identityType, normalizedIdentity, purpose, context);
+      await this.markTrusted(trustKey, OTP_TRUST_TTL_SECONDS);
+    }
 
     if (purpose === OtpPurpose.Signup) {
       return { ok: true, verified: true };
