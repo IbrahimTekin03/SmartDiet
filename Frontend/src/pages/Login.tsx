@@ -1,7 +1,7 @@
-﻿import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
+import { useAppSettings } from "../context/AppSettingsContext";
 
-type Theme = "dark" | "light";
 type Lang = "tr" | "en";
 type OtpChannel = "email" | "sms";
 type CopyText = {
@@ -304,16 +304,7 @@ export default function Login() {
   const LOGIN_URL = `${API_BASE}/api/auth/login`;
   const REQUEST_OTP_URL = `${API_BASE}/api/auth/request-otp`;
   const VERIFY_OTP_URL = `${API_BASE}/api/auth/verify-otp`;
-
-  const [theme] = useState<Theme>(() => {
-    const saved = localStorage.getItem("sd_theme") as Theme | null;
-    return saved === "dark" ? "dark" : "light";
-  });
-  const [lang] = useState<Lang>(() => {
-    const saved = localStorage.getItem("sd_lang") as Lang | null;
-    return saved === "en" ? "en" : "tr";
-  });
-  const isDark = theme === "dark";
+  const { lang, isDark } = useAppSettings();
   const t = COPY[lang];
   const deviceId = useMemo(() => getOrCreateDeviceId(), []);
 
@@ -338,10 +329,6 @@ export default function Login() {
   const [otpSending, setOtpSending] = useState(false);
   const [otpVerifying, setOtpVerifying] = useState(false);
   const [pendingUser, setPendingUser] = useState<SessionUser | null>(null);
-
-  useEffect(() => {
-    document.documentElement.setAttribute("data-theme", theme);
-  }, [theme]);
 
   useEffect(() => {
     if (localStorage.getItem("access_token")) navigate("/", { replace: true });

@@ -1,8 +1,6 @@
 import { Link, useNavigate } from "react-router-dom";
-import { useMemo, useState } from "react";
-
-type Theme = "dark" | "light";
-type Lang = "tr" | "en";
+import { useMemo } from "react";
+import { useAppSettings } from "../context/AppSettingsContext";
 
 type Profile = {
   first_name?: string;
@@ -45,9 +43,7 @@ const COPY = {
 
 export default function ClientHome({ profile }: { profile: Profile }) {
   const navigate = useNavigate();
-  const [theme] = useState<Theme>(() => (localStorage.getItem("sd_theme") === "dark" ? "dark" : "light"));
-  const [lang] = useState<Lang>(() => (localStorage.getItem("sd_lang") === "en" ? "en" : "tr"));
-  const isDark = theme === "dark";
+  const { lang, isDark } = useAppSettings();
   const t = COPY[lang];
 
   const displayName = useMemo(() => {

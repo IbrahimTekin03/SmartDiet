@@ -9,6 +9,7 @@
 import { InjectRepository } from '@nestjs/typeorm';
 import { MoreThan, Repository } from 'typeorm';
 import { OtpCode, OtpIdentityType, OtpPurpose } from './entities/otp-code.entity';
+import { OtpTrustKey } from './entities/otp-trust-key.entity';
 import * as bcrypt from 'bcrypt';
 import { ConfigService } from '@nestjs/config';
 import { MailService } from '../../mail/mail.service';
@@ -36,11 +37,12 @@ type OtpRequestContext = {
 @Injectable()
 export class OtpService {
   private readonly requestRateBuckets = new Map<string, number[]>();
-  private readonly trustedBuckets = new Map<string, number>();
 
   constructor(
     @InjectRepository(OtpCode)
     private readonly otpRepo: Repository<OtpCode>,
+    @InjectRepository(OtpTrustKey)
+    private readonly otpTrustRepo: Repository<OtpTrustKey>,
     @InjectRepository(User)
     private readonly userRepo: Repository<User>,
     private readonly configService: ConfigService,
@@ -111,11 +113,12 @@ export class OtpService {
       return ttl > 0 ? ttl : 0;
     }
 
-    const expiresAt = this.trustedBuckets.get(key);
-    if (!expiresAt) return 0;
-    const seconds = Math.floor((expiresAt - Date.now()) / 1000);
+    const record = await this.otpTrustRepo.findOne({ where: { key } });
+    if (!record?.expires_at) return 0;
+
+    const seconds = Math.floor((record.expires_at.getTime() - Date.now()) / 1000);
     if (seconds <= 0) {
-      this.trustedBuckets.delete(key);
+      await this.otpTrustRepo.delete({ key });
       return 0;
     }
     return seconds;
@@ -126,7 +129,15 @@ export class OtpService {
       await this.redisService.set(key, '1', ttlSeconds);
       return;
     }
-    this.trustedBuckets.set(key, Date.now() + ttlSeconds * 1000);
+
+    const expiresAt = new Date(Date.now() + ttlSeconds * 1000);
+    await this.otpTrustRepo.upsert(
+      {
+        key,
+        expires_at: expiresAt,
+      },
+      ['key'],
+    );
   }
 
   async shouldRequireOtp(

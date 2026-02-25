@@ -1,18 +1,12 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
+import { useAppSettings } from "../context/AppSettingsContext";
+import type { Lang, Theme } from "../context/AppSettingsContext";
 
-type Theme = "dark" | "light";
-type Lang = "tr" | "en";
-
-export default function SettingsDrawer({
-  onApply,
-}: {
-  onApply?: (theme: Theme, lang: Lang) => void;
-}) {
+export default function SettingsDrawer() {
+  const { theme, lang, isDark, applySettings } = useAppSettings();
   const [open, setOpen] = useState(false);
-  const [theme, setTheme] = useState<Theme>(() => (localStorage.getItem("sd_theme") === "dark" ? "dark" : "light"));
-  const [lang, setLang] = useState<Lang>(() => (localStorage.getItem("sd_lang") === "en" ? "en" : "tr"));
-
-  const isDark = theme === "dark";
+  const [draftTheme, setDraftTheme] = useState<Theme>(theme);
+  const [draftLang, setDraftLang] = useState<Lang>(lang);
 
   useEffect(() => {
     if (!open) return;
@@ -23,22 +17,20 @@ export default function SettingsDrawer({
     return () => window.removeEventListener("keydown", onEsc);
   }, [open]);
 
+  const openDrawerWithCurrentSettings = useCallback(() => {
+    setDraftTheme(theme);
+    setDraftLang(lang);
+    setOpen(true);
+  }, [lang, theme]);
+
   useEffect(() => {
-    const openDrawer = () => setOpen(true);
+    const openDrawer = () => openDrawerWithCurrentSettings();
     window.addEventListener("sd:open-settings", openDrawer);
     return () => window.removeEventListener("sd:open-settings", openDrawer);
-  }, []);
+  }, [openDrawerWithCurrentSettings]);
 
-  const applySettings = () => {
-    localStorage.setItem("sd_theme", theme);
-    localStorage.setItem("sd_lang", lang);
-    document.documentElement.setAttribute("data-theme", theme);
-
-    if (onApply) {
-      onApply(theme, lang);
-    } else {
-      window.location.reload();
-    }
+  const saveSettings = () => {
+    applySettings(draftTheme, draftLang);
     setOpen(false);
   };
 
@@ -46,7 +38,7 @@ export default function SettingsDrawer({
     <>
       <button
         type="button"
-        onClick={() => setOpen(true)}
+        onClick={openDrawerWithCurrentSettings}
         title={lang === "tr" ? "Ayarlar" : "Settings"}
         aria-label={lang === "tr" ? "Ayarlar" : "Settings"}
         className="fixed bottom-5 right-5 z-[90] inline-flex h-12 w-12 items-center justify-center rounded-2xl border border-emerald-300/30 bg-gradient-to-r from-emerald-400 to-teal-300 text-zinc-950 shadow-[0_16px_50px_rgba(16,185,129,0.45)] transition hover:brightness-110"
@@ -76,9 +68,9 @@ export default function SettingsDrawer({
 
             <div className="mb-5 flex items-center justify-between">
               <div>
-                <h3 className="text-lg font-extrabold">{lang === "tr" ? "Ayarlar" : "Settings"}</h3>
+                <h3 className="text-lg font-extrabold">{draftLang === "tr" ? "Ayarlar" : "Settings"}</h3>
                 <p className={["mt-1 text-xs", isDark ? "text-zinc-400" : "text-[#4d6b62]"].join(" ")}>
-                  {lang === "tr" ? "Tema ve dil tercihlerini guncelle." : "Update your theme and language preferences."}
+                  {draftLang === "tr" ? "Tema ve dil tercihlerini güncelle." : "Update your theme and language preferences."}
                 </p>
               </div>
               <button
@@ -89,14 +81,14 @@ export default function SettingsDrawer({
                   isDark ? "border-white/15 bg-white/5 text-zinc-200" : "border-[#2f6154]/20 bg-white text-[#2b574b]",
                 ].join(" ")}
               >
-                {lang === "tr" ? "Kapat" : "Close"}
+                {draftLang === "tr" ? "Kapat" : "Close"}
               </button>
             </div>
 
             <section className="space-y-4">
               <div>
                 <div className={["mb-2 text-xs font-bold", isDark ? "text-zinc-300" : "text-[#4d6b62]"].join(" ")}>
-                  {lang === "tr" ? "Tema" : "Theme"}
+                  {draftLang === "tr" ? "Tema" : "Theme"}
                 </div>
                 <div
                   className={[
@@ -106,10 +98,10 @@ export default function SettingsDrawer({
                 >
                   <button
                     type="button"
-                    onClick={() => setTheme("light")}
+                    onClick={() => setDraftTheme("light")}
                     className={[
                       "h-8 flex-1 rounded-full text-xs font-black transition",
-                      theme === "light"
+                      draftTheme === "light"
                         ? isDark
                           ? "bg-emerald-500/20 text-emerald-100 shadow-[0_0_18px_rgba(16,185,129,0.35)]"
                           : "bg-[#dbece4] text-[#0f2f29]"
@@ -118,14 +110,14 @@ export default function SettingsDrawer({
                           : "text-[#3e6057] hover:bg-[#eef5f1]",
                     ].join(" ")}
                   >
-                    {lang === "tr" ? "Acik" : "Light"}
+                    {draftLang === "tr" ? "Açık" : "Light"}
                   </button>
                   <button
                     type="button"
-                    onClick={() => setTheme("dark")}
+                    onClick={() => setDraftTheme("dark")}
                     className={[
                       "h-8 flex-1 rounded-full text-xs font-black transition",
-                      theme === "dark"
+                      draftTheme === "dark"
                         ? isDark
                           ? "bg-emerald-500/20 text-emerald-100 shadow-[0_0_18px_rgba(16,185,129,0.35)]"
                           : "bg-[#dbece4] text-[#0f2f29]"
@@ -134,14 +126,14 @@ export default function SettingsDrawer({
                           : "text-[#3e6057] hover:bg-[#eef5f1]",
                     ].join(" ")}
                   >
-                    {lang === "tr" ? "Koyu" : "Dark"}
+                    {draftLang === "tr" ? "Koyu" : "Dark"}
                   </button>
                 </div>
               </div>
 
               <div>
                 <div className={["mb-2 text-xs font-bold", isDark ? "text-zinc-300" : "text-[#4d6b62]"].join(" ")}>
-                  {lang === "tr" ? "Dil" : "Language"}
+                  {draftLang === "tr" ? "Dil" : "Language"}
                 </div>
                 <div
                   className={[
@@ -151,10 +143,10 @@ export default function SettingsDrawer({
                 >
                   <button
                     type="button"
-                    onClick={() => setLang("tr")}
+                    onClick={() => setDraftLang("tr")}
                     className={[
                       "h-8 flex-1 rounded-full text-xs font-black transition",
-                      lang === "tr"
+                      draftLang === "tr"
                         ? isDark
                           ? "bg-emerald-500/20 text-emerald-100 shadow-[0_0_18px_rgba(16,185,129,0.35)]"
                           : "bg-[#dbece4] text-[#0f2f29]"
@@ -163,14 +155,14 @@ export default function SettingsDrawer({
                           : "text-[#3e6057] hover:bg-[#eef5f1]",
                     ].join(" ")}
                   >
-                    Turkce
+                    Türkçe
                   </button>
                   <button
                     type="button"
-                    onClick={() => setLang("en")}
+                    onClick={() => setDraftLang("en")}
                     className={[
                       "h-8 flex-1 rounded-full text-xs font-black transition",
-                      lang === "en"
+                      draftLang === "en"
                         ? isDark
                           ? "bg-emerald-500/20 text-emerald-100 shadow-[0_0_18px_rgba(16,185,129,0.35)]"
                           : "bg-[#dbece4] text-[#0f2f29]"
@@ -187,10 +179,10 @@ export default function SettingsDrawer({
 
             <button
               type="button"
-              onClick={applySettings}
+              onClick={saveSettings}
               className="mt-6 w-full rounded-2xl bg-gradient-to-r from-emerald-400 to-teal-300 px-4 py-3 text-sm font-extrabold text-zinc-950 shadow-[0_14px_40px_rgba(16,185,129,0.35)] transition hover:brightness-110"
             >
-              {lang === "tr" ? "Kaydet ve Uygula" : "Save and Apply"}
+              {draftLang === "tr" ? "Kaydet ve Uygula" : "Save and Apply"}
             </button>
           </div>
         </div>

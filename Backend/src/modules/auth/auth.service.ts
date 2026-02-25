@@ -13,7 +13,7 @@ import { RedisService } from '../redis/redis.service';
 import { v4 as uuidv4 } from 'uuid';
 import { InjectRepository } from '@nestjs/typeorm';
 import { User } from '../users/entities/user.entity';
-import { In, Repository } from 'typeorm';
+import { Brackets, In, Repository } from 'typeorm';
 import { Role } from '../acl/entities/role.entity';
 import { AdminRegisterDto } from './dto/admin.register.dto';
 import { LoginDto } from './dto/login.dto';
@@ -24,6 +24,20 @@ import {
 } from '../users/entities/user.profile.entity';
 import { UpdateProfileDto } from './dto/update-profile.dto';
 import { SubmitDietitianVerificationDto } from './dto/submit-dietitian-verification.dto';
+
+type ListDietitianApplicationsOptions = {
+  status?: string;
+  search?: string;
+  city?: string;
+  sort?: string;
+  page?: number;
+  limit?: number;
+};
+
+type ListHistoryOptions = {
+  page?: number;
+  limit?: number;
+};
 
 @Injectable()
 export class AuthService {
@@ -257,6 +271,7 @@ export class AuthService {
       clinic_address: null,
       clinic_license_no: null,
       verification_note: null,
+      verification_review_note: null,
       verification_submitted_at: null,
       verification_reviewed_at: null,
       verification_reviewed_by: null,
@@ -442,6 +457,7 @@ export class AuthService {
       clinic_address: profile?.clinic_address ?? null,
       clinic_license_no: profile?.clinic_license_no ?? null,
       verification_note: profile?.verification_note ?? null,
+      verification_review_note: profile?.verification_review_note ?? null,
       verification_submitted_at: profile?.verification_submitted_at ?? null,
       verification_reviewed_at: profile?.verification_reviewed_at ?? null,
       verification_reviewed_by: profile?.verification_reviewed_by ?? null,
@@ -476,6 +492,7 @@ export class AuthService {
       clinic_address: null,
       clinic_license_no: null,
       verification_note: null,
+      verification_review_note: null,
       verification_submitted_at: null,
       verification_reviewed_at: null,
       verification_reviewed_by: null,
@@ -571,6 +588,7 @@ export class AuthService {
     profile.clinic_address = dto.clinic_address.trim();
     profile.clinic_license_no = dto.clinic_license_no.trim();
     profile.verification_note = dto.verification_note?.trim() || null;
+    profile.verification_review_note = null;
     profile.verification_submitted_at = new Date();
     profile.verification_reviewed_at = null;
     profile.verification_reviewed_by = null;
@@ -593,23 +611,72 @@ export class AuthService {
       clinic_address: profile.clinic_address ?? null,
       clinic_license_no: profile.clinic_license_no ?? null,
       verification_note: profile.verification_note ?? null,
+      review_note: profile.verification_review_note ?? null,
       submitted_at: profile.verification_submitted_at ?? null,
       reviewed_at: profile.verification_reviewed_at ?? null,
       reviewed_by: profile.verification_reviewed_by ?? null,
     };
   }
 
-  async listPendingDietitianApplications() {
-    const profiles = await this.userProfileRepository.find({
-      where: {
-        account_type: AccountType.Dietitian,
-        dietitian_verification_status: DietitianVerificationStatus.Pending,
-      },
-      order: { verification_submitted_at: 'ASC' },
-    });
+  private normalizePaging(page?: number, limit?: number) {
+    const normalizedPage = Number.isFinite(page as number) ? Number(page) : 1;
+    const normalizedLimit = Number.isFinite(limit as number) ? Number(limit) : 10;
+    const safePage = Math.max(1, Math.trunc(normalizedPage || 1));
+    const safeLimit = Math.min(50, Math.max(1, Math.trunc(normalizedLimit || 10)));
+    return { page: safePage, limit: safeLimit };
+  }
 
+  async listDietitianApplications(options: ListDietitianApplicationsOptions = {}) {
+    const { status, search, city, sort, page, limit } = options;
+    const normalizedStatus =
+      String(status || '').trim().toLowerCase() === DietitianVerificationStatus.Rejected
+        ? DietitianVerificationStatus.Rejected
+        : DietitianVerificationStatus.Pending;
+    const normalizedSort = String(sort || '').trim().toLowerCase() === 'oldest' ? 'ASC' : 'DESC';
+    const { page: safePage, limit: safeLimit } = this.normalizePaging(page, limit);
+    const normalizedSearch = String(search || '').trim().toLowerCase();
+    const normalizedCity = String(city || '').trim().toLowerCase();
+
+    const query = this.userProfileRepository
+      .createQueryBuilder('profile')
+      .leftJoin(User, 'user', 'user.id = profile.user_id')
+      .where('profile.account_type = :accountType', { accountType: AccountType.Dietitian })
+      .andWhere('profile.dietitian_verification_status = :status', { status: normalizedStatus });
+
+    if (normalizedCity) {
+      query.andWhere('LOWER(COALESCE(profile.clinic_city, \'\')) = :city', { city: normalizedCity });
+    }
+
+    if (normalizedSearch) {
+      query.andWhere(
+        new Brackets((qb) => {
+          qb.where('LOWER(COALESCE(user.first_name, \'\')) LIKE :search', { search: `%${normalizedSearch}%` })
+            .orWhere('LOWER(COALESCE(user.last_name, \'\')) LIKE :search', { search: `%${normalizedSearch}%` })
+            .orWhere('LOWER(COALESCE(user.email, \'\')) LIKE :search', { search: `%${normalizedSearch}%` })
+            .orWhere('LOWER(COALESCE(user.phone_number, \'\')) LIKE :search', { search: `%${normalizedSearch}%` })
+            .orWhere('LOWER(COALESCE(profile.clinic_name, \'\')) LIKE :search', { search: `%${normalizedSearch}%` })
+            .orWhere('LOWER(COALESCE(profile.clinic_city, \'\')) LIKE :search', { search: `%${normalizedSearch}%` });
+        }),
+      );
+    }
+
+    query
+      .orderBy('profile.verification_submitted_at', normalizedSort as 'ASC' | 'DESC')
+      .addOrderBy('profile.createdAt', normalizedSort as 'ASC' | 'DESC')
+      .skip((safePage - 1) * safeLimit)
+      .take(safeLimit);
+
+    const [profiles, total] = await query.getManyAndCount();
     const userIds = profiles.map((p) => p.user_id);
-    if (userIds.length === 0) return [];
+    if (userIds.length === 0) {
+      return {
+        items: [],
+        total,
+        page: safePage,
+        limit: safeLimit,
+        totalPages: Math.ceil(total / safeLimit),
+      };
+    }
 
     const users = await this.userRepository.find({
       where: { id: In(userIds) },
@@ -617,7 +684,7 @@ export class AuthService {
     });
     const usersById = new Map(users.map((u) => [u.id, u]));
 
-    return profiles.map((p) => {
+    const items = profiles.map((p) => {
       const user = usersById.get(p.user_id);
       return {
         user_id: p.user_id,
@@ -631,9 +698,77 @@ export class AuthService {
         clinic_address: p.clinic_address,
         clinic_license_no: p.clinic_license_no,
         verification_note: p.verification_note,
+        review_note: p.verification_review_note,
         submitted_at: p.verification_submitted_at,
+        reviewed_at: p.verification_reviewed_at,
       };
     });
+
+    return {
+      items,
+      total,
+      page: safePage,
+      limit: safeLimit,
+      totalPages: Math.ceil(total / safeLimit),
+    };
+  }
+
+  async listDietitianApplicationHistory(options: ListHistoryOptions = {}) {
+    const { page, limit } = options;
+    const { page: safePage, limit: safeLimit } = this.normalizePaging(page, limit);
+
+    const query = this.userProfileRepository
+      .createQueryBuilder('profile')
+      .leftJoin(User, 'user', 'user.id = profile.user_id')
+      .where('profile.account_type = :accountType', { accountType: AccountType.Dietitian })
+      .andWhere('profile.dietitian_verification_status IN (:...statuses)', {
+        statuses: [DietitianVerificationStatus.Approved, DietitianVerificationStatus.Rejected],
+      })
+      .andWhere('profile.verification_reviewed_at IS NOT NULL')
+      .orderBy('profile.verification_reviewed_at', 'DESC')
+      .addOrderBy('profile.updatedAt', 'DESC')
+      .skip((safePage - 1) * safeLimit)
+      .take(safeLimit);
+
+    const [profiles, total] = await query.getManyAndCount();
+    const userIds = profiles.map((p) => p.user_id);
+
+    const users =
+      userIds.length > 0
+        ? await this.userRepository.find({
+            where: { id: In(userIds) },
+            relations: ['roles'],
+          })
+        : [];
+    const usersById = new Map(users.map((u) => [u.id, u]));
+
+    const items = profiles.map((p) => {
+      const user = usersById.get(p.user_id);
+      return {
+        user_id: p.user_id,
+        first_name: user?.first_name ?? '',
+        last_name: user?.last_name ?? '',
+        email: user?.email ?? null,
+        phone_number: user?.phone_number ?? null,
+        clinic_name: p.clinic_name ?? null,
+        clinic_city: p.clinic_city ?? null,
+        action:
+          p.dietitian_verification_status === DietitianVerificationStatus.Approved
+            ? 'approved'
+            : 'rejected',
+        review_note: p.verification_review_note ?? null,
+        reviewed_at: p.verification_reviewed_at ?? null,
+        reviewed_by: p.verification_reviewed_by ?? null,
+      };
+    });
+
+    return {
+      items,
+      total,
+      page: safePage,
+      limit: safeLimit,
+      totalPages: Math.ceil(total / safeLimit),
+    };
   }
 
   async approveDietitianApplication(adminId: string, userId: string) {
@@ -643,6 +778,7 @@ export class AuthService {
     }
 
     profile.dietitian_verification_status = DietitianVerificationStatus.Approved;
+    profile.verification_review_note = null;
     profile.verification_reviewed_at = new Date();
     profile.verification_reviewed_by = adminId;
     await this.userProfileRepository.save(profile);
@@ -663,6 +799,32 @@ export class AuthService {
       user_id: userId,
       status: profile.dietitian_verification_status,
       reviewed_at: profile.verification_reviewed_at,
+    };
+  }
+
+  async rejectDietitianApplication(adminId: string, userId: string, reason: string) {
+    const profile = await this.userProfileRepository.findOne({ where: { user_id: userId } });
+    if (!profile || profile.account_type !== AccountType.Dietitian) {
+      throw new BadRequestException('Dietitian application not found');
+    }
+
+    const cleanReason = String(reason || '').trim();
+    if (!cleanReason) {
+      throw new BadRequestException('Rejection reason is required');
+    }
+
+    profile.dietitian_verification_status = DietitianVerificationStatus.Rejected;
+    profile.verification_review_note = cleanReason;
+    profile.verification_reviewed_at = new Date();
+    profile.verification_reviewed_by = adminId;
+    await this.userProfileRepository.save(profile);
+
+    return {
+      ok: true,
+      user_id: userId,
+      status: profile.dietitian_verification_status,
+      reviewed_at: profile.verification_reviewed_at,
+      review_note: profile.verification_review_note,
     };
   }
 

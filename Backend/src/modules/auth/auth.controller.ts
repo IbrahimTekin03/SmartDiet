@@ -4,6 +4,7 @@ import {
   Get,
   Param,
   Post,
+  Query,
   Request,
   UseGuards,
   UseInterceptors,
@@ -26,6 +27,7 @@ import { RolesGuard } from '../acl/guards/roles.guard';
 import { Roles } from '../acl/decorators/roles.decorator';
 import { AdminRegisterDto } from './dto/admin.register.dto';
 import { SubmitDietitianVerificationDto } from './dto/submit-dietitian-verification.dto';
+import { RejectDietitianApplicationDto } from './dto/reject-dietitian-application.dto';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { diskStorage } from 'multer';
 import { extname, join } from 'path';
@@ -175,11 +177,41 @@ export class AuthController {
   @Get('admin/dietitian-applications')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles('admin')
-  @ApiOperation({ summary: 'Bekleyen diyetisyen basvurularini listele' })
-  @ApiResponse({ status: 200, description: 'Bekleyen basvurular', type: ResponseDto })
-  async listDietitianApplications() {
-    const result = await this.authService.listPendingDietitianApplications();
-    return ResponseDto.success('Bekleyen basvurular', result);
+  @ApiOperation({ summary: 'Diyetisyen basvurularini durum filtresi ile listele' })
+  @ApiResponse({ status: 200, description: 'Filtreli basvuru listesi', type: ResponseDto })
+  async listDietitianApplications(
+    @Query('status') status?: string,
+    @Query('search') search?: string,
+    @Query('city') city?: string,
+    @Query('sort') sort?: string,
+    @Query('page') page?: string,
+    @Query('limit') limit?: string,
+  ) {
+    const result = await this.authService.listDietitianApplications({
+      status,
+      search,
+      city,
+      sort,
+      page: Number(page),
+      limit: Number(limit),
+    });
+    return ResponseDto.success('Basvuru listesi', result);
+  }
+
+  @Get('admin/dietitian-applications/history')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('admin')
+  @ApiOperation({ summary: 'Diyetisyen basvuru islem gecmisini getir' })
+  @ApiResponse({ status: 200, description: 'Islem gecmisi', type: ResponseDto })
+  async listDietitianApplicationHistory(
+    @Query('page') page?: string,
+    @Query('limit') limit?: string,
+  ) {
+    const result = await this.authService.listDietitianApplicationHistory({
+      page: Number(page),
+      limit: Number(limit),
+    });
+    return ResponseDto.success('Islem gecmisi', result);
   }
 
   @Post('admin/dietitian-applications/:userId/approve')
@@ -190,6 +222,20 @@ export class AuthController {
   async approveDietitianApplication(@Request() req, @Param('userId') userId: string) {
     const result = await this.authService.approveDietitianApplication(req.user.id, userId);
     return ResponseDto.success('Basvuru onaylandi', result);
+  }
+
+  @Post('admin/dietitian-applications/:userId/reject')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('admin')
+  @ApiOperation({ summary: 'Diyetisyen basvurusunu reddet' })
+  @ApiResponse({ status: 200, description: 'Basvuru reddedildi', type: ResponseDto })
+  async rejectDietitianApplication(
+    @Request() req,
+    @Param('userId') userId: string,
+    @Body() dto: RejectDietitianApplicationDto,
+  ) {
+    const result = await this.authService.rejectDietitianApplication(req.user.id, userId, dto.reason);
+    return ResponseDto.success('Basvuru reddedildi', result);
   }
 
   @Post('admin/register')

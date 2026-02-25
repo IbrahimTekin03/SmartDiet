@@ -1,7 +1,7 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
+import { useAppSettings } from "../context/AppSettingsContext";
 
-type Theme = "dark" | "light";
 type Lang = "tr" | "en";
 type Gender = "male" | "female";
 type AccountType = "client" | "dietitian";
@@ -206,21 +206,8 @@ export default function Register() {
 
   const API_BASE = "http://localhost:3000";
   const REGISTER_URL = `${API_BASE}/api/auth/register`;
-
-  const [theme] = useState<Theme>(() => {
-    const saved = localStorage.getItem("sd_theme") as Theme | null;
-    return saved === "dark" ? "dark" : "light";
-  });
-  const [lang] = useState<Lang>(() => {
-    const saved = localStorage.getItem("sd_lang") as Lang | null;
-    return saved === "en" ? "en" : "tr";
-  });
-  const isDark = theme === "dark";
+  const { lang, isDark } = useAppSettings();
   const t = COPY[lang];
-
-  useEffect(() => {
-    document.documentElement.setAttribute("data-theme", theme);
-  }, [theme]);
 
   const [form, setForm] = useState<RegisterPayload>({
     first_name: "",

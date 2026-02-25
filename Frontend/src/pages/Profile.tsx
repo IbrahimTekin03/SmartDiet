@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
+import { useAppSettings } from "../context/AppSettingsContext";
 
-type Theme = "dark" | "light";
 type Lang = "tr" | "en";
 
 type SessionUser = {
@@ -170,9 +170,7 @@ export default function Profile() {
   const API_BASE = "http://localhost:3000";
   const navigate = useNavigate();
   const fileRef = useRef<HTMLInputElement | null>(null);
-
-  const [theme, setTheme] = useState<Theme>(() => (localStorage.getItem("sd_theme") === "dark" ? "dark" : "light"));
-  const [lang, setLang] = useState<Lang>(() => (localStorage.getItem("sd_lang") === "en" ? "en" : "tr"));
+  const { theme, lang, isDark, setTheme, setLang } = useAppSettings();
   const [user, setUser] = useState<SessionUser | null>(() => {
     try {
       const raw = localStorage.getItem("sd_user");
@@ -211,16 +209,6 @@ export default function Profile() {
   const [avatarErr, setAvatarErr] = useState("");
 
   const t = COPY[lang];
-  const isDark = theme === "dark";
-
-  useEffect(() => {
-    localStorage.setItem("sd_theme", theme);
-    document.documentElement.setAttribute("data-theme", theme);
-  }, [theme]);
-
-  useEffect(() => {
-    localStorage.setItem("sd_lang", lang);
-  }, [lang]);
 
   useEffect(() => {
     const token = localStorage.getItem("access_token");
@@ -476,11 +464,11 @@ export default function Profile() {
         <header className="mb-5 flex flex-wrap items-center justify-between gap-2">
           <div className="flex items-center gap-2">
             <ToolbarPill isDark={isDark}>
-              <button
-                type="button"
-                onClick={() => setTheme((v) => (v === "dark" ? "light" : "dark"))}
-                className={["rounded-full px-3 py-1 text-xs font-extrabold tracking-tight transition", isDark ? "hover:bg-emerald-900/35" : "hover:bg-white"].join(" ")}
-              >
+                <button
+                  type="button"
+                  onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
+                  className={["rounded-full px-3 py-1 text-xs font-extrabold tracking-tight transition", isDark ? "hover:bg-emerald-900/35" : "hover:bg-white"].join(" ")}
+                >
                 {t.appearance}: {theme === "dark" ? t.themeDark : t.themeLight}
               </button>
             </ToolbarPill>

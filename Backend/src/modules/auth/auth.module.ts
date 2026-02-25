@@ -12,6 +12,7 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 import { User } from '../users/entities/user.entity';
 import { Role } from '../acl/entities/role.entity';
 import { OtpCode } from './otp/entities/otp-code.entity';
+import { OtpTrustKey } from './otp/entities/otp-trust-key.entity';
 import { OtpService } from './otp/otp.service';
 import { MailModule } from '../mail/mail.module';
 import { UserProfile } from '../users/entities/user.profile.entity';
@@ -19,7 +20,7 @@ import { UserProfile } from '../users/entities/user.profile.entity';
 @Module({
   imports: [
     UsersModule,
-    TypeOrmModule.forFeature([User, Role, OtpCode, UserProfile]),
+    TypeOrmModule.forFeature([User, Role, OtpCode, OtpTrustKey, UserProfile]),
     PassportModule,
     JwtModule.registerAsync({
       imports: [ConfigModule],

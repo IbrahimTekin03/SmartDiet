@@ -1,7 +1,7 @@
-﻿import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Link } from "react-router-dom";
+import { useAppSettings } from "../context/AppSettingsContext";
 
-type Theme = "dark" | "light";
 type Lang = "tr" | "en";
 type SessionUser = {
   id?: string;
@@ -168,15 +168,7 @@ export default function Home() {
     totalPlans: 0,
     totalMeasurements: 0,
   };
-
-  const [theme] = useState<Theme>(() => {
-    const saved = localStorage.getItem("sd_theme") as Theme | null;
-    return saved === "dark" ? "dark" : "light";
-  });
-  const [lang] = useState<Lang>(() => {
-    const saved = localStorage.getItem("sd_lang") as Lang | null;
-    return saved === "en" ? "en" : "tr";
-  });
+  const { lang, isDark } = useAppSettings();
   const [sessionUser, setSessionUser] = useState<SessionUser | null>(() => {
     try {
       const raw = localStorage.getItem("sd_user");
@@ -191,10 +183,6 @@ export default function Home() {
   const [lastUpdatedAt, setLastUpdatedAt] = useState<number | null>(null);
   const menuRef = useRef<HTMLDivElement | null>(null);
   const isLoggedIn = Boolean(localStorage.getItem("access_token"));
-
-  useEffect(() => {
-    document.documentElement.setAttribute("data-theme", theme);
-  }, [theme]);
 
   useEffect(() => {
     const onDocClick = (e: MouseEvent) => {
@@ -241,8 +229,6 @@ export default function Home() {
       window.clearInterval(timer);
     };
   }, [isLoggedIn]);
-
-  const isDark = theme === "dark";
   const t = COPY[lang];
   const adminPanelPath = "/admin-panel";
   const numberLocale = lang === "tr" ? "tr-TR" : "en-US";

@@ -4,6 +4,7 @@ import AdminPanel from "./AdminPanel";
 import ClientHome from "./ClientHome";
 import DietitianHome from "./DietitianHome";
 import DietitianVerification from "./DietitianVerification";
+import { useAppSettings } from "../context/AppSettingsContext";
 
 type Profile = {
   id?: string;
@@ -23,7 +24,7 @@ const API_BASE = "http://localhost:3000";
 
 export default function AppEntry() {
   const [loading, setLoading] = useState(Boolean(localStorage.getItem("access_token")));
-  const lang = localStorage.getItem("sd_lang") === "en" ? "en" : "tr";
+  const { lang } = useAppSettings();
   const [profile, setProfile] = useState<Profile | null>(() => {
     try {
       const raw = localStorage.getItem("sd_user");

@@ -1,10 +1,11 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
+import { useAppSettings } from "../context/AppSettingsContext";
 
-type Theme = "dark" | "light";
 type Lang = "tr" | "en";
 type ViewMode = "queue" | "ops";
 type SortMode = "newest" | "oldest";
+type ApplicationStatus = "pending" | "rejected";
 
 type SessionUser = {
   first_name?: string;
@@ -39,7 +40,32 @@ type DietitianApplication = {
   clinic_city?: string | null;
   clinic_address?: string | null;
   clinic_license_no?: string | null;
+  verification_note?: string | null;
+  review_note?: string | null;
   submitted_at?: string | null;
+  reviewed_at?: string | null;
+};
+
+type PagedResponse<T> = {
+  items: T[];
+  total: number;
+  page: number;
+  limit: number;
+  totalPages: number;
+};
+
+type HistoryItem = {
+  user_id: string;
+  first_name?: string;
+  last_name?: string;
+  email?: string | null;
+  phone_number?: string | null;
+  clinic_name?: string | null;
+  clinic_city?: string | null;
+  action: "approved" | "rejected";
+  review_note?: string | null;
+  reviewed_at?: string | null;
+  reviewed_by?: string | null;
 };
 
 const API_BASE = "http://localhost:3000";
@@ -48,7 +74,7 @@ const COPY = {
   tr: {
     tag: "Yönetim Paneli",
     title: "Platform yönetimi",
-    subtitle: "Başvuru onayı, sistem izlemesi ve operasyon kararlarını tek ekranda yönet.",
+    subtitle: "Başvuru onayı, sistem izleme ve operasyon kararlarını tek ekrandan yönet.",
     welcome: "Hoş geldin",
     updated: "Son güncelleme",
     refresh: "Yenile",
@@ -56,8 +82,10 @@ const COPY = {
     logout: "Çıkış",
     queueTab: "Başvuru Merkezi",
     opsTab: "Operasyon",
-    queueTitle: "Diyetisyen Başvuru Listesi",
-    queueSub: "Başvuruyu seç, detayını incele ve tek adımla onayla.",
+    pendingTab: "Bekleyenler",
+    rejectedTab: "Reddedilenler",
+    queueTitle: "Diyetisyen Başvuruları",
+    queueSub: "Başvuruyu seç, detayını incele ve aksiyon al.",
     search: "Başvuru ara",
     searchPh: "isim, e-posta, klinik",
     city: "Şehir",
@@ -70,8 +98,16 @@ const COPY = {
     noSelection: "Detay için soldan bir başvuru seç.",
     approve: "Onayla",
     approving: "Onaylanıyor...",
+    reject: "Reddet",
+    rejecting: "Reddediliyor...",
+    rejectReason: "Red Nedeni",
+    rejectReasonPh: "Başvuru neden reddedildi? Kullanıcıya gösterilecek açıklama yaz.",
+    rejectValidation: "Red nedeni en az 5 karakter olmalı.",
+    applicantNote: "Başvuru Notu",
+    reviewNote: "İnceleme Notu",
     summaryTitle: "Canlı Özet",
     metricPending: "Bekleyen Başvuru",
+    metricRejected: "Reddedilen Başvuru",
     metricApproved: "Onaylı Diyetisyen",
     metricUsers: "Toplam Kullanıcı",
     metricActiveUsers: "Aktif Kullanıcı",
@@ -101,7 +137,7 @@ const COPY = {
     managementB: "Güvenlik Akışı",
     managementBDesc: "OTP, rol ve oturum kontrolleri birlikte izlenmeli.",
     managementC: "Takip Rutini",
-    managementCDesc: "Panel otomatik yenilendiği için sürekli operasyon takibi sağlar.",
+    managementCDesc: "Panel otomatik yenilenerek operasyon takibini kolaylaştırır.",
     detailName: "İsim",
     detailEmail: "E-posta",
     detailPhone: "Telefon",
@@ -113,8 +149,17 @@ const COPY = {
     fallbackAdmin: "Yönetici",
     summaryErr: "Özet verisi alınamadı.",
     appErr: "Başvurular alınamadı.",
-    approveErr: "Onay başarısız.",
+    approveErr: "Onay işlemi başarısız.",
+    rejectErr: "Red işlemi başarısız.",
     load: "Yükleniyor...",
+    pagination: "Sayfa",
+    prev: "Önceki",
+    next: "Sonraki",
+    historyTitle: "İşlem Geçmişi",
+    historyEmpty: "Henüz işlem geçmişi yok.",
+    historyLoadError: "İşlem geçmişi alınamadı.",
+    actionApproved: "Onaylandı",
+    actionRejected: "Reddedildi",
   },
   en: {
     tag: "Admin Panel",
@@ -127,8 +172,10 @@ const COPY = {
     logout: "Logout",
     queueTab: "Application Hub",
     opsTab: "Operations",
+    pendingTab: "Pending",
+    rejectedTab: "Rejected",
     queueTitle: "Dietitian Applications",
-    queueSub: "Pick an application, inspect details and approve in one step.",
+    queueSub: "Pick an application, inspect details and take action.",
     search: "Search applications",
     searchPh: "name, email, clinic",
     city: "City",
@@ -141,8 +188,16 @@ const COPY = {
     noSelection: "Select an application from the left list.",
     approve: "Approve",
     approving: "Approving...",
+    reject: "Reject",
+    rejecting: "Rejecting...",
+    rejectReason: "Rejection Reason",
+    rejectReasonPh: "Why is this application rejected? This text will be shown to the user.",
+    rejectValidation: "Rejection reason must be at least 5 characters.",
+    applicantNote: "Application Note",
+    reviewNote: "Review Note",
     summaryTitle: "Live Summary",
     metricPending: "Pending Applications",
+    metricRejected: "Rejected Applications",
     metricApproved: "Approved Dietitians",
     metricUsers: "Total Users",
     metricActiveUsers: "Active Users",
@@ -185,14 +240,22 @@ const COPY = {
     summaryErr: "Failed to load summary.",
     appErr: "Failed to load applications.",
     approveErr: "Approval failed.",
+    rejectErr: "Rejection failed.",
     load: "Loading...",
+    pagination: "Page",
+    prev: "Previous",
+    next: "Next",
+    historyTitle: "Action History",
+    historyEmpty: "No action history yet.",
+    historyLoadError: "Failed to load action history.",
+    actionApproved: "Approved",
+    actionRejected: "Rejected",
   },
 } as const;
 
 export default function AdminPanel() {
   const navigate = useNavigate();
-  const [theme] = useState<Theme>(() => (localStorage.getItem("sd_theme") === "dark" ? "dark" : "light"));
-  const [lang] = useState<Lang>(() => (localStorage.getItem("sd_lang") === "en" ? "en" : "tr"));
+  const { lang, isDark } = useAppSettings();
   const [user, setUser] = useState<SessionUser | null>(() => {
     try {
       const raw = localStorage.getItem("sd_user");
@@ -201,28 +264,37 @@ export default function AdminPanel() {
       return null;
     }
   });
+
   const [loadingProfile, setLoadingProfile] = useState(Boolean(localStorage.getItem("access_token")));
   const [loadingSummary, setLoadingSummary] = useState(true);
   const [loadingApps, setLoadingApps] = useState(true);
   const [approvingId, setApprovingId] = useState<string | null>(null);
+  const [rejectingId, setRejectingId] = useState<string | null>(null);
   const [summary, setSummary] = useState<Summary>({ activeClients: 0, plans: 0, messages: 0, adherence: 0 });
   const [stats, setStats] = useState<LandingStats>({ totalDietitians: 0, approvedDietitians: 0, totalUsers: 0, activeUsers: 0 });
   const [applications, setApplications] = useState<DietitianApplication[]>([]);
+  const [applicationsTotal, setApplicationsTotal] = useState(0);
+  const [applicationsPage, setApplicationsPage] = useState(1);
+  const [applicationsLimit] = useState(10);
+  const [applicationsTotalPages, setApplicationsTotalPages] = useState(0);
   const [summaryError, setSummaryError] = useState("");
   const [appError, setAppError] = useState("");
+  const [historyItems, setHistoryItems] = useState<HistoryItem[]>([]);
+  const [historyLoading, setHistoryLoading] = useState(true);
+  const [historyError, setHistoryError] = useState("");
+  const [historyPage, setHistoryPage] = useState(1);
+  const [historyLimit] = useState(8);
+  const [historyTotalPages, setHistoryTotalPages] = useState(0);
   const [lastUpdatedAt, setLastUpdatedAt] = useState<number | null>(null);
   const [viewMode, setViewMode] = useState<ViewMode>("queue");
+  const [applicationStatus, setApplicationStatus] = useState<ApplicationStatus>("pending");
   const [search, setSearch] = useState("");
   const [cityFilter, setCityFilter] = useState("");
   const [sortMode, setSortMode] = useState<SortMode>("newest");
   const [selectedId, setSelectedId] = useState("");
+  const [rejectReason, setRejectReason] = useState("");
 
   const t = COPY[lang];
-  const isDark = theme === "dark";
-
-  useEffect(() => {
-    document.documentElement.setAttribute("data-theme", theme);
-  }, [theme]);
 
   useEffect(() => {
     const token = localStorage.getItem("access_token");
@@ -281,21 +353,62 @@ export default function AdminPanel() {
     }
   }, [t.summaryErr]);
 
-  const fetchApps = useCallback(async (token: string) => {
+  const fetchApps = useCallback(async (token: string, status: ApplicationStatus, page: number) => {
     setAppError("");
     setLoadingApps(true);
     try {
-      const res = await fetch(`${API_BASE}/api/auth/admin/dietitian-applications`, { headers: { Authorization: `Bearer ${token}` } });
+      const params = new URLSearchParams();
+      params.set("status", status);
+      params.set("page", String(page));
+      params.set("limit", String(applicationsLimit));
+      if (search.trim()) params.set("search", search.trim());
+      if (cityFilter.trim()) params.set("city", cityFilter.trim());
+      params.set("sort", sortMode);
+
+      const res = await fetch(`${API_BASE}/api/auth/admin/dietitian-applications?${params.toString()}`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
       const data = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error();
-      const payload = data?.data ?? data;
-      setApplications(Array.isArray(payload) ? payload : []);
+      const payload = (data?.data ?? data) as PagedResponse<DietitianApplication>;
+      setApplications(Array.isArray(payload?.items) ? payload.items : []);
+      setApplicationsTotal(Number(payload?.total ?? 0));
+      setApplicationsPage(Number(payload?.page ?? page));
+      setApplicationsTotalPages(Number(payload?.totalPages ?? 0));
     } catch {
       setAppError(t.appErr);
+      setApplications([]);
+      setApplicationsTotal(0);
+      setApplicationsTotalPages(0);
     } finally {
       setLoadingApps(false);
     }
-  }, [t.appErr]);
+  }, [applicationsLimit, cityFilter, search, sortMode, t.appErr]);
+
+  const fetchHistory = useCallback(async (token: string, page: number) => {
+    setHistoryError("");
+    setHistoryLoading(true);
+    try {
+      const params = new URLSearchParams();
+      params.set("page", String(page));
+      params.set("limit", String(historyLimit));
+      const res = await fetch(`${API_BASE}/api/auth/admin/dietitian-applications/history?${params.toString()}`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error();
+      const payload = (data?.data ?? data) as PagedResponse<HistoryItem>;
+      setHistoryItems(Array.isArray(payload?.items) ? payload.items : []);
+      setHistoryPage(Number(payload?.page ?? page));
+      setHistoryTotalPages(Number(payload?.totalPages ?? 0));
+    } catch {
+      setHistoryError(t.historyLoadError);
+      setHistoryItems([]);
+      setHistoryTotalPages(0);
+    } finally {
+      setHistoryLoading(false);
+    }
+  }, [historyLimit, t.historyLoadError]);
 
   const fetchStats = useCallback(async () => {
     try {
@@ -317,9 +430,14 @@ export default function AdminPanel() {
   const refreshAll = useCallback(async () => {
     const token = localStorage.getItem("access_token");
     if (!token || !isAdmin) return;
-    await Promise.all([fetchSummary(token), fetchApps(token), fetchStats()]);
+    await Promise.all([
+      fetchSummary(token),
+      fetchApps(token, applicationStatus, applicationsPage),
+      fetchStats(),
+      fetchHistory(token, historyPage),
+    ]);
     setLastUpdatedAt(Date.now());
-  }, [fetchApps, fetchStats, fetchSummary, isAdmin]);
+  }, [applicationStatus, applicationsPage, fetchApps, fetchHistory, fetchStats, fetchSummary, historyPage, isAdmin]);
 
   useEffect(() => {
     if (!isAdmin) return;
@@ -327,6 +445,10 @@ export default function AdminPanel() {
     const timer = window.setInterval(refreshAll, 20000);
     return () => window.clearInterval(timer);
   }, [isAdmin, refreshAll]);
+
+  useEffect(() => {
+    setApplicationsPage(1);
+  }, [applicationStatus, cityFilter, search, sortMode]);
 
   const cities = useMemo(() => {
     const values = new Set<string>();
@@ -337,29 +459,21 @@ export default function AdminPanel() {
     return Array.from(values).sort((a, b) => a.localeCompare(b));
   }, [applications]);
 
-  const filteredApps = useMemo(() => {
-    const q = search.trim().toLowerCase();
-    const list = applications.filter((app) => {
-      const text = [app.first_name, app.last_name, app.email, app.phone_number, app.clinic_name, app.clinic_city].map((v) => String(v || "").toLowerCase()).join(" ");
-      return (cityFilter ? String(app.clinic_city || "") === cityFilter : true) && (q ? text.includes(q) : true);
-    });
-    list.sort((a, b) => {
-      const aTime = new Date(a.submitted_at || 0).getTime();
-      const bTime = new Date(b.submitted_at || 0).getTime();
-      return sortMode === "newest" ? bTime - aTime : aTime - bTime;
-    });
-    return list;
-  }, [applications, cityFilter, search, sortMode]);
+  useEffect(() => {
+    if (!applications.length) return setSelectedId("");
+    if (!selectedId || !applications.some((app) => app.user_id === selectedId)) {
+      setSelectedId(applications[0].user_id);
+    }
+  }, [applications, selectedId]);
 
   useEffect(() => {
-    if (!filteredApps.length) return setSelectedId("");
-    if (!selectedId || !filteredApps.some((app) => app.user_id === selectedId)) setSelectedId(filteredApps[0].user_id);
-  }, [filteredApps, selectedId]);
+    setRejectReason("");
+  }, [selectedId, applicationStatus]);
 
-  const selected = useMemo(() => filteredApps.find((app) => app.user_id === selectedId) || null, [filteredApps, selectedId]);
+  const selected = useMemo(() => applications.find((app) => app.user_id === selectedId) || null, [applications, selectedId]);
   const approvalRate = stats.totalDietitians > 0 ? Math.round((stats.approvedDietitians / stats.totalDietitians) * 100) : 0;
   const activeRate = stats.totalUsers > 0 ? Math.round((stats.activeUsers / stats.totalUsers) * 100) : 0;
-  const queuePressure = Math.min(100, Math.round((applications.length / Math.max(stats.approvedDietitians, 1)) * 100));
+  const queuePressure = Math.min(100, Math.round((applicationsTotal / Math.max(stats.approvedDietitians, 1)) * 100));
 
   const cityDistribution = useMemo(() => {
     const map = new Map<string, number>();
@@ -370,7 +484,7 @@ export default function AdminPanel() {
     return Array.from(map.entries()).map(([city, count]) => ({ city, count })).sort((a, b) => b.count - a.count).slice(0, 6);
   }, [applications, t.unknownCity]);
 
-  const recentFeed = useMemo(() => filteredApps.slice(0, 6), [filteredApps]);
+  const recentFeed = useMemo(() => applications.slice(0, 6), [applications]);
 
   const approveSelected = async () => {
     if (!selected) return;
@@ -379,15 +493,62 @@ export default function AdminPanel() {
     setApprovingId(selected.user_id);
     setAppError("");
     try {
-      const res = await fetch(`${API_BASE}/api/auth/admin/dietitian-applications/${selected.user_id}/approve`, { method: "POST", headers: { Authorization: `Bearer ${token}` } });
+      const res = await fetch(`${API_BASE}/api/auth/admin/dietitian-applications/${selected.user_id}/approve`, {
+        method: "POST",
+        headers: { Authorization: `Bearer ${token}` },
+      });
       if (!res.ok) throw new Error();
-      setApplications((prev) => prev.filter((row) => row.user_id !== selected.user_id));
-      fetchStats();
+      const nextPage = applications.length === 1 && applicationsPage > 1 ? applicationsPage - 1 : applicationsPage;
+      await Promise.all([
+        fetchApps(token, applicationStatus, nextPage),
+        fetchStats(),
+        fetchHistory(token, 1),
+      ]);
+      setHistoryPage(1);
       setLastUpdatedAt(Date.now());
     } catch {
       setAppError(t.approveErr);
     } finally {
       setApprovingId(null);
+    }
+  };
+
+  const rejectSelected = async () => {
+    if (!selected) return;
+    const token = localStorage.getItem("access_token");
+    if (!token) return;
+
+    const cleanReason = rejectReason.trim();
+    if (cleanReason.length < 5) {
+      setAppError(t.rejectValidation);
+      return;
+    }
+
+    setRejectingId(selected.user_id);
+    setAppError("");
+    try {
+      const res = await fetch(`${API_BASE}/api/auth/admin/dietitian-applications/${selected.user_id}/reject`, {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ reason: cleanReason }),
+      });
+      if (!res.ok) throw new Error();
+      setRejectReason("");
+      const nextPage = applications.length === 1 && applicationsPage > 1 ? applicationsPage - 1 : applicationsPage;
+      await Promise.all([
+        fetchApps(token, applicationStatus, nextPage),
+        fetchStats(),
+        fetchHistory(token, 1),
+      ]);
+      setHistoryPage(1);
+      setLastUpdatedAt(Date.now());
+    } catch {
+      setAppError(t.rejectErr);
+    } finally {
+      setRejectingId(null);
     }
   };
 
@@ -435,26 +596,64 @@ export default function AdminPanel() {
               <>
                 <h2 className="text-sm font-black">{t.queueTitle}</h2>
                 <p className={["mt-1 text-xs", isDark ? "text-zinc-400" : "text-[#567b70]"].join(" ")}>{t.queueSub}</p>
+
+                <div className="mt-3 flex items-center gap-2">
+                  <button type="button" onClick={() => setApplicationStatus("pending")} className={tabClass(isDark, applicationStatus === "pending")}>
+                    {t.pendingTab}
+                  </button>
+                  <button type="button" onClick={() => setApplicationStatus("rejected")} className={tabClass(isDark, applicationStatus === "rejected")}>
+                    {t.rejectedTab}
+                  </button>
+                </div>
+
                 <div className="mt-3 grid gap-2 sm:grid-cols-3">
                   <label><span className={labelClass(isDark)}>{t.search}</span><input value={search} onChange={(e) => setSearch(e.target.value)} placeholder={t.searchPh} className={inputClass(isDark)} /></label>
                   <label><span className={labelClass(isDark)}>{t.city}</span><select value={cityFilter} onChange={(e) => setCityFilter(e.target.value)} className={inputClass(isDark)}><option value="">{t.allCities}</option>{cities.map((city) => <option key={city} value={city}>{city}</option>)}</select></label>
                   <label><span className={labelClass(isDark)}>{t.sort}</span><select value={sortMode} onChange={(e) => setSortMode(e.target.value as SortMode)} className={inputClass(isDark)}><option value="newest">{t.newest}</option><option value="oldest">{t.oldest}</option></select></label>
                 </div>
+
                 {appError ? <ErrorBox isDark={isDark}>{appError}</ErrorBox> : null}
+
                 <div className="mt-4 grid gap-4 lg:grid-cols-[1fr_0.9fr]">
                   <div className={innerPanel(isDark)}>
-                    <div className="mb-2 text-xs font-bold">{t.metricPending}: {applications.length}</div>
+                    <div className="mb-2 text-xs font-bold">
+                      {applicationStatus === "pending" ? t.metricPending : t.metricRejected}: {applicationsTotal}
+                    </div>
                     <div className="max-h-[420px] space-y-2 overflow-auto pr-1">
                       {loadingApps ? <div className={hintClass(isDark)}>{t.load}</div> : null}
-                      {!loadingApps && filteredApps.length === 0 ? <div className={hintClass(isDark)}>{t.noResult}</div> : null}
-                      {filteredApps.map((app) => (
+                      {!loadingApps && applications.length === 0 ? <div className={hintClass(isDark)}>{t.noResult}</div> : null}
+                      {applications.map((app) => (
                         <button key={app.user_id} type="button" onClick={() => setSelectedId(app.user_id)} className={["w-full rounded-xl border px-3 py-3 text-left transition", app.user_id === selectedId ? (isDark ? "border-emerald-300/45 bg-emerald-500/14" : "border-[#2f6154]/35 bg-[#e9f5ef]") : (isDark ? "border-white/10 bg-black/25 hover:bg-white/5" : "border-[#2f6154]/18 bg-white/92 hover:bg-[#f4faf7]")].join(" ")}>
                           <div className="text-sm font-black">{[app.first_name, app.last_name].filter(Boolean).join(" ").trim() || app.email || app.phone_number || app.user_id}</div>
                           <div className={["mt-1 text-xs", isDark ? "text-zinc-300" : "text-[#496c62]"].join(" ")}>{(app.clinic_name || "-") + " - " + (app.clinic_city || "-")}</div>
                         </button>
                       ))}
                     </div>
+                    <div className="mt-3 flex items-center justify-between gap-2">
+                      <div className={["text-xs", isDark ? "text-zinc-400" : "text-[#5f8177]"].join(" ")}>
+                        {t.pagination}: {applicationsPage}/{Math.max(1, applicationsTotalPages)}
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <button
+                          type="button"
+                          disabled={applicationsPage <= 1 || loadingApps}
+                          onClick={() => setApplicationsPage((prev) => Math.max(1, prev - 1))}
+                          className={btnClass(isDark)}
+                        >
+                          {t.prev}
+                        </button>
+                        <button
+                          type="button"
+                          disabled={applicationsPage >= applicationsTotalPages || loadingApps || applicationsTotalPages === 0}
+                          onClick={() => setApplicationsPage((prev) => Math.min(Math.max(1, applicationsTotalPages), prev + 1))}
+                          className={btnClass(isDark)}
+                        >
+                          {t.next}
+                        </button>
+                      </div>
+                    </div>
                   </div>
+
                   <div className={innerPanel(isDark)}>
                     <div className="text-sm font-black">{t.selectedTitle}</div>
                     {!selected ? <div className={["mt-2 text-sm", isDark ? "text-zinc-400" : "text-[#5d7f74]"].join(" ")}>{t.noSelection}</div> : (
@@ -466,7 +665,40 @@ export default function AdminPanel() {
                         <DetailRow isDark={isDark} k={t.detailCity} v={selected.clinic_city || "-"} />
                         <DetailRow isDark={isDark} k={t.detailLicense} v={selected.clinic_license_no || "-"} />
                         <DetailRow isDark={isDark} k={t.detailAddress} v={selected.clinic_address || "-"} />
-                        <button type="button" disabled={approvingId === selected.user_id} onClick={approveSelected} className="mt-2 w-full rounded-xl bg-gradient-to-r from-emerald-400 to-teal-300 px-3 py-2 text-xs font-black text-zinc-950 transition hover:brightness-110 disabled:opacity-60">{approvingId === selected.user_id ? t.approving : t.approve}</button>
+                        <DetailRow isDark={isDark} k={t.applicantNote} v={selected.verification_note || "-"} />
+                        {selected.review_note ? <DetailRow isDark={isDark} k={t.reviewNote} v={selected.review_note} /> : null}
+
+                        <button
+                          type="button"
+                          disabled={approvingId === selected.user_id || rejectingId === selected.user_id}
+                          onClick={approveSelected}
+                          className="mt-2 w-full rounded-xl bg-gradient-to-r from-emerald-400 to-teal-300 px-3 py-2 text-xs font-black text-zinc-950 transition hover:brightness-110 disabled:opacity-60"
+                        >
+                          {approvingId === selected.user_id ? t.approving : t.approve}
+                        </button>
+
+                        {applicationStatus === "pending" ? (
+                          <>
+                            <label className="mt-2 block">
+                              <span className={labelClass(isDark)}>{t.rejectReason}</span>
+                              <textarea
+                                value={rejectReason}
+                                onChange={(e) => setRejectReason(e.target.value)}
+                                rows={3}
+                                placeholder={t.rejectReasonPh}
+                                className={inputClass(isDark)}
+                              />
+                            </label>
+                            <button
+                              type="button"
+                              disabled={rejectingId === selected.user_id || approvingId === selected.user_id}
+                              onClick={rejectSelected}
+                              className={["w-full rounded-xl px-3 py-2 text-xs font-black transition disabled:opacity-60", isDark ? "bg-rose-500/18 text-rose-100 hover:bg-rose-500/26" : "bg-rose-100 text-rose-700 hover:bg-rose-200"].join(" ")}
+                            >
+                              {rejectingId === selected.user_id ? t.rejecting : t.reject}
+                            </button>
+                          </>
+                        ) : null}
                       </div>
                     )}
                   </div>
@@ -487,7 +719,7 @@ export default function AdminPanel() {
                   <HealthRow isDark={isDark} label={t.stepApi} ok={!summaryError} okText={t.healthy} badText={t.check} />
                   <HealthRow isDark={isDark} label={t.stepOtp} ok={!appError} okText={t.healthy} badText={t.check} />
                   <HealthRow isDark={isDark} label={t.stepRoles} ok={isAdmin} okText={t.healthy} badText={t.check} />
-                  <HealthRow isDark={isDark} label={t.stepQueue} ok={applications.length < 10} okText={t.healthy} badText={t.check} />
+                  <HealthRow isDark={isDark} label={t.stepQueue} ok={applicationsTotal < 10} okText={t.healthy} badText={t.check} />
                 </div>
               </>
             )}
@@ -496,7 +728,7 @@ export default function AdminPanel() {
           <div className={panelClass(isDark)}>
             <h2 className="mb-3 text-sm font-black">{t.summaryTitle}</h2>
             <div className="grid gap-2 sm:grid-cols-2">
-              <StatCard isDark={isDark} label={t.metricPending} value={String(applications.length)} />
+              <StatCard isDark={isDark} label={applicationStatus === "pending" ? t.metricPending : t.metricRejected} value={String(applicationsTotal)} />
               <StatCard isDark={isDark} label={t.metricApproved} value={n(stats.approvedDietitians)} />
               <StatCard isDark={isDark} label={t.metricUsers} value={n(stats.totalUsers)} />
               <StatCard isDark={isDark} label={t.metricActiveUsers} value={n(stats.activeUsers)} />
@@ -547,10 +779,54 @@ export default function AdminPanel() {
           </div>
 
           <div className={panelClass(isDark)}>
-            <h3 className="mb-3 text-sm font-black">{t.managementTitle}</h3>
-            <NoteCard isDark={isDark} title={t.managementA} text={t.managementADesc} />
-            <NoteCard isDark={isDark} title={t.managementB} text={t.managementBDesc} />
-            <NoteCard isDark={isDark} title={t.managementC} text={t.managementCDesc} />
+            <h3 className="mb-3 text-sm font-black">{t.historyTitle}</h3>
+            {historyError ? <ErrorBox isDark={isDark}>{historyError}</ErrorBox> : null}
+            {historyLoading ? <div className={hintClass(isDark)}>{t.load}</div> : null}
+            {!historyLoading && historyItems.length === 0 ? <div className={hintClass(isDark)}>{t.historyEmpty}</div> : null}
+            <div className="space-y-2">
+              {historyItems.map((item) => (
+                <div key={`${item.user_id}-${item.reviewed_at || ""}-${item.action}`} className={innerPanel(isDark)}>
+                  <div className="flex items-center justify-between gap-2">
+                    <div className="text-xs font-black">
+                      {[item.first_name, item.last_name].filter(Boolean).join(" ").trim() || item.email || item.phone_number || item.user_id}
+                    </div>
+                    <span className={["rounded-full px-2 py-1 text-[10px] font-bold", item.action === "approved" ? (isDark ? "bg-emerald-500/20 text-emerald-100" : "bg-emerald-100 text-emerald-800") : (isDark ? "bg-rose-500/20 text-rose-100" : "bg-rose-100 text-rose-800")].join(" ")}>
+                      {item.action === "approved" ? t.actionApproved : t.actionRejected}
+                    </span>
+                  </div>
+                  <div className={["mt-1 text-[11px]", isDark ? "text-zinc-400" : "text-[#67857b]"].join(" ")}>
+                    {item.clinic_name || "-"} - {item.clinic_city || "-"}
+                  </div>
+                  <div className={["mt-1 text-[11px]", isDark ? "text-zinc-500" : "text-[#6f8e84]"].join(" ")}>
+                    {formatDate(item.reviewed_at, lang)}
+                  </div>
+                  {item.review_note ? <div className={["mt-2 text-xs", isDark ? "text-zinc-300" : "text-[#496c62]"].join(" ")}>{item.review_note}</div> : null}
+                </div>
+              ))}
+            </div>
+            <div className="mt-3 flex items-center justify-between gap-2">
+              <div className={["text-xs", isDark ? "text-zinc-400" : "text-[#5f8177]"].join(" ")}>
+                {t.pagination}: {historyPage}/{Math.max(1, historyTotalPages)}
+              </div>
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  disabled={historyPage <= 1 || historyLoading}
+                  onClick={() => setHistoryPage((prev) => Math.max(1, prev - 1))}
+                  className={btnClass(isDark)}
+                >
+                  {t.prev}
+                </button>
+                <button
+                  type="button"
+                  disabled={historyPage >= historyTotalPages || historyLoading || historyTotalPages === 0}
+                  onClick={() => setHistoryPage((prev) => Math.min(Math.max(1, historyTotalPages), prev + 1))}
+                  className={btnClass(isDark)}
+                >
+                  {t.next}
+                </button>
+              </div>
+            </div>
           </div>
         </section>
       </main>
@@ -594,15 +870,12 @@ function HealthRow({ isDark, label, ok, okText, badText }: { isDark: boolean; la
   return <div className={["mt-2 flex items-center justify-between rounded-lg px-2 py-2", isDark ? "bg-black/25" : "bg-[#f3faf6]"].join(" ")}><span className={["text-xs font-semibold", isDark ? "text-zinc-300" : "text-[#3f6459]"].join(" ")}>{label}</span><span className={["rounded-full px-2 py-1 text-[10px] font-bold", ok ? (isDark ? "bg-emerald-500/16 text-emerald-100" : "bg-[#dff0e8] text-[#134a3f]") : (isDark ? "bg-amber-500/16 text-amber-100" : "bg-amber-100 text-amber-800")].join(" ")}>{ok ? okText : badText}</span></div>;
 }
 function DetailRow({ isDark, k, v }: { isDark: boolean; k: string; v: string }) {
-  return <div className={["grid grid-cols-[86px_1fr] gap-2 rounded-lg px-2 py-1.5", isDark ? "bg-black/20" : "bg-[#f4faf7]"].join(" ")}><div className={["text-[11px] font-bold", isDark ? "text-zinc-400" : "text-[#5e7f74]"].join(" ")}>{k}</div><div className={["break-words text-xs font-semibold", isDark ? "text-zinc-200" : "text-[#2f564a]"].join(" ")}>{v}</div></div>;
+  return <div className={["grid grid-cols-[96px_1fr] gap-2 rounded-lg px-2 py-1.5", isDark ? "bg-black/20" : "bg-[#f4faf7]"].join(" ")}><div className={["text-[11px] font-bold", isDark ? "text-zinc-400" : "text-[#5e7f74]"].join(" ")}>{k}</div><div className={["break-words text-xs font-semibold", isDark ? "text-zinc-200" : "text-[#2f564a]"].join(" ")}>{v}</div></div>;
 }
 function RateRow({ isDark, label, value, tone }: { isDark: boolean; label: string; value: number; tone: "emerald" | "teal" | "amber" }) {
   const safe = Math.max(0, Math.min(100, value));
   const fill = tone === "teal" ? "from-teal-300 to-emerald-300" : tone === "amber" ? "from-amber-300 to-orange-300" : "from-emerald-400 to-teal-300";
   return <div><div className="flex items-center justify-between text-xs"><span className={isDark ? "text-zinc-300" : "text-[#3f6459]"}>{label}</span><span className="font-black">{safe}%</span></div><div className={["mt-1 h-2 w-full overflow-hidden rounded-full", isDark ? "bg-white/10" : "bg-[#d7e6df]"].join(" ")}><div className={`h-2 rounded-full bg-gradient-to-r ${fill}`} style={{ width: `${safe}%` }} /></div></div>;
-}
-function NoteCard({ isDark, title, text }: { isDark: boolean; title: string; text: string }) {
-  return <div className={[innerPanel(isDark), "mb-2"].join(" ")}><div className="text-xs font-black">{title}</div><div className={["mt-1 text-xs leading-5", isDark ? "text-zinc-300" : "text-[#4c6f65]"].join(" ")}>{text}</div></div>;
 }
 function ErrorBox({ isDark, children }: { isDark: boolean; children: string }) {
   return <div className={["mt-3 rounded-xl border px-3 py-2 text-xs", isDark ? "border-rose-500/30 bg-rose-500/10 text-rose-200" : "border-rose-400/40 bg-rose-100 text-rose-700"].join(" ")}>{children}</div>;

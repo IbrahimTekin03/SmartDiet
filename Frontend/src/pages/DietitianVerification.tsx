@@ -1,7 +1,7 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
+import { useAppSettings } from "../context/AppSettingsContext";
 
-type Theme = "dark" | "light";
 type Lang = "tr" | "en";
 type Status = "not_submitted" | "pending" | "approved" | "rejected";
 
@@ -13,7 +13,9 @@ type VerificationStatusResponse = {
   clinic_address?: string | null;
   clinic_license_no?: string | null;
   verification_note?: string | null;
+  review_note?: string | null;
   submitted_at?: string | null;
+  reviewed_at?: string | null;
 };
 
 type FormState = {
@@ -34,6 +36,10 @@ const COPY = {
     statusApproved: "Başvurun onaylandı. Diyetisyen ana sayfasına yönlendiriliyorsun.",
     statusPending: "Başvurun incelemede. Admin onayından sonra diyetisyen ekranı açılacak.",
     statusRejected: "Başvurun reddedildi. Bilgileri güncelleyip tekrar gönderebilirsin.",
+    rejectReasonTitle: "Red Nedeni",
+    statusDatesTitle: "Başvuru Detayı",
+    submittedAt: "Gönderim",
+    reviewedAt: "İnceleme",
     fieldClinicName: "Klinik Adı",
     fieldCity: "Şehir",
     fieldAddress: "Adres",
@@ -43,6 +49,7 @@ const COPY = {
     submitSuccess: "Başvuru admine gönderildi.",
     submitLoading: "Gönderiliyor...",
     submitButton: "Doğrulama Başvurusu Gönder",
+    resubmitButton: "Bilgileri Güncelle ve Tekrar Gönder",
     backProfile: "Profil'e Dön",
     genericError: "Bir hata oluştu.",
     statusFetchError: "Doğrulama durumu alınamadı.",
@@ -55,6 +62,10 @@ const COPY = {
     statusApproved: "Application approved. Redirecting to dietitian home.",
     statusPending: "Application is pending. Dietitian home opens after admin approval.",
     statusRejected: "Application was rejected. You can update details and submit again.",
+    rejectReasonTitle: "Rejection Reason",
+    statusDatesTitle: "Application Details",
+    submittedAt: "Submitted",
+    reviewedAt: "Reviewed",
     fieldClinicName: "Clinic Name",
     fieldCity: "City",
     fieldAddress: "Address",
@@ -64,6 +75,7 @@ const COPY = {
     submitSuccess: "Application sent to admin.",
     submitLoading: "Submitting...",
     submitButton: "Submit Verification",
+    resubmitButton: "Update and Resubmit",
     backProfile: "Back to Profile",
     genericError: "An error occurred.",
     statusFetchError: "Could not fetch verification status.",
@@ -85,9 +97,7 @@ function mapVerificationError(message: string, lang: Lang): string {
 
 export default function DietitianVerification() {
   const navigate = useNavigate();
-  const [theme] = useState<Theme>(() => (localStorage.getItem("sd_theme") === "dark" ? "dark" : "light"));
-  const [lang] = useState<Lang>(() => (localStorage.getItem("sd_lang") === "en" ? "en" : "tr"));
-  const isDark = theme === "dark";
+  const { lang, isDark } = useAppSettings();
   const t = COPY[lang];
 
   const [status, setStatus] = useState<Status>("not_submitted");
@@ -95,6 +105,9 @@ export default function DietitianVerification() {
   const [submitting, setSubmitting] = useState(false);
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
+  const [reviewNote, setReviewNote] = useState("");
+  const [submittedAt, setSubmittedAt] = useState<string | null>(null);
+  const [reviewedAt, setReviewedAt] = useState<string | null>(null);
   const [form, setForm] = useState<FormState>({
     clinic_name: "",
     clinic_city: "",
@@ -103,34 +116,63 @@ export default function DietitianVerification() {
     verification_note: "",
   });
 
-  useEffect(() => {
+  const formatDateTime = useCallback((value?: string | null) => {
+    if (!value) return "-";
+    const dt = new Date(value);
+    if (Number.isNaN(dt.getTime())) return "-";
+    return dt.toLocaleString(lang === "tr" ? "tr-TR" : "en-US");
+  }, [lang]);
+
+  const loadStatus = useCallback(async () => {
     const token = localStorage.getItem("access_token");
     if (!token) {
       navigate("/login");
       return;
     }
 
-    fetch(`${API_BASE}/api/auth/dietitian/verification-status`, {
-      headers: { Authorization: `Bearer ${token}` },
-    })
-      .then(async (r) => {
-        const data = await r.json().catch(() => ({}));
-        if (!r.ok) throw new Error(data?.message || "status_error");
-        return data?.data ?? data;
-      })
-      .then((data: VerificationStatusResponse) => {
-        setStatus(data.status || "not_submitted");
-        setForm({
-          clinic_name: data.clinic_name || "",
-          clinic_city: data.clinic_city || "",
-          clinic_address: data.clinic_address || "",
-          clinic_license_no: data.clinic_license_no || "",
-          verification_note: data.verification_note || "",
-        });
-      })
-      .catch(() => setError(t.statusFetchError))
-      .finally(() => setLoadingStatus(false));
+    try {
+      const res = await fetch(`${API_BASE}/api/auth/dietitian/verification-status`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data?.message || "status_error");
+      const payload = (data?.data ?? data) as VerificationStatusResponse;
+      setStatus(payload.status || "not_submitted");
+      setReviewNote(String(payload.review_note || "").trim());
+      setSubmittedAt(payload.submitted_at || null);
+      setReviewedAt(payload.reviewed_at || null);
+      setForm({
+        clinic_name: payload.clinic_name || "",
+        clinic_city: payload.clinic_city || "",
+        clinic_address: payload.clinic_address || "",
+        clinic_license_no: payload.clinic_license_no || "",
+        verification_note: payload.verification_note || "",
+      });
+      setError("");
+    } catch {
+      setError(t.statusFetchError);
+    } finally {
+      setLoadingStatus(false);
+    }
   }, [navigate, t.statusFetchError]);
+
+  useEffect(() => {
+    loadStatus();
+  }, [loadStatus]);
+
+  useEffect(() => {
+    if (status !== "pending") return;
+    const timer = window.setInterval(() => {
+      loadStatus();
+    }, 15000);
+    return () => window.clearInterval(timer);
+  }, [loadStatus, status]);
+
+  useEffect(() => {
+    if (status !== "approved") return;
+    const timer = window.setTimeout(() => navigate("/"), 1200);
+    return () => window.clearTimeout(timer);
+  }, [navigate, status]);
 
   const onSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -161,7 +203,10 @@ export default function DietitianVerification() {
       const data = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(data?.message || "verification_submit_error");
       setStatus("pending");
+      setReviewNote("");
+      setReviewedAt(null);
       setMessage(t.submitSuccess);
+      loadStatus();
     } catch (err: unknown) {
       const raw = err instanceof Error ? err.message : "";
       setError(mapVerificationError(raw, lang));
@@ -169,6 +214,8 @@ export default function DietitianVerification() {
       setSubmitting(false);
     }
   };
+
+  const submitLabel = status === "rejected" ? t.resubmitButton : t.submitButton;
 
   return (
     <div className={["min-h-screen w-screen", isDark ? "bg-[#07090b] text-white" : "bg-[#e8f0eb] text-[#0f2f29]"].join(" ")}>
@@ -180,20 +227,29 @@ export default function DietitianVerification() {
 
         {loadingStatus ? <div className="text-sm">{t.loading}</div> : null}
 
-        {!loadingStatus && status === "approved" ? (
-          <StatusBox isDark={isDark} tone="success" text={t.statusApproved} />
+        {!loadingStatus && status === "approved" ? <StatusBox isDark={isDark} tone="success" text={t.statusApproved} /> : null}
+        {!loadingStatus && status === "pending" ? <StatusBox isDark={isDark} tone="warning" text={t.statusPending} /> : null}
+        {!loadingStatus && status === "rejected" ? <StatusBox isDark={isDark} tone="danger" text={t.statusRejected} /> : null}
+
+        {!loadingStatus && status === "rejected" && reviewNote ? (
+          <div className={["mt-3 rounded-2xl border px-4 py-3 text-sm", isDark ? "border-rose-400/30 bg-rose-500/10 text-rose-100" : "border-rose-700/30 bg-rose-100 text-rose-900"].join(" ")}>
+            <div className="mb-1 font-extrabold">{t.rejectReasonTitle}</div>
+            <div>{reviewNote}</div>
+          </div>
         ) : null}
 
-        {!loadingStatus && status === "pending" ? (
-          <StatusBox isDark={isDark} tone="warning" text={t.statusPending} />
-        ) : null}
-
-        {!loadingStatus && status === "rejected" ? (
-          <StatusBox isDark={isDark} tone="danger" text={t.statusRejected} />
+        {!loadingStatus && (submittedAt || reviewedAt) ? (
+          <div className={["mt-3 rounded-2xl border px-4 py-3 text-sm", isDark ? "border-white/10 bg-white/5 text-zinc-200" : "border-[#2f6154]/20 bg-white text-[#1f4a3f]"].join(" ")}>
+            <div className="mb-2 font-extrabold">{t.statusDatesTitle}</div>
+            <div className="grid gap-1 text-xs sm:grid-cols-2">
+              <div><span className="font-semibold">{t.submittedAt}:</span> {formatDateTime(submittedAt)}</div>
+              <div><span className="font-semibold">{t.reviewedAt}:</span> {formatDateTime(reviewedAt)}</div>
+            </div>
+          </div>
         ) : null}
 
         {!loadingStatus && status !== "approved" && status !== "pending" ? (
-          <form onSubmit={onSubmit} className="space-y-4">
+          <form onSubmit={onSubmit} className="mt-4 space-y-4">
             <Field isDark={isDark} label={t.fieldClinicName} value={form.clinic_name} onChange={(v) => setForm((p) => ({ ...p, clinic_name: v }))} />
             <Field isDark={isDark} label={t.fieldCity} value={form.clinic_city} onChange={(v) => setForm((p) => ({ ...p, clinic_city: v }))} />
             <Field isDark={isDark} label={t.fieldAddress} value={form.clinic_address} onChange={(v) => setForm((p) => ({ ...p, clinic_address: v }))} />
@@ -208,7 +264,7 @@ export default function DietitianVerification() {
               disabled={submitting}
               className="w-full rounded-xl bg-gradient-to-r from-emerald-400 to-teal-300 px-4 py-3 text-sm font-extrabold text-zinc-950 disabled:opacity-60"
             >
-              {submitting ? t.submitLoading : t.submitButton}
+              {submitting ? t.submitLoading : submitLabel}
             </button>
           </form>
         ) : null}
