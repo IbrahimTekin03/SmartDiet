@@ -33,11 +33,11 @@ export class UserProfile {
   @Column({ nullable: true })
   avatar_url: string | null;
 
-  @Column({ type: 'date' })
-  birth_date: Date;
+  @Column({ type: 'date', nullable: true })
+  birth_date: Date | null;
 
-  @Column({ type: 'enum', enum: Gender })
-  gender: Gender;
+  @Column({ type: 'enum', enum: Gender, nullable: true })
+  gender: Gender | null;
 
   @Column({ type: 'enum', enum: AccountType, default: AccountType.Client })
   account_type: AccountType;

@@ -37,51 +37,51 @@ type Measurement = {
 const COPY = {
   tr: {
     title: "Profil",
-    subtitle: "Hesap yonetimi ve olcum analizi",
-    back: "Dashboard",
-    logout: "Cikis Yap",
-    loadingProfile: "Profil yukleniyor...",
+    subtitle: "Hesap yönetimi ve ölçüm analizi",
+    back: "Ana Sayfa",
+    logout: "Çıkış Yap",
+    loadingProfile: "Profil yükleniyor...",
     appearance: "Tema",
     uploadPhoto: "Profil Fotosu",
-    save: "Degisiklikleri Kaydet",
+    save: "Değişiklikleri Kaydet",
     saving: "Kaydediliyor...",
-    saveOk: "Profil guncellendi.",
-    saveErr: "Guncelleme basarisiz.",
-    firstName: "Isim",
+    saveOk: "Profil güncellendi.",
+    saveErr: "Güncelleme başarısız.",
+    firstName: "İsim",
     lastName: "Soyisim",
     email: "E-posta",
     phone: "Telefon",
-    birthDate: "Dogum Tarihi",
+    birthDate: "Doğum Tarihi",
     gender: "Cinsiyet",
     male: "Erkek",
-    female: "Kadin",
-    accountCard: "Hesap Ozeti",
-    accountCardSub: "Kimlik ve iletisim bilgilerin tek yerde.",
-    metricsCard: "Olcum Analizi",
-    metricsSub: "Son kayitlarina gore trend takibi",
-    addMeasurement: "Olcum Ekle",
-    measurementSaved: "Olcum kaydedildi.",
-    measurementFailed: "Olcum kaydedilemedi.",
-    noMeasurements: "Bu aralikta olcum bulunmuyor.",
-    rangeLabel: "Aralik",
-    latestWeight: "Guncel Kilo",
-    latestFat: "Guncel Yag Orani",
-    trend: "Degisim",
-    recentRecords: "Son Kayitlar",
+    female: "Kadın",
+    accountCard: "Hesap Özeti",
+    accountCardSub: "Kimlik ve iletişim bilgilerin tek yerde.",
+    metricsCard: "Ölçüm Analizi",
+    metricsSub: "Son kayıtlarına göre trend takibi",
+    addMeasurement: "Ölçüm Ekle",
+    measurementSaved: "Ölçüm kaydedildi.",
+    measurementFailed: "Ölçüm kaydedilemedi.",
+    noMeasurements: "Bu aralıkta ölçüm bulunmuyor.",
+    rangeLabel: "Aralık",
+    latestWeight: "Güncel Kilo",
+    latestFat: "Güncel Yağ Oranı",
+    trend: "Değişim",
+    recentRecords: "Son Kayıtlar",
     date: "Tarih",
     weight: "Kilo (kg)",
-    bodyFat: "Yag Orani (%)",
+    bodyFat: "Yağ Oranı (%)",
     quickStats: "Profil Doluluk",
-    contact: "Iletisim",
+    contact: "İletişim",
     role: "Rol",
     profileDetails: "Profil Bilgileri",
-    liveProfile: "Canli Profil",
+    liveProfile: "Canlı Profil",
     notProvided: "Belirtilmedi",
   },
   en: {
     title: "Profile",
     subtitle: "Account management and measurement analytics",
-    back: "Dashboard",
+    back: "Home",
     logout: "Log Out",
     loadingProfile: "Loading profile...",
     appearance: "Theme",
@@ -247,7 +247,7 @@ export default function Profile() {
   }, [user]);
 
   const roleText = useMemo(
-    () => user?.roles?.map((r) => r?.name).filter(Boolean).join(", ") || (lang === "tr" ? "Kullanici" : "User"),
+    () => user?.roles?.map((r) => r?.name).filter(Boolean).join(", ") || (lang === "tr" ? "Kullanıcı" : "User"),
     [lang, user],
   );
   const contactEmail = form.email || t.notProvided;
@@ -332,7 +332,7 @@ export default function Profile() {
         if (profile?.id) {
           setUser(profile);
           localStorage.setItem("sd_user", JSON.stringify(profile));
-          setAvatarMsg(lang === "tr" ? "Profil fotosu guncellendi." : "Profile photo updated.");
+          setAvatarMsg(lang === "tr" ? "Profil fotoğrafı güncellendi." : "Profile photo updated.");
           return;
         }
       }
@@ -467,7 +467,7 @@ export default function Profile() {
 
           <div className="flex items-center gap-2">
             <Link
-              to="/dashboard"
+              to="/"
               className={[
                 "rounded-full px-4 py-2 text-xs font-extrabold tracking-tight transition",
                 isDark

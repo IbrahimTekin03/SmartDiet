@@ -30,7 +30,7 @@ import { FileInterceptor } from '@nestjs/platform-express';
 import { diskStorage } from 'multer';
 import { extname, join } from 'path';
 import * as fs from 'fs';
-import { OtpIdentityType, OtpPurpose } from './otp/entities/otp-code.entity';
+import { OtpPurpose } from './otp/entities/otp-code.entity';
 
 @ApiTags('auth')
 @Controller('auth')
@@ -54,11 +54,8 @@ export class AuthController {
       return ResponseDto.error('E-posta veya telefon numarası gereklidir');
     }
 
-    const identityType = loginDto.email ? OtpIdentityType.Email : OtpIdentityType.Phone;
-    const identity = String(loginDto.email || loginDto.phone_number || '').trim();
-    const otpCheck = await this.otpService.shouldRequireOtp(
-      identityType,
-      identity,
+    const otpCheck = await this.otpService.shouldRequireOtpForUser(
+      req.user,
       OtpPurpose.Login,
       {
         ip: this.resolveClientIp(req),
@@ -325,6 +322,18 @@ export class AuthController {
   async getDashboardSummary(@Request() req) {
     const summary = await this.authService.getDashboardSummary(req.user.id);
     return ResponseDto.success('Dashboard summary', summary);
+  }
+
+  @Get('public/landing-stats')
+  @ApiOperation({ summary: 'Landing sayfasi genel istatistikleri' })
+  @ApiResponse({
+    status: 200,
+    description: 'Landing istatistikleri basariyla getirildi',
+    type: ResponseDto,
+  })
+  async getPublicLandingStats() {
+    const stats = await this.authService.getPublicLandingStats();
+    return ResponseDto.success('Public landing stats', stats);
   }
 
   private readHeader(req: any, key: string): string {

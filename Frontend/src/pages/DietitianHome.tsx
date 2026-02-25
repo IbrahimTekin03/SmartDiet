@@ -1,6 +1,5 @@
 import { Link, useNavigate } from "react-router-dom";
 import { useMemo, useState } from "react";
-import SettingsDrawer from "../components/SettingsDrawer";
 
 type Theme = "dark" | "light";
 type Lang = "tr" | "en";
@@ -16,19 +15,19 @@ type Profile = {
 
 const COPY = {
   tr: {
-    title: "Diyetisyen Ana Sayfasi",
-    subtitle: "Danisanlarini ve klinik akislarini buradan yonetebilirsin.",
-    welcome: "Hos geldin",
+    title: "Diyetisyen Ana Sayfası",
+    subtitle: "Danışanlarını ve klinik akışlarını buradan yönetebilirsin.",
+    welcome: "Hoş geldin",
     clinic: "Klinik",
-    p1: "Danisan Yonetimi",
-    p1d: "Danisan listesi ve durum takibi.",
+    p1: "Danışan Yönetimi",
+    p1d: "Danışan listesi ve durum takibi.",
     p2: "Planlama",
-    p2d: "Beslenme planlarini olustur ve guncelle.",
-    p3: "Mesajlasma",
-    p3d: "Danisanlar ile anlik mesajlasma.",
+    p2d: "Beslenme planlarını oluştur ve güncelle.",
+    p3: "Mesajlaşma",
+    p3d: "Danışanlar ile anlık mesajlaşma.",
     profile: "Profil",
-    admin: "Yonetim Paneli",
-    logout: "Cikis Yap",
+    admin: "Yönetim Paneli",
+    logout: "Çıkış Yap",
   },
   en: {
     title: "Dietitian Home",
@@ -49,14 +48,14 @@ const COPY = {
 
 export default function DietitianHome({ profile, isAdmin }: { profile: Profile; isAdmin?: boolean }) {
   const navigate = useNavigate();
-  const [theme, setTheme] = useState<Theme>(() => (localStorage.getItem("sd_theme") === "dark" ? "dark" : "light"));
-  const [lang, setLang] = useState<Lang>(() => (localStorage.getItem("sd_lang") === "en" ? "en" : "tr"));
+  const [theme] = useState<Theme>(() => (localStorage.getItem("sd_theme") === "dark" ? "dark" : "light"));
+  const [lang] = useState<Lang>(() => (localStorage.getItem("sd_lang") === "en" ? "en" : "tr"));
   const isDark = theme === "dark";
   const t = COPY[lang];
 
   const displayName = useMemo(() => {
     const n = [profile.first_name, profile.last_name].filter(Boolean).join(" ").trim();
-    return n || profile.full_name || profile.display_name || profile.email || (lang === "tr" ? "Kullanici" : "User");
+    return n || profile.full_name || profile.display_name || profile.email || (lang === "tr" ? "Kullanıcı" : "User");
   }, [lang, profile]);
 
   const onLogout = () => {
@@ -78,7 +77,7 @@ export default function DietitianHome({ profile, isAdmin }: { profile: Profile; 
           </div>
           <div className="flex gap-2">
             {isAdmin ? (
-              <Link to="/dashboard" className={["rounded-full px-4 py-2 text-xs font-bold", isDark ? "border border-white/10 bg-white/5" : "border border-[#2f6154]/25 bg-white"].join(" ")}>
+              <Link to="/admin-panel" className={["rounded-full px-4 py-2 text-xs font-bold", isDark ? "border border-white/10 bg-white/5" : "border border-[#2f6154]/25 bg-white"].join(" ")}>
                 {t.admin}
               </Link>
             ) : null}
@@ -97,13 +96,6 @@ export default function DietitianHome({ profile, isAdmin }: { profile: Profile; 
           <FeatureCard isDark={isDark} title={t.p3} desc={t.p3d} />
         </section>
       </main>
-
-      <SettingsDrawer
-        onApply={(nextTheme, nextLang) => {
-          setTheme(nextTheme);
-          setLang(nextLang);
-        }}
-      />
     </div>
   );
 }

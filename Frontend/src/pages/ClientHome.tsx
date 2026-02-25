@@ -1,6 +1,5 @@
 import { Link, useNavigate } from "react-router-dom";
 import { useMemo, useState } from "react";
-import SettingsDrawer from "../components/SettingsDrawer";
 
 type Theme = "dark" | "light";
 type Lang = "tr" | "en";
@@ -15,17 +14,17 @@ type Profile = {
 
 const COPY = {
   tr: {
-    title: "Kullanici Ana Sayfasi",
-    subtitle: "SmartDiet ile beslenme planini, olcumlerini ve ilerlemeni tek yerden takip et.",
-    f1: "Gunun Plani",
-    f1d: "Gunluk ogun plani ve saatlerini gor.",
-    f2: "Olcum Takibi",
-    f2d: "Kilo ve olcum gecmisini takip et.",
-    f3: "Mesajlasma",
-    f3d: "Diyetisyeninle guvenli sekilde iletisim kur.",
+    title: "Kullanıcı Ana Sayfası",
+    subtitle: "SmartDiet ile beslenme planını, ölçümlerini ve ilerlemeni tek yerden takip et.",
+    f1: "Günün Planı",
+    f1d: "Günlük öğün planı ve saatlerini gör.",
+    f2: "Ölçüm Takibi",
+    f2d: "Kilo ve ölçüm geçmişini takip et.",
+    f3: "Mesajlaşma",
+    f3d: "Diyetisyeninle güvenli şekilde iletişim kur.",
     profile: "Profil",
-    logout: "Cikis Yap",
-    welcome: "Hos geldin",
+    logout: "Çıkış Yap",
+    welcome: "Hoş geldin",
   },
   en: {
     title: "Client Home",
@@ -44,14 +43,14 @@ const COPY = {
 
 export default function ClientHome({ profile }: { profile: Profile }) {
   const navigate = useNavigate();
-  const [theme, setTheme] = useState<Theme>(() => (localStorage.getItem("sd_theme") === "dark" ? "dark" : "light"));
-  const [lang, setLang] = useState<Lang>(() => (localStorage.getItem("sd_lang") === "en" ? "en" : "tr"));
+  const [theme] = useState<Theme>(() => (localStorage.getItem("sd_theme") === "dark" ? "dark" : "light"));
+  const [lang] = useState<Lang>(() => (localStorage.getItem("sd_lang") === "en" ? "en" : "tr"));
   const isDark = theme === "dark";
   const t = COPY[lang];
 
   const displayName = useMemo(() => {
     const n = [profile.first_name, profile.last_name].filter(Boolean).join(" ").trim();
-    return n || profile.full_name || profile.display_name || profile.email || (lang === "tr" ? "Kullanici" : "User");
+    return n || profile.full_name || profile.display_name || profile.email || (lang === "tr" ? "Kullanıcı" : "User");
   }, [lang, profile]);
 
   const onLogout = () => {
@@ -86,13 +85,6 @@ export default function ClientHome({ profile }: { profile: Profile }) {
           <FeatureCard isDark={isDark} title={t.f3} desc={t.f3d} />
         </section>
       </main>
-
-      <SettingsDrawer
-        onApply={(nextTheme, nextLang) => {
-          setTheme(nextTheme);
-          setLang(nextLang);
-        }}
-      />
     </div>
   );
 }

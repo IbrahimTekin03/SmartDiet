@@ -708,5 +708,31 @@ export class AuthService {
       adherence,
     };
   }
+
+  async getPublicLandingStats() {
+    const totalDietitians = await this.safeCount(
+      'user_profiles',
+      'WHERE account_type = $1',
+      [AccountType.Dietitian],
+    );
+    const approvedDietitians = await this.safeCount(
+      'user_profiles',
+      'WHERE account_type = $1 AND dietitian_verification_status = $2',
+      [AccountType.Dietitian, DietitianVerificationStatus.Approved],
+    );
+    const totalUsers = await this.safeCount('users');
+    const activeUsers = await this.safeCount('users', 'WHERE is_active = true');
+    const totalPlans = await this.safeCount('diet_plans');
+    const totalMeasurements = await this.safeCount('measurements');
+
+    return {
+      totalDietitians,
+      approvedDietitians,
+      totalUsers,
+      activeUsers,
+      totalPlans,
+      totalMeasurements,
+    };
+  }
 }
 

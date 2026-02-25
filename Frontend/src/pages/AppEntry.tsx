@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import Home from "./Home";
-import Dashboard from "./Dashboard";
+import AdminPanel from "./AdminPanel";
 import ClientHome from "./ClientHome";
 import DietitianHome from "./DietitianHome";
 import DietitianVerification from "./DietitianVerification";
@@ -23,6 +23,7 @@ const API_BASE = "http://localhost:3000";
 
 export default function AppEntry() {
   const [loading, setLoading] = useState(Boolean(localStorage.getItem("access_token")));
+  const lang = localStorage.getItem("sd_lang") === "en" ? "en" : "tr";
   const [profile, setProfile] = useState<Profile | null>(() => {
     try {
       const raw = localStorage.getItem("sd_user");
@@ -74,7 +75,7 @@ export default function AppEntry() {
   if (loading) {
     return (
       <div className="grid min-h-screen place-items-center bg-[#07090b] text-sm text-zinc-300">
-        Yukleniyor...
+        {lang === "tr" ? "Yükleniyor..." : "Loading..."}
       </div>
     );
   }
@@ -85,7 +86,7 @@ export default function AppEntry() {
   const isDietitian = roleNames.includes("dietitian") || profile.account_type === "dietitian";
   const isClient = roleNames.includes("client") || roleNames.includes("user") || !isDietitian;
 
-  if (isAdmin) return <Dashboard />;
+  if (isAdmin) return <AdminPanel />;
   if (isDietitian) {
     if (profile.dietitian_verification_status === "approved") {
       return <DietitianHome profile={profile} isAdmin={isAdmin} />;

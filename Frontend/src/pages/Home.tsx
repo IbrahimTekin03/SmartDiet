@@ -13,6 +13,15 @@ type SessionUser = {
   phone_number?: string;
 };
 
+type LandingStats = {
+  totalDietitians: number;
+  approvedDietitians: number;
+  totalUsers: number;
+  activeUsers: number;
+  totalPlans: number;
+  totalMeasurements: number;
+};
+
 type HomeCopy = {
   brandSub: string;
   signIn: string;
@@ -62,44 +71,44 @@ const COPY: Record<Lang, HomeCopy> = {
     brandSub: "Klinik ve Diyet Yönetimi",
     signIn: "Giriş Yap",
     signUp: "Kayıt Ol",
-    welcome: "Hoşgeldin",
+    welcome: "Hoş geldin",
     profile: "Profil",
     logout: "Çıkış Yap",
-    chip: "Diyetisyen ve danışan için tek panel deneyimi",
-    titleA: "Danışan takibini",
-    titleB: "tek ekranda",
-    titleC: "yönetin.",
+    chip: "Bilimsel takip, uzman desteği ve sürdürülebilir sonuç",
+    titleA: "Sağlıklı yaşamı",
+    titleB: "uzmanlarla",
+    titleC: "planlayın.",
     subtitle:
-      "Plan oluşturma, tüketim işaretleme, ölçüm geçmişi ve anlık mesajlaşma aynı akış içinde.",
+      "SmartDiet; diyetisyen ve danışanı tek platformda buluşturur. Kişiselleştirilmiş plan, ölçüm takibi ve güvenli iletişim ile süreci kolaylaştırır.",
     ctaStart: "Hemen Başla",
     ctaAccount: "Hesabım Var",
-    trust: "Güvenli giriş · Ölçüm geçmişi · Sohbet",
-    stat1: "aktif danışan",
-    stat2: "günlük plan",
-    stat3: "uyum oranı",
-    stat4: "iletişim akışı",
+    trust: "Gerçek kullanıcı verisi · Onaylı uzmanlar · Güvenli altyapı",
+    stat1: "onaylı diyetisyen",
+    stat2: "kayıtlı kullanıcı",
+    stat3: "oluşturulan plan",
+    stat4: "ölçüm kaydı",
     today: "Bugün",
     quick: "Hızlı özet",
     live: "Canlı",
-    activeClients: "Aktif danışan",
-    dailyPlans: "Günlük plan",
-    messages: "Mesaj",
-    adherence: "Uyum",
-    marked: "İşaretlenen",
-    missing: "Eksik",
+    activeClients: "Toplam diyetisyen",
+    dailyPlans: "Toplam kullanıcı",
+    messages: "Onaylı diyetisyen",
+    adherence: "Aktif kullanıcı oranı",
+    marked: "Aktif kullanıcı",
+    missing: "Pasif kullanıcı",
     measurement: "Ölçüm",
     chat: "Sohbet",
     historyTracking: "Tarihçeli takip",
     photoSeen: "Fotoğraf ve görüldü",
-    demoPanel: "Demo Panel",
-    demoSub: "Gerçek kullanımda daha fazlası",
+    demoPanel: "Neden SmartDiet?",
+    demoSub: "Uzman eşleşmesi, takip ve sürdürülebilir gelişim tek yerde",
     goPanel: "Panele Git",
-    featureA: "Planlama",
-    featureAText: "Gün ve öğün bazlı hızlı plan.",
-    featureB: "Takip",
-    featureBText: "Yedim veya yemedim tek tık.",
-    featureC: "Ölçüm",
-    featureCText: "Kilo ve ölçüm grafik akışına hızlı erişim.",
+    featureA: "Uzman Eşleşmesi",
+    featureAText: "Hedefine uygun diyetisyenle güvenle çalış.",
+    featureB: "Süreç Takibi",
+    featureBText: "Günlük planları adım adım uygula ve takip et.",
+    featureC: "Ölçüm Geçmişi",
+    featureCText: "Gelişimini raporlarla düzenli olarak gör.",
     responsiveTag: "Responsive · Modern Arayüz",
   },
   en: {
@@ -109,53 +118,62 @@ const COPY: Record<Lang, HomeCopy> = {
     welcome: "Welcome",
     profile: "Profile",
     logout: "Log Out",
-    chip: "Single panel flow for dietitians and clients",
-    titleA: "Manage client tracking",
-    titleB: "on one screen",
-    titleC: "easily.",
+    chip: "Evidence-based tracking with expert guidance",
+    titleA: "Build healthier habits",
+    titleB: "with verified",
+    titleC: "dietitians.",
     subtitle:
-      "Planning, intake marking, measurement history and real-time messaging in one streamlined flow.",
+      "SmartDiet brings dietitians and clients together in one platform with personalized plans, progress tracking and secure communication.",
     ctaStart: "Get Started",
-    ctaAccount: "I Have Account",
-    trust: "Secure login · Measurement history · Chat",
-    stat1: "active clients",
-    stat2: "daily plans",
-    stat3: "adherence rate",
-    stat4: "communication flow",
+    ctaAccount: "I Have an Account",
+    trust: "Live platform stats · Verified experts · Secure flow",
+    stat1: "verified dietitians",
+    stat2: "registered users",
+    stat3: "plans created",
+    stat4: "measurement records",
     today: "Today",
     quick: "Quick overview",
     live: "Live",
-    activeClients: "Active clients",
-    dailyPlans: "Daily plans",
-    messages: "Messages",
-    adherence: "Adherence",
-    marked: "Marked",
-    missing: "Missing",
+    activeClients: "Total dietitians",
+    dailyPlans: "Total users",
+    messages: "Verified dietitians",
+    adherence: "Active user ratio",
+    marked: "Active users",
+    missing: "Inactive users",
     measurement: "Measurement",
     chat: "Chat",
     historyTracking: "Historical tracking",
     photoSeen: "Photo and seen status",
-    demoPanel: "Demo Panel",
-    demoSub: "More depth in real usage",
+    demoPanel: "Why SmartDiet?",
+    demoSub: "Expert matching, tracking and sustainable progress in one place",
     goPanel: "Open Panel",
-    featureA: "Planning",
-    featureAText: "Fast day and meal planning.",
-    featureB: "Tracking",
-    featureBText: "One tap for consumed status.",
-    featureC: "Measurement",
-    featureCText: "Weight and progress timeline.",
+    featureA: "Expert Matching",
+    featureAText: "Work with the right dietitian for your goals.",
+    featureB: "Process Tracking",
+    featureBText: "Follow your daily plan with clear steps.",
+    featureC: "Progress History",
+    featureCText: "Review outcomes with measurement timelines.",
     responsiveTag: "Responsive · Modern UI",
   },
 };
 
 export default function Home() {
+  const API_BASE = "http://localhost:3000";
   const swaggerUrl = "http://localhost:3000/api/docs";
+  const initialStats: LandingStats = {
+    totalDietitians: 0,
+    approvedDietitians: 0,
+    totalUsers: 0,
+    activeUsers: 0,
+    totalPlans: 0,
+    totalMeasurements: 0,
+  };
 
-  const [theme, setTheme] = useState<Theme>(() => {
+  const [theme] = useState<Theme>(() => {
     const saved = localStorage.getItem("sd_theme") as Theme | null;
     return saved === "dark" ? "dark" : "light";
   });
-  const [lang, setLang] = useState<Lang>(() => {
+  const [lang] = useState<Lang>(() => {
     const saved = localStorage.getItem("sd_lang") as Lang | null;
     return saved === "en" ? "en" : "tr";
   });
@@ -168,16 +186,15 @@ export default function Home() {
     }
   });
   const [menuOpen, setMenuOpen] = useState(false);
+  const [stats, setStats] = useState<LandingStats>(initialStats);
+  const [statsLoading, setStatsLoading] = useState(true);
+  const [lastUpdatedAt, setLastUpdatedAt] = useState<number | null>(null);
   const menuRef = useRef<HTMLDivElement | null>(null);
+  const isLoggedIn = Boolean(localStorage.getItem("access_token"));
 
   useEffect(() => {
-    localStorage.setItem("sd_theme", theme);
     document.documentElement.setAttribute("data-theme", theme);
   }, [theme]);
-
-  useEffect(() => {
-    localStorage.setItem("sd_lang", lang);
-  }, [lang]);
 
   useEffect(() => {
     const onDocClick = (e: MouseEvent) => {
@@ -188,10 +205,56 @@ export default function Home() {
     return () => document.removeEventListener("mousedown", onDocClick);
   }, []);
 
+  useEffect(() => {
+    if (isLoggedIn) return;
+
+    let cancelled = false;
+
+    const fetchStats = async () => {
+      try {
+        const res = await fetch(`${API_BASE}/api/auth/public/landing-stats`);
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok) throw new Error("stats_fetch_failed");
+        const payload = data?.data ?? data;
+        if (cancelled) return;
+        setStats({
+          totalDietitians: Number(payload?.totalDietitians ?? 0),
+          approvedDietitians: Number(payload?.approvedDietitians ?? 0),
+          totalUsers: Number(payload?.totalUsers ?? 0),
+          activeUsers: Number(payload?.activeUsers ?? 0),
+          totalPlans: Number(payload?.totalPlans ?? 0),
+          totalMeasurements: Number(payload?.totalMeasurements ?? 0),
+        });
+        setLastUpdatedAt(Date.now());
+      } catch {
+        if (cancelled) return;
+      } finally {
+        if (!cancelled) setStatsLoading(false);
+      }
+    };
+
+    fetchStats();
+    const timer = window.setInterval(fetchStats, 20000);
+
+    return () => {
+      cancelled = true;
+      window.clearInterval(timer);
+    };
+  }, [isLoggedIn]);
+
   const isDark = theme === "dark";
   const t = COPY[lang];
-  const isLoggedIn = Boolean(localStorage.getItem("access_token"));
-  const dashboardPath = "/dashboard";
+  const adminPanelPath = "/admin-panel";
+  const numberLocale = lang === "tr" ? "tr-TR" : "en-US";
+  const timeLocale = lang === "tr" ? "tr-TR" : "en-US";
+  const formatNum = (value: number) => Number(value || 0).toLocaleString(numberLocale);
+  const inactiveUsers = Math.max(0, Number(stats.totalUsers || 0) - Number(stats.activeUsers || 0));
+  const activeRate = stats.totalUsers > 0 ? Math.round((stats.activeUsers / stats.totalUsers) * 100) : 0;
+  const updatedAtText = lastUpdatedAt
+    ? new Date(lastUpdatedAt).toLocaleTimeString(timeLocale, { hour: "2-digit", minute: "2-digit", second: "2-digit" })
+    : statsLoading
+      ? "..."
+      : "-";
   const displayName = useMemo(() => {
     if (!sessionUser) return "";
     const full = [sessionUser.first_name, sessionUser.last_name].filter(Boolean).join(" ").trim();
@@ -231,10 +294,7 @@ export default function Home() {
 
       <header className="fixed left-0 right-0 top-0 z-30">
         <div className="relative mx-auto flex w-full max-w-[1500px] items-center justify-between px-4 py-3 sm:px-6">
-          <div className="flex items-center gap-2">
-            <ThemeSwitch theme={theme} setTheme={setTheme} isDark={isDark} />
-            <LanguageSwitch lang={lang} setLang={setLang} isDark={isDark} />
-          </div>
+          <div className="w-[72px] sm:w-[154px]" aria-hidden="true" />
 
           <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2">
             <a
@@ -328,8 +388,8 @@ export default function Home() {
 
       <main className="relative z-10 mx-auto h-[100dvh] w-full max-w-[1500px] overflow-hidden px-4 pt-[72px] sm:px-6">
         <div className="flex h-full min-h-0 flex-col gap-5 pb-4">
-          <div className="home-main-grid grid min-h-0 flex-1 items-start gap-8 lg:grid-cols-[1.15fr_0.85fr]">
-            <section className="animate-inUp">
+          <div className="home-main-grid grid min-h-0 flex-1 items-start gap-8 lg:grid-cols-[1.12fr_0.88fr]">
+            <section className="animate-inUp lg:pr-4">
               <div className="flex items-center gap-3">
                 <div
                   className={[
@@ -385,7 +445,7 @@ export default function Home() {
 
               <div className="home-cta mt-6 flex flex-wrap items-center gap-3">
                 <Link
-                  to={isLoggedIn ? dashboardPath : "/register"}
+                  to={isLoggedIn ? adminPanelPath : "/register"}
                   className={[
                     "group relative overflow-hidden rounded-2xl px-8 py-4 text-sm font-black transition",
                     isDark
@@ -398,7 +458,7 @@ export default function Home() {
                 </Link>
 
                 <Link
-                  to={isLoggedIn ? dashboardPath : "/login"}
+                  to={isLoggedIn ? adminPanelPath : "/login"}
                   className={[
                     "rounded-2xl px-8 py-4 text-sm font-black transition",
                     isDark
@@ -414,21 +474,9 @@ export default function Home() {
                 </div>
               </div>
 
-              <div className="mt-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-                <StatBadge isDark={isDark} value="12+" label={t.stat1} />
-                <StatBadge isDark={isDark} value="34" label={t.stat2} />
-                <StatBadge isDark={isDark} value="78%" label={t.stat3} />
-                <StatBadge isDark={isDark} value="7/24" label={t.stat4} />
-              </div>
-
-              <div className="home-features mt-6 hidden gap-3 sm:grid sm:grid-cols-3">
-                <FeatureCard isDark={isDark} title={t.featureA} text={t.featureAText} />
-                <FeatureCard isDark={isDark} title={t.featureB} text={t.featureBText} />
-                <FeatureCard isDark={isDark} title={t.featureC} text={t.featureCText} />
-              </div>
             </section>
 
-            <aside className="hidden animate-inUp lg:block [animation-delay:120ms]">
+            <aside className="animate-inUp [animation-delay:120ms]">
               <div
                 className={[
                   "relative mx-auto w-full max-w-[640px] rounded-[34px] p-5 sm:p-6 backdrop-blur",
@@ -451,6 +499,9 @@ export default function Home() {
                     <div>
                       <div className="text-sm font-extrabold">{t.today}</div>
                       <div className={["text-xs", isDark ? "text-zinc-400" : "text-[#4d6b62]"].join(" ")}>{t.quick}</div>
+                      <div className={["mt-1 text-[10px]", isDark ? "text-zinc-500" : "text-[#5a776d]"].join(" ")}>
+                        {lang === "tr" ? `Son güncelleme: ${updatedAtText}` : `Updated: ${updatedAtText}`}
+                      </div>
                     </div>
                     <span
                       className={[
@@ -465,9 +516,21 @@ export default function Home() {
                   </div>
 
                   <div className="mt-4 grid gap-2">
-                    <MetricRow isDark={isDark} label={t.activeClients} value="12" />
-                    <MetricRow isDark={isDark} label={t.dailyPlans} value="34" />
-                    <MetricRow isDark={isDark} label={t.messages} value="5" />
+                    <MetricRow
+                      isDark={isDark}
+                      label={t.activeClients}
+                      value={statsLoading ? "..." : formatNum(stats.totalDietitians)}
+                    />
+                    <MetricRow
+                      isDark={isDark}
+                      label={t.dailyPlans}
+                      value={statsLoading ? "..." : formatNum(stats.totalUsers)}
+                    />
+                    <MetricRow
+                      isDark={isDark}
+                      label={t.messages}
+                      value={statsLoading ? "..." : `${formatNum(stats.approvedDietitians)}+`}
+                    />
                   </div>
 
                   <div
@@ -478,26 +541,29 @@ export default function Home() {
                   >
                     <div className="flex items-center justify-between text-xs">
                       <span className={isDark ? "text-zinc-300" : "text-[#36544c]"}>{t.adherence}</span>
-                      <span className={["font-extrabold", isDark ? "text-zinc-50" : "text-zinc-900"].join(" ")}>78%</span>
+                      <span className={["font-extrabold", isDark ? "text-zinc-50" : "text-zinc-900"].join(" ")}>
+                        {statsLoading ? "..." : `${activeRate}%`}
+                      </span>
                     </div>
                     <div className={["mt-2 h-2 w-full overflow-hidden rounded-full", isDark ? "bg-white/10" : "bg-[#d3e2da]"].join(" ")}>
                       <div
                         className={[
-                          "h-2 w-[78%] rounded-full animate-progress",
+                          "h-2 rounded-full animate-progress",
                           isDark ? "bg-emerald-400" : "bg-gradient-to-r from-[#1a7f5b] to-[#167f72]",
                         ].join(" ")}
+                        style={{ width: `${activeRate}%` }}
                       />
                     </div>
 
                     <div className="mt-3 grid grid-cols-2 gap-2">
-                      <TinyStat isDark={isDark} title={t.marked} value="22" />
-                      <TinyStat isDark={isDark} title={t.missing} value="6" />
+                      <TinyStat isDark={isDark} title={t.marked} value={statsLoading ? "..." : formatNum(stats.activeUsers)} />
+                      <TinyStat isDark={isDark} title={t.missing} value={statsLoading ? "..." : formatNum(inactiveUsers)} />
                     </div>
                   </div>
 
                   <div className="mt-4 grid grid-cols-2 gap-2">
-                    <MiniModule isDark={isDark} title={t.measurement} desc={t.historyTracking} />
-                    <MiniModule isDark={isDark} title={t.chat} desc={t.photoSeen} />
+                    <MiniModule isDark={isDark} title={t.featureA} desc={t.featureAText} />
+                    <MiniModule isDark={isDark} title={t.featureB} desc={t.featureBText} />
                   </div>
 
                   <div
@@ -511,10 +577,12 @@ export default function Home() {
                       <div className={["text-[11px]", isDark ? "text-zinc-400" : "text-[#4d6b62]"].join(" ")}>{t.demoSub}</div>
                     </div>
                     <Link
-                      to={isLoggedIn ? dashboardPath : "/login"}
+                      to={isLoggedIn ? adminPanelPath : "/login"}
                       className={[
                         "rounded-xl px-3 py-2 text-xs font-black transition",
-                        isDark ? "bg-white/5 hover:bg-white/10" : "bg-[#dcebe4] text-[#123a32] hover:bg-[#d2e2db]",
+                        isDark
+                          ? "bg-white/5 hover:bg-white/10"
+                          : "bg-[#dcebe4] text-[#123a32] hover:bg-[#d2e2db]",
                       ].join(" ")}
                     >
                       {t.goPanel} ›
@@ -537,22 +605,11 @@ export default function Home() {
         @keyframes progress { 0% { transform: translateX(-6%); filter: brightness(1);} 50% { transform: translateX(0%); filter: brightness(1.08);} 100% { transform: translateX(-6%); filter: brightness(1);} }
         @keyframes floatSlow { 0% { transform: translate(0,0) scale(1);} 50% { transform: translate(18px, 14px) scale(1.03);} 100% { transform: translate(0,0) scale(1);} }
         @keyframes floatSlow2 { 0% { transform: translate(0,0) scale(1);} 50% { transform: translate(-16px, -10px) scale(1.03);} 100% { transform: translate(0,0) scale(1);} }
-        @keyframes themeWipe {
-          0% { clip-path: circle(0% at 10% 8%); opacity: 0.35; transform: scale(0.98); filter: blur(0px); }
-          100% { clip-path: circle(150% at 10% 8%); opacity: 0; transform: scale(1.02); filter: blur(8px); }
-        }
-        @keyframes themeSheen {
-          0% { opacity: 0; transform: translateX(-24%) skewX(-10deg); }
-          35% { opacity: 0.28; }
-          100% { opacity: 0; transform: translateX(24%) skewX(-10deg); }
-        }
 
         .animate-inUp { animation: inUp 520ms ease-out both; }
         .animate-progress { animation: progress 2.8s ease-in-out infinite; }
         .animate-floatSlow { animation: floatSlow 11s ease-in-out infinite; }
         .animate-floatSlow2 { animation: floatSlow2 13s ease-in-out infinite; }
-        .theme-wipe { animation: themeWipe 640ms cubic-bezier(0.2, 0.8, 0.2, 1) both; }
-        .theme-sheen { animation: themeSheen 640ms ease-out both; }
 
         @media (max-width: 860px) {
           .home-main-grid {
@@ -606,170 +663,6 @@ function LightBackground() {
       <div className="absolute inset-0 opacity-[0.34] [background:linear-gradient(90deg,rgba(248,252,250,0.35),transparent_32%,transparent_68%,rgba(248,252,250,0.30))]" />
       <div className="absolute -left-56 -top-52 h-[760px] w-[760px] rounded-full bg-emerald-600/16 blur-[125px] animate-floatSlow" />
       <div className="absolute -bottom-72 -right-72 h-[880px] w-[880px] rounded-full bg-teal-400/12 blur-[150px] animate-floatSlow2" />
-    </div>
-  );
-}
-
-function ThemeSwitch({
-  theme,
-  setTheme,
-  isDark,
-}: {
-  theme: Theme;
-  setTheme: (t: Theme) => void;
-  isDark: boolean;
-}) {
-  const onToggle = () => {
-    const wipe = document.createElement("div");
-    wipe.className = "pointer-events-none fixed inset-0 z-[9999] theme-wipe";
-    wipe.style.background = isDark
-      ? "radial-gradient(900px_520px_at_10%_6%,rgba(70,255,178,0.18),transparent_60%),linear-gradient(180deg,#f8fdf9,#eef8f2_62%,#f4fbf7)"
-      : "radial-gradient(900px_520px_at_10%_6%,rgba(16,185,129,0.22),transparent_60%),linear-gradient(180deg,#050608,#07090b_55%,#050608)";
-
-    const sheen = document.createElement("div");
-    sheen.className = "pointer-events-none fixed inset-0 z-[10000] theme-sheen";
-    sheen.style.background = "linear-gradient(108deg,transparent_22%,rgba(255,255,255,0.18)_50%,transparent_78%)";
-
-    document.body.appendChild(wipe);
-    document.body.appendChild(sheen);
-
-    window.setTimeout(() => {
-      document.body.removeChild(wipe);
-      document.body.removeChild(sheen);
-    }, 640);
-
-    setTheme(theme === "dark" ? "light" : "dark");
-  };
-
-  return (
-    <button
-      type="button"
-      onClick={onToggle}
-      className={[
-        "relative h-9 w-[82px] rounded-full p-1 transition",
-        isDark
-          ? "border border-white/10 bg-white/5 hover:bg-white/10"
-          : "border border-[#2e5c4f]/25 bg-[#eef4f0]/90 shadow-[0_10px_30px_rgba(8,23,20,0.12)] hover:bg-[#f3f7f4]",
-      ].join(" ")}
-      aria-label="Theme"
-      title="Theme"
-    >
-      <div
-        className={[
-          "absolute left-2 top-1/2 -translate-y-1/2 transition",
-          isDark ? "text-zinc-500/70" : "text-amber-400",
-        ].join(" ")}
-      >
-        <svg viewBox="0 0 24 24" className="h-3.5 w-3.5" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
-          <circle cx="12" cy="12" r="4" />
-          <path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41" />
-        </svg>
-      </div>
-      <div
-        className={[
-          "absolute right-2 top-1/2 -translate-y-1/2 transition",
-          isDark ? "text-indigo-200" : "text-zinc-500/70",
-        ].join(" ")}
-      >
-        <svg viewBox="0 0 24 24" className="h-3.5 w-3.5" fill="currentColor" aria-hidden="true">
-          <path d="M21 14.5A8.5 8.5 0 1 1 9.5 3a7 7 0 1 0 11.5 11.5z" />
-        </svg>
-      </div>
-      <div
-        className={[
-          "h-7 w-7 rounded-full transition-transform duration-500",
-          isDark
-            ? "translate-x-[40px] bg-emerald-500 shadow-[0_0_0_1px_rgba(16,185,129,0.25)_inset,0_14px_40px_rgba(16,185,129,0.25)]"
-            : "translate-x-0 bg-[#1a7f5b] shadow-[0_0_0_1px_rgba(8,79,63,0.30)_inset,0_14px_40px_rgba(8,79,63,0.26)]",
-        ].join(" ")}
-      />
-    </button>
-  );
-}
-
-function LanguageSwitch({
-  lang,
-  setLang,
-  isDark,
-}: {
-  lang: Lang;
-  setLang: (l: Lang) => void;
-  isDark: boolean;
-}) {
-  return (
-    <div
-      className={[
-        "inline-flex h-9 items-center gap-1 rounded-full p-1",
-        isDark
-          ? "border border-white/10 bg-white/5"
-          : "border border-[#2e5c4f]/25 bg-[#eef4f0]/90 shadow-[0_10px_30px_rgba(8,23,20,0.12)]",
-      ].join(" ")}
-      aria-label="Language"
-      title="Language"
-    >
-      <button
-        type="button"
-        onClick={() => setLang("tr")}
-        className={[
-          "rounded-full px-3 py-1 text-[11px] font-black transition",
-          lang === "tr"
-            ? isDark
-              ? "bg-emerald-500/25 text-emerald-100"
-              : "bg-[#dbece4] text-[#0f2f29]"
-            : isDark
-              ? "text-zinc-300 hover:bg-white/10"
-              : "text-[#3e6057] hover:bg-[#e5efea]",
-        ].join(" ")}
-      >
-        TR
-      </button>
-      <button
-        type="button"
-        onClick={() => setLang("en")}
-        className={[
-          "rounded-full px-3 py-1 text-[11px] font-black transition",
-          lang === "en"
-            ? isDark
-              ? "bg-emerald-500/25 text-emerald-100"
-              : "bg-[#dbece4] text-[#0f2f29]"
-            : isDark
-              ? "text-zinc-300 hover:bg-white/10"
-              : "text-[#3e6057] hover:bg-[#e5efea]",
-        ].join(" ")}
-      >
-        EN
-      </button>
-    </div>
-  );
-}
-
-function StatBadge({ isDark, value, label }: { isDark: boolean; value: string; label: string }) {
-  return (
-    <div
-      className={[
-        "rounded-2xl px-4 py-3 text-xs",
-        isDark
-          ? "border border-white/10 bg-white/5 text-zinc-300"
-          : "border border-[#325d51]/24 bg-[#ecf4ef]/86 text-[#36544c]",
-      ].join(" ")}
-    >
-      <span className="text-sm font-black">{value}</span> {label}
-    </div>
-  );
-}
-
-function FeatureCard({ isDark, title, text }: { isDark: boolean; title: string; text: string }) {
-  return (
-    <div
-      className={[
-        "rounded-2xl p-5 transition-all duration-300 hover:-translate-y-1",
-        isDark
-          ? "border border-white/10 bg-white/5 shadow-[0_22px_65px_rgba(0,0,0,0.35)]"
-          : "border border-[#325d51]/25 bg-[#ecf4ef]/86 shadow-[0_22px_65px_rgba(8,23,20,0.12)]",
-      ].join(" ")}
-    >
-      <div className="text-sm font-black">{title}</div>
-      <div className={["mt-2 text-sm", isDark ? "text-zinc-300" : "text-[#4d6b62]"].join(" ")}>{text}</div>
     </div>
   );
 }

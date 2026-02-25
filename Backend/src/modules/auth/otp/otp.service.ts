@@ -73,7 +73,12 @@ export class OtpService {
 
   private normalizeIdentity(identityType: OtpIdentityType, identity: string): string {
     const normalized = identity.trim();
-    return identityType === OtpIdentityType.Email ? normalized.toLowerCase() : normalized;
+    if (identityType === OtpIdentityType.Email) return normalized.toLowerCase();
+
+    const startsWithPlus = normalized.startsWith('+');
+    const digitsOnly = normalized.replace(/\D/g, '');
+    if (!digitsOnly) return normalized;
+    return startsWithPlus ? `+${digitsOnly}` : digitsOnly;
   }
 
   private buildClientFingerprint(context?: OtpRequestContext): string {
@@ -93,6 +98,11 @@ export class OtpService {
   ): string {
     const fingerprint = this.buildClientFingerprint(context);
     return `otp:trust:${purpose}:${identityType}:${identity}:${fingerprint}`;
+  }
+
+  private buildUserTrustKey(userId: string, purpose: OtpPurpose, context?: OtpRequestContext): string {
+    const fingerprint = this.buildClientFingerprint(context);
+    return `otp:trust:user:${purpose}:${userId}:${fingerprint}`;
   }
 
   private async getTrustedTtlSeconds(key: string): Promise<number> {
@@ -136,6 +146,41 @@ export class OtpService {
     return {
       otpRequired: trustedTtlSeconds <= 0,
       trustedTtlSeconds,
+    };
+  }
+
+  async shouldRequireOtpForUser(
+    user: Pick<User, 'id' | 'email' | 'phone_number'> | null | undefined,
+    purpose: OtpPurpose,
+    context?: OtpRequestContext,
+  ) {
+    if (purpose !== OtpPurpose.Login || !user?.id) {
+      return { otpRequired: true, trustedTtlSeconds: 0 };
+    }
+
+    const keys: string[] = [this.buildUserTrustKey(user.id, purpose, context)];
+
+    const email = String(user.email || '').trim();
+    if (email) {
+      const normalizedEmail = this.normalizeIdentity(OtpIdentityType.Email, email);
+      keys.push(this.buildTrustKey(OtpIdentityType.Email, normalizedEmail, purpose, context));
+    }
+
+    const phone = String(user.phone_number || '').trim();
+    if (phone) {
+      const normalizedPhone = this.normalizeIdentity(OtpIdentityType.Phone, phone);
+      keys.push(this.buildTrustKey(OtpIdentityType.Phone, normalizedPhone, purpose, context));
+    }
+
+    let maxTtl = 0;
+    for (const key of keys) {
+      const ttl = await this.getTrustedTtlSeconds(key);
+      if (ttl > maxTtl) maxTtl = ttl;
+    }
+
+    return {
+      otpRequired: maxTtl <= 0,
+      trustedTtlSeconds: maxTtl,
     };
   }
 
@@ -312,11 +357,6 @@ export class OtpService {
     otp.consumed_at = now;
     await this.otpRepo.save(otp);
 
-    if (purpose === OtpPurpose.Login) {
-      const trustKey = this.buildTrustKey(identityType, normalizedIdentity, purpose, context);
-      await this.markTrusted(trustKey, OTP_TRUST_TTL_SECONDS);
-    }
-
     if (purpose === OtpPurpose.Signup) {
       return { ok: true, verified: true };
     }
@@ -327,6 +367,37 @@ export class OtpService {
 
     if (!user) {
       throw new UnauthorizedException('User not found');
+    }
+
+    if (purpose === OtpPurpose.Login) {
+      const trustTasks: Array<Promise<void>> = [];
+      const identityTrustKey = this.buildTrustKey(identityType, normalizedIdentity, purpose, context);
+      trustTasks.push(this.markTrusted(identityTrustKey, OTP_TRUST_TTL_SECONDS));
+
+      const userTrustKey = this.buildUserTrustKey(user.id, purpose, context);
+      trustTasks.push(this.markTrusted(userTrustKey, OTP_TRUST_TTL_SECONDS));
+
+      if (user.email) {
+        const emailTrustKey = this.buildTrustKey(
+          OtpIdentityType.Email,
+          this.normalizeIdentity(OtpIdentityType.Email, user.email),
+          purpose,
+          context,
+        );
+        trustTasks.push(this.markTrusted(emailTrustKey, OTP_TRUST_TTL_SECONDS));
+      }
+
+      if (user.phone_number) {
+        const phoneTrustKey = this.buildTrustKey(
+          OtpIdentityType.Phone,
+          this.normalizeIdentity(OtpIdentityType.Phone, user.phone_number),
+          purpose,
+          context,
+        );
+        trustTasks.push(this.markTrusted(phoneTrustKey, OTP_TRUST_TTL_SECONDS));
+      }
+
+      await Promise.all(trustTasks);
     }
 
     if (!user.is_active) {
