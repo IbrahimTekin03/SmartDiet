@@ -182,6 +182,8 @@ export default function Home() {
   const [statsLoading, setStatsLoading] = useState(true);
   const [lastUpdatedAt, setLastUpdatedAt] = useState<number | null>(null);
   const menuRef = useRef<HTMLDivElement | null>(null);
+  const statsRequestInFlightRef = useRef(false);
+  const statsAbortRef = useRef<AbortController | null>(null);
   const isLoggedIn = Boolean(localStorage.getItem("access_token"));
 
   useEffect(() => {
@@ -199,8 +201,13 @@ export default function Home() {
     let cancelled = false;
 
     const fetchStats = async () => {
+      if (statsRequestInFlightRef.current) return;
+      statsRequestInFlightRef.current = true;
+      statsAbortRef.current?.abort();
+      const controller = new AbortController();
+      statsAbortRef.current = controller;
       try {
-        const res = await fetch(`${API_BASE}/api/auth/public/landing-stats`);
+        const res = await fetch(`${API_BASE}/api/auth/public/landing-stats`, { signal: controller.signal });
         const data = await res.json().catch(() => ({}));
         if (!res.ok) throw new Error("stats_fetch_failed");
         const payload = data?.data ?? data;
@@ -217,15 +224,24 @@ export default function Home() {
       } catch {
         if (cancelled) return;
       } finally {
+        statsRequestInFlightRef.current = false;
         if (!cancelled) setStatsLoading(false);
       }
     };
 
-    fetchStats();
-    const timer = window.setInterval(fetchStats, 20000);
+    const run = () => {
+      if (document.visibilityState !== "visible") return;
+      void fetchStats();
+    };
+
+    run();
+    const timer = window.setInterval(run, 30000);
+    document.addEventListener("visibilitychange", run);
 
     return () => {
       cancelled = true;
+      statsAbortRef.current?.abort();
+      document.removeEventListener("visibilitychange", run);
       window.clearInterval(timer);
     };
   }, [isLoggedIn]);

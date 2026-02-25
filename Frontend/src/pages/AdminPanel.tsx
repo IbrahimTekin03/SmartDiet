@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useAppSettings } from "../context/AppSettingsContext";
 
@@ -288,13 +288,21 @@ export default function AdminPanel() {
   const [lastUpdatedAt, setLastUpdatedAt] = useState<number | null>(null);
   const [viewMode, setViewMode] = useState<ViewMode>("queue");
   const [applicationStatus, setApplicationStatus] = useState<ApplicationStatus>("pending");
+  const [searchInput, setSearchInput] = useState("");
   const [search, setSearch] = useState("");
   const [cityFilter, setCityFilter] = useState("");
   const [sortMode, setSortMode] = useState<SortMode>("newest");
   const [selectedId, setSelectedId] = useState("");
   const [rejectReason, setRejectReason] = useState("");
+  const refreshInFlightRef = useRef(false);
+  const refreshAllRef = useRef<() => Promise<void>>(async () => undefined);
 
   const t = COPY[lang];
+
+  useEffect(() => {
+    const timer = window.setTimeout(() => setSearch(searchInput), 320);
+    return () => window.clearTimeout(timer);
+  }, [searchInput]);
 
   useEffect(() => {
     const token = localStorage.getItem("access_token");
@@ -430,21 +438,45 @@ export default function AdminPanel() {
   const refreshAll = useCallback(async () => {
     const token = localStorage.getItem("access_token");
     if (!token || !isAdmin) return;
-    await Promise.all([
-      fetchSummary(token),
-      fetchApps(token, applicationStatus, applicationsPage),
-      fetchStats(),
-      fetchHistory(token, historyPage),
-    ]);
-    setLastUpdatedAt(Date.now());
+    if (refreshInFlightRef.current) return;
+    refreshInFlightRef.current = true;
+    try {
+      await Promise.all([
+        fetchSummary(token),
+        fetchApps(token, applicationStatus, applicationsPage),
+        fetchStats(),
+        fetchHistory(token, historyPage),
+      ]);
+      setLastUpdatedAt(Date.now());
+    } finally {
+      refreshInFlightRef.current = false;
+    }
   }, [applicationStatus, applicationsPage, fetchApps, fetchHistory, fetchStats, fetchSummary, historyPage, isAdmin]);
 
   useEffect(() => {
+    refreshAllRef.current = refreshAll;
+  }, [refreshAll]);
+
+  useEffect(() => {
     if (!isAdmin) return;
-    refreshAll();
-    const timer = window.setInterval(refreshAll, 20000);
-    return () => window.clearInterval(timer);
+    void refreshAll();
   }, [isAdmin, refreshAll]);
+
+  useEffect(() => {
+    if (!isAdmin) return;
+    const run = () => {
+      if (document.visibilityState !== "visible") return;
+      void refreshAllRef.current();
+    };
+
+    const timer = window.setInterval(run, 30000);
+    document.addEventListener("visibilitychange", run);
+
+    return () => {
+      window.clearInterval(timer);
+      document.removeEventListener("visibilitychange", run);
+    };
+  }, [isAdmin]);
 
   useEffect(() => {
     setApplicationsPage(1);
@@ -607,7 +639,7 @@ export default function AdminPanel() {
                 </div>
 
                 <div className="mt-3 grid gap-2 sm:grid-cols-3">
-                  <label><span className={labelClass(isDark)}>{t.search}</span><input value={search} onChange={(e) => setSearch(e.target.value)} placeholder={t.searchPh} className={inputClass(isDark)} /></label>
+                  <label><span className={labelClass(isDark)}>{t.search}</span><input value={searchInput} onChange={(e) => setSearchInput(e.target.value)} placeholder={t.searchPh} className={inputClass(isDark)} /></label>
                   <label><span className={labelClass(isDark)}>{t.city}</span><select value={cityFilter} onChange={(e) => setCityFilter(e.target.value)} className={inputClass(isDark)}><option value="">{t.allCities}</option>{cities.map((city) => <option key={city} value={city}>{city}</option>)}</select></label>
                   <label><span className={labelClass(isDark)}>{t.sort}</span><select value={sortMode} onChange={(e) => setSortMode(e.target.value as SortMode)} className={inputClass(isDark)}><option value="newest">{t.newest}</option><option value="oldest">{t.oldest}</option></select></label>
                 </div>
