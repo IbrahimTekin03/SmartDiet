@@ -42,6 +42,8 @@ const COPY = {
     logout: "Çıkış Yap",
     loadingProfile: "Profil yükleniyor...",
     appearance: "Tema",
+    themeDark: "Koyu",
+    themeLight: "Açık",
     uploadPhoto: "Profil Fotosu",
     save: "Değişiklikleri Kaydet",
     saving: "Kaydediliyor...",
@@ -77,6 +79,15 @@ const COPY = {
     profileDetails: "Profil Bilgileri",
     liveProfile: "Canlı Profil",
     notProvided: "Belirtilmedi",
+    roleAdmin: "Yönetici",
+    roleDietitian: "Diyetisyen",
+    roleClient: "Danışan",
+    roleUser: "Kullanıcı",
+    requestFailed: "İşlem sırasında hata oluştu.",
+    unauthorized: "Oturum süresi doldu. Lütfen tekrar giriş yap.",
+    avatarUpdated: "Profil fotoğrafı güncellendi.",
+    avatarResponseInvalid: "Profil verisi alınamadı.",
+    avatarUploadFailed: "Profil fotoğrafı yüklenemedi.",
   },
   en: {
     title: "Profile",
@@ -85,6 +96,8 @@ const COPY = {
     logout: "Log Out",
     loadingProfile: "Loading profile...",
     appearance: "Theme",
+    themeDark: "Dark",
+    themeLight: "Light",
     uploadPhoto: "Profile Photo",
     save: "Save Changes",
     saving: "Saving...",
@@ -120,8 +133,38 @@ const COPY = {
     profileDetails: "Profile Details",
     liveProfile: "Live Profile",
     notProvided: "Not provided",
+    roleAdmin: "Admin",
+    roleDietitian: "Dietitian",
+    roleClient: "Client",
+    roleUser: "User",
+    requestFailed: "Request failed.",
+    unauthorized: "Session expired. Please sign in again.",
+    avatarUpdated: "Profile photo updated.",
+    avatarResponseInvalid: "Could not read profile response.",
+    avatarUploadFailed: "Profile photo upload failed.",
   },
 } as const;
+
+function mapRoleName(roleName: string, lang: Lang, t: (typeof COPY)[Lang]): string {
+  const normalized = String(roleName || "").trim().toLowerCase();
+  if (!normalized) return t.roleUser;
+  if (normalized === "admin") return t.roleAdmin;
+  if (normalized === "dietitian") return t.roleDietitian;
+  if (normalized === "client") return t.roleClient;
+  if (normalized === "user") return t.roleUser;
+  return lang === "tr" ? normalized : roleName;
+}
+
+function mapProfileError(message: string, lang: Lang, t: (typeof COPY)[Lang], fallback: string): string {
+  const normalized = String(message || "").toLowerCase();
+  if (!normalized) return fallback;
+  if (normalized.includes("unauthorized") || normalized.includes("forbidden")) return t.unauthorized;
+  if (normalized.includes("request_failed")) return t.requestFailed;
+  if (normalized.includes("avatar upload failed")) return t.avatarUploadFailed;
+  if (normalized.includes("profile response invalid")) return t.avatarResponseInvalid;
+  if (normalized.includes("failed to fetch")) return fallback;
+  return lang === "tr" ? fallback : message;
+}
 
 export default function Profile() {
   const API_BASE = "http://localhost:3000";
@@ -246,10 +289,11 @@ export default function Profile() {
     return fromParts || user.full_name || user.display_name || "...";
   }, [user]);
 
-  const roleText = useMemo(
-    () => user?.roles?.map((r) => r?.name).filter(Boolean).join(", ") || (lang === "tr" ? "Kullanıcı" : "User"),
-    [lang, user],
-  );
+  const roleText = useMemo(() => {
+    const roles = (user?.roles || []).map((r) => String(r?.name || "").trim()).filter(Boolean);
+    if (!roles.length) return t.roleUser;
+    return roles.map((name) => mapRoleName(name, lang, t)).join(", ");
+  }, [lang, t, user]);
   const contactEmail = form.email || t.notProvided;
   const contactPhone = form.phone_number || t.notProvided;
 
@@ -323,7 +367,7 @@ export default function Profile() {
 
         const data = await res.json().catch(() => ({}));
         if (!res.ok) {
-          lastError = data?.message || "Avatar upload failed";
+          lastError = data?.message || t.avatarUploadFailed;
           if (res.status === 404) continue;
           throw new Error(lastError);
         }
@@ -332,15 +376,15 @@ export default function Profile() {
         if (profile?.id) {
           setUser(profile);
           localStorage.setItem("sd_user", JSON.stringify(profile));
-          setAvatarMsg(lang === "tr" ? "Profil fotoğrafı güncellendi." : "Profile photo updated.");
+          setAvatarMsg(t.avatarUpdated);
           return;
         }
       }
 
-      throw new Error(lastError || (lang === "tr" ? "Profil verisi alinamadi." : "Profile response invalid."));
+      throw new Error(lastError || t.avatarResponseInvalid);
     } catch (e: unknown) {
       const message = e instanceof Error ? e.message : "";
-      setAvatarErr(message || (lang === "tr" ? "Profil fotosu yuklenemedi." : "Profile photo upload failed."));
+      setAvatarErr(mapProfileError(message, lang, t, t.avatarUploadFailed));
     } finally {
       setUploading(false);
     }
@@ -375,7 +419,7 @@ export default function Profile() {
       setSaveMsg(t.saveOk);
     } catch (e: unknown) {
       const message = e instanceof Error ? e.message : "";
-      setSaveErr(message || t.saveErr);
+      setSaveErr(mapProfileError(message, lang, t, t.saveErr));
     } finally {
       setSaving(false);
     }
@@ -437,7 +481,7 @@ export default function Profile() {
                 onClick={() => setTheme((v) => (v === "dark" ? "light" : "dark"))}
                 className={["rounded-full px-3 py-1 text-xs font-extrabold tracking-tight transition", isDark ? "hover:bg-emerald-900/35" : "hover:bg-white"].join(" ")}
               >
-                {t.appearance}: {theme === "dark" ? "Dark" : "Light"}
+                {t.appearance}: {theme === "dark" ? t.themeDark : t.themeLight}
               </button>
             </ToolbarPill>
 
@@ -589,7 +633,7 @@ export default function Profile() {
 
             <div className="mt-4 flex items-center justify-between">
               <div className={["text-sm font-semibold", isDark ? "text-zinc-300" : "text-[#4e6f65]"].join(" ")}>
-                {t.rangeLabel}: <span className={isDark ? "text-zinc-100" : "text-[#0f2f29]"}>{rangeDays}d</span>
+                {t.rangeLabel}: <span className={isDark ? "text-zinc-100" : "text-[#0f2f29]"}>{rangeDays}{lang === "tr" ? " gün" : "d"}</span>
               </div>
               <div className={["text-xs", isDark ? "text-zinc-400" : "text-[#5a776d]"].join(" ")}>
                 {t.metricsCard}

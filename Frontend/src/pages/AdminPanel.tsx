@@ -46,66 +46,75 @@ const API_BASE = "http://localhost:3000";
 
 const COPY = {
   tr: {
-    tag: "Admin Panel",
-    title: "Platform yonetimi",
-    subtitle: "Basvuru onayi, sistem izlemesi ve operasyon kararlarini tek ekranda yonet.",
-    welcome: "Hos geldin",
-    updated: "Son guncelleme",
+    tag: "Yönetim Paneli",
+    title: "Platform yönetimi",
+    subtitle: "Başvuru onayı, sistem izlemesi ve operasyon kararlarını tek ekranda yönet.",
+    welcome: "Hoş geldin",
+    updated: "Son güncelleme",
     refresh: "Yenile",
     profile: "Profil",
-    logout: "Cikis",
-    queueTab: "Basvuru Merkezi",
+    logout: "Çıkış",
+    queueTab: "Başvuru Merkezi",
     opsTab: "Operasyon",
-    queueTitle: "Diyetisyen Basvuru Listesi",
-    queueSub: "Basvuruyu sec, detayini incele ve tek adimla onayla.",
-    search: "Basvuru ara",
+    queueTitle: "Diyetisyen Başvuru Listesi",
+    queueSub: "Başvuruyu seç, detayını incele ve tek adımla onayla.",
+    search: "Başvuru ara",
     searchPh: "isim, e-posta, klinik",
-    city: "Sehir",
-    allCities: "Tum sehirler",
-    sort: "Siralama",
+    city: "Şehir",
+    allCities: "Tüm şehirler",
+    sort: "Sıralama",
     newest: "Yeni > Eski",
     oldest: "Eski > Yeni",
-    noResult: "Filtreye uygun basvuru yok.",
-    selectedTitle: "Secili Basvuru",
-    noSelection: "Detay icin soldan bir basvuru sec.",
+    noResult: "Filtreye uygun başvuru yok.",
+    selectedTitle: "Seçili Başvuru",
+    noSelection: "Detay için soldan bir başvuru seç.",
     approve: "Onayla",
-    approving: "Onaylaniyor...",
-    summaryTitle: "Canli Ozet",
-    metricPending: "Bekleyen Basvuru",
-    metricApproved: "Onayli Diyetisyen",
-    metricUsers: "Toplam Kullanici",
-    metricActiveUsers: "Aktif Kullanici",
+    approving: "Onaylanıyor...",
+    summaryTitle: "Canlı Özet",
+    metricPending: "Bekleyen Başvuru",
+    metricApproved: "Onaylı Diyetisyen",
+    metricUsers: "Toplam Kullanıcı",
+    metricActiveUsers: "Aktif Kullanıcı",
     metricDietitians: "Toplam Diyetisyen",
-    activityRate: "Aktiflik Orani",
-    approvalRate: "Onay Orani",
-    queuePressure: "Kuyruk Yogunlugu",
-    systemTitle: "Sistem Sagligi",
+    activityRate: "Aktiflik Oranı",
+    approvalRate: "Onay Oranı",
+    queuePressure: "Kuyruk Yoğunluğu",
+    systemTitle: "Sistem Sağlığı",
     stepApi: "API",
     stepOtp: "OTP",
     stepRoles: "Roller",
-    stepQueue: "Onay Kuyrugu",
+    stepQueue: "Onay Kuyruğu",
     healthy: "Stabil",
     check: "Kontrol",
-    opsSummary: "Operasyon Ozeti",
-    sClients: "Aktif Danisan",
+    opsSummary: "Operasyon Özeti",
+    sClients: "Aktif Danışan",
     sPlans: "Plan",
     sMessages: "Mesaj",
     sAdherence: "Uyum",
     feedTitle: "Son Aktivite",
-    feedEmpty: "Henuz aktivite yok.",
-    cityTitle: "Kuyruk Dagilimi",
-    cityEmpty: "Sehir bazli veri yok.",
-    managementTitle: "Yonetsel Notlar",
-    managementA: "Basvuru Standardi",
-    managementADesc: "Lisans, klinik ve iletisim alanlari tam olunca onay sureci hizlanir.",
-    managementB: "Guvenlik Akisi",
+    feedEmpty: "Henüz aktivite yok.",
+    cityTitle: "Kuyruk Dağılımı",
+    cityEmpty: "Şehir bazlı veri yok.",
+    managementTitle: "Yönetsel Notlar",
+    managementA: "Başvuru Standardı",
+    managementADesc: "Lisans, klinik ve iletişim alanları tam olunca onay süreci hızlanır.",
+    managementB: "Güvenlik Akışı",
     managementBDesc: "OTP, rol ve oturum kontrolleri birlikte izlenmeli.",
     managementC: "Takip Rutini",
-    managementCDesc: "Panel otomatik yenilendigi icin surekli operasyon takibi saglar.",
-    summaryErr: "Ozet verisi alinamadi.",
-    appErr: "Basvurular alinamadi.",
-    approveErr: "Onay basarisiz.",
-    load: "Yukleniyor...",
+    managementCDesc: "Panel otomatik yenilendiği için sürekli operasyon takibi sağlar.",
+    detailName: "İsim",
+    detailEmail: "E-posta",
+    detailPhone: "Telefon",
+    detailClinic: "Klinik",
+    detailCity: "Şehir",
+    detailLicense: "Lisans",
+    detailAddress: "Adres",
+    unknownCity: "Belirsiz",
+    fallbackAdmin: "Yönetici",
+    summaryErr: "Özet verisi alınamadı.",
+    appErr: "Başvurular alınamadı.",
+    approveErr: "Onay başarısız.",
+    load: "Yükleniyor...",
   },
   en: {
     tag: "Admin Panel",
@@ -164,6 +173,15 @@ const COPY = {
     managementBDesc: "OTP, roles and session controls should be monitored together.",
     managementC: "Monitoring Routine",
     managementCDesc: "Auto refresh keeps this screen actionable without manual checks.",
+    detailName: "Name",
+    detailEmail: "Email",
+    detailPhone: "Phone",
+    detailClinic: "Clinic",
+    detailCity: "City",
+    detailLicense: "License",
+    detailAddress: "Address",
+    unknownCity: "Unknown",
+    fallbackAdmin: "Admin",
     summaryErr: "Failed to load summary.",
     appErr: "Failed to load applications.",
     approveErr: "Approval failed.",
@@ -237,10 +255,10 @@ export default function AdminPanel() {
   }, [isAdmin, loadingProfile, navigate, user]);
 
   const displayName = useMemo(() => {
-    if (!user) return "Admin";
+    if (!user) return t.fallbackAdmin;
     const full = [user.first_name, user.last_name].filter(Boolean).join(" ").trim();
-    return full || user.full_name || user.display_name || user.email || "Admin";
-  }, [user]);
+    return full || user.full_name || user.display_name || user.email || t.fallbackAdmin;
+  }, [t.fallbackAdmin, user]);
 
   const fetchSummary = useCallback(async (token: string) => {
     setSummaryError("");
@@ -346,11 +364,11 @@ export default function AdminPanel() {
   const cityDistribution = useMemo(() => {
     const map = new Map<string, number>();
     for (const app of applications) {
-      const city = String(app.clinic_city || "Belirsiz").trim() || "Belirsiz";
+      const city = String(app.clinic_city || t.unknownCity).trim() || t.unknownCity;
       map.set(city, (map.get(city) || 0) + 1);
     }
     return Array.from(map.entries()).map(([city, count]) => ({ city, count })).sort((a, b) => b.count - a.count).slice(0, 6);
-  }, [applications]);
+  }, [applications, t.unknownCity]);
 
   const recentFeed = useMemo(() => filteredApps.slice(0, 6), [filteredApps]);
 
@@ -441,13 +459,13 @@ export default function AdminPanel() {
                     <div className="text-sm font-black">{t.selectedTitle}</div>
                     {!selected ? <div className={["mt-2 text-sm", isDark ? "text-zinc-400" : "text-[#5d7f74]"].join(" ")}>{t.noSelection}</div> : (
                       <div className="mt-2 space-y-1.5 text-xs">
-                        <DetailRow isDark={isDark} k="Name" v={[selected.first_name, selected.last_name].filter(Boolean).join(" ").trim() || "-"} />
-                        <DetailRow isDark={isDark} k="Email" v={selected.email || "-"} />
-                        <DetailRow isDark={isDark} k="Phone" v={selected.phone_number || "-"} />
-                        <DetailRow isDark={isDark} k="Clinic" v={selected.clinic_name || "-"} />
-                        <DetailRow isDark={isDark} k="City" v={selected.clinic_city || "-"} />
-                        <DetailRow isDark={isDark} k="License" v={selected.clinic_license_no || "-"} />
-                        <DetailRow isDark={isDark} k="Address" v={selected.clinic_address || "-"} />
+                        <DetailRow isDark={isDark} k={t.detailName} v={[selected.first_name, selected.last_name].filter(Boolean).join(" ").trim() || "-"} />
+                        <DetailRow isDark={isDark} k={t.detailEmail} v={selected.email || "-"} />
+                        <DetailRow isDark={isDark} k={t.detailPhone} v={selected.phone_number || "-"} />
+                        <DetailRow isDark={isDark} k={t.detailClinic} v={selected.clinic_name || "-"} />
+                        <DetailRow isDark={isDark} k={t.detailCity} v={selected.clinic_city || "-"} />
+                        <DetailRow isDark={isDark} k={t.detailLicense} v={selected.clinic_license_no || "-"} />
+                        <DetailRow isDark={isDark} k={t.detailAddress} v={selected.clinic_address || "-"} />
                         <button type="button" disabled={approvingId === selected.user_id} onClick={approveSelected} className="mt-2 w-full rounded-xl bg-gradient-to-r from-emerald-400 to-teal-300 px-3 py-2 text-xs font-black text-zinc-950 transition hover:brightness-110 disabled:opacity-60">{approvingId === selected.user_id ? t.approving : t.approve}</button>
                       </div>
                     )}

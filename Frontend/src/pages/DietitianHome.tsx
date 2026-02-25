@@ -16,33 +16,35 @@ type Profile = {
 const COPY = {
   tr: {
     title: "Diyetisyen Ana Sayfası",
-    subtitle: "Danışanlarını ve klinik akışlarını buradan yönetebilirsin.",
+    subtitle: "Danışanlarını ve klinik akışını buradan yönetebilirsin.",
     welcome: "Hoş geldin",
     clinic: "Klinik",
     p1: "Danışan Yönetimi",
-    p1d: "Danışan listesi ve durum takibi.",
+    p1d: "Danışan listesini görüntüle ve durum takibini yap.",
     p2: "Planlama",
-    p2d: "Beslenme planlarını oluştur ve güncelle.",
+    p2d: "Beslenme planı oluştur, düzenle ve güncelle.",
     p3: "Mesajlaşma",
-    p3d: "Danışanlar ile anlık mesajlaşma.",
+    p3d: "Danışanlarınla güvenli şekilde mesajlaş.",
     profile: "Profil",
     admin: "Yönetim Paneli",
     logout: "Çıkış Yap",
+    fallbackUser: "Kullanıcı",
   },
   en: {
     title: "Dietitian Home",
-    subtitle: "Manage your clients and clinic workflows from here.",
+    subtitle: "Manage your clients and clinic workflow from here.",
     welcome: "Welcome",
     clinic: "Clinic",
     p1: "Client Management",
-    p1d: "Client list and status tracking.",
+    p1d: "View your client list and track their status.",
     p2: "Planning",
-    p2d: "Create and update nutrition plans.",
+    p2d: "Create, edit and update nutrition plans.",
     p3: "Messaging",
-    p3d: "Real-time client communication.",
+    p3d: "Communicate with clients securely.",
     profile: "Profile",
     admin: "Admin Panel",
     logout: "Log Out",
+    fallbackUser: "User",
   },
 } as const;
 
@@ -54,9 +56,9 @@ export default function DietitianHome({ profile, isAdmin }: { profile: Profile; 
   const t = COPY[lang];
 
   const displayName = useMemo(() => {
-    const n = [profile.first_name, profile.last_name].filter(Boolean).join(" ").trim();
-    return n || profile.full_name || profile.display_name || profile.email || (lang === "tr" ? "Kullanıcı" : "User");
-  }, [lang, profile]);
+    const full = [profile.first_name, profile.last_name].filter(Boolean).join(" ").trim();
+    return full || profile.full_name || profile.display_name || profile.email || t.fallbackUser;
+  }, [profile, t.fallbackUser]);
 
   const onLogout = () => {
     localStorage.removeItem("access_token");
@@ -71,20 +73,34 @@ export default function DietitianHome({ profile, isAdmin }: { profile: Profile; 
         <header className="flex flex-wrap items-center justify-between gap-3">
           <div>
             <h1 className="text-2xl font-extrabold">{t.title}</h1>
-            <p className={["mt-1 text-sm", isDark ? "text-zinc-300" : "text-[#36544c]"].join(" ")}>{t.welcome} {displayName}</p>
-            <p className={["mt-1 text-sm", isDark ? "text-zinc-400" : "text-[#4d6b62]"].join(" ")}>{t.clinic}: {profile.clinic_name || "-"}</p>
+            <p className={["mt-1 text-sm", isDark ? "text-zinc-300" : "text-[#36544c]"].join(" ")}>
+              {t.welcome} {displayName}
+            </p>
+            <p className={["mt-1 text-sm", isDark ? "text-zinc-400" : "text-[#4d6b62]"].join(" ")}>
+              {t.clinic}: {profile.clinic_name || "-"}
+            </p>
             <p className={["mt-2 text-sm", isDark ? "text-zinc-400" : "text-[#4d6b62]"].join(" ")}>{t.subtitle}</p>
           </div>
+
           <div className="flex gap-2">
             {isAdmin ? (
-              <Link to="/admin-panel" className={["rounded-full px-4 py-2 text-xs font-bold", isDark ? "border border-white/10 bg-white/5" : "border border-[#2f6154]/25 bg-white"].join(" ")}>
+              <Link
+                to="/admin-panel"
+                className={["rounded-full px-4 py-2 text-xs font-bold", isDark ? "border border-white/10 bg-white/5" : "border border-[#2f6154]/25 bg-white"].join(" ")}
+              >
                 {t.admin}
               </Link>
             ) : null}
-            <Link to="/profile" className={["rounded-full px-4 py-2 text-xs font-bold", isDark ? "border border-white/10 bg-white/5" : "border border-[#2f6154]/25 bg-white"].join(" ")}>
+            <Link
+              to="/profile"
+              className={["rounded-full px-4 py-2 text-xs font-bold", isDark ? "border border-white/10 bg-white/5" : "border border-[#2f6154]/25 bg-white"].join(" ")}
+            >
               {t.profile}
             </Link>
-            <button onClick={onLogout} className={["rounded-full px-4 py-2 text-xs font-bold", isDark ? "bg-rose-500/20 text-rose-100" : "bg-rose-100 text-rose-700"].join(" ")}>
+            <button
+              onClick={onLogout}
+              className={["rounded-full px-4 py-2 text-xs font-bold", isDark ? "bg-rose-500/20 text-rose-100" : "bg-rose-100 text-rose-700"].join(" ")}
+            >
               {t.logout}
             </button>
           </div>

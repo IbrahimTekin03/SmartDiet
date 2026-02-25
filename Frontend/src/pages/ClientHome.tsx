@@ -17,14 +17,15 @@ const COPY = {
     title: "Kullanıcı Ana Sayfası",
     subtitle: "SmartDiet ile beslenme planını, ölçümlerini ve ilerlemeni tek yerden takip et.",
     f1: "Günün Planı",
-    f1d: "Günlük öğün planı ve saatlerini gör.",
+    f1d: "Günlük öğün planını ve saatlerini gör.",
     f2: "Ölçüm Takibi",
-    f2d: "Kilo ve ölçüm geçmişini takip et.",
+    f2d: "Kilo ve ölçüm geçmişini düzenli takip et.",
     f3: "Mesajlaşma",
     f3d: "Diyetisyeninle güvenli şekilde iletişim kur.",
     profile: "Profil",
     logout: "Çıkış Yap",
     welcome: "Hoş geldin",
+    fallbackUser: "Kullanıcı",
   },
   en: {
     title: "Client Home",
@@ -38,6 +39,7 @@ const COPY = {
     profile: "Profile",
     logout: "Log Out",
     welcome: "Welcome",
+    fallbackUser: "User",
   },
 } as const;
 
@@ -50,8 +52,8 @@ export default function ClientHome({ profile }: { profile: Profile }) {
 
   const displayName = useMemo(() => {
     const n = [profile.first_name, profile.last_name].filter(Boolean).join(" ").trim();
-    return n || profile.full_name || profile.display_name || profile.email || (lang === "tr" ? "Kullanıcı" : "User");
-  }, [lang, profile]);
+    return n || profile.full_name || profile.display_name || profile.email || t.fallbackUser;
+  }, [profile, t.fallbackUser]);
 
   const onLogout = () => {
     localStorage.removeItem("access_token");
@@ -66,14 +68,22 @@ export default function ClientHome({ profile }: { profile: Profile }) {
         <header className="flex flex-wrap items-center justify-between gap-3">
           <div>
             <h1 className="text-2xl font-extrabold">{t.title}</h1>
-            <p className={["mt-1 text-sm", isDark ? "text-zinc-300" : "text-[#36544c]"].join(" ")}>{t.welcome} {displayName}</p>
+            <p className={["mt-1 text-sm", isDark ? "text-zinc-300" : "text-[#36544c]"].join(" ")}>
+              {t.welcome} {displayName}
+            </p>
             <p className={["mt-2 text-sm", isDark ? "text-zinc-400" : "text-[#4d6b62]"].join(" ")}>{t.subtitle}</p>
           </div>
           <div className="flex gap-2">
-            <Link to="/profile" className={["rounded-full px-4 py-2 text-xs font-bold", isDark ? "border border-white/10 bg-white/5" : "border border-[#2f6154]/25 bg-white"].join(" ")}>
+            <Link
+              to="/profile"
+              className={["rounded-full px-4 py-2 text-xs font-bold", isDark ? "border border-white/10 bg-white/5" : "border border-[#2f6154]/25 bg-white"].join(" ")}
+            >
               {t.profile}
             </Link>
-            <button onClick={onLogout} className={["rounded-full px-4 py-2 text-xs font-bold", isDark ? "bg-rose-500/20 text-rose-100" : "bg-rose-100 text-rose-700"].join(" ")}>
+            <button
+              onClick={onLogout}
+              className={["rounded-full px-4 py-2 text-xs font-bold", isDark ? "bg-rose-500/20 text-rose-100" : "bg-rose-100 text-rose-700"].join(" ")}
+            >
               {t.logout}
             </button>
           </div>
