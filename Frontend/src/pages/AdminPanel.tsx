@@ -105,120 +105,120 @@ const API_BASE = "http://localhost:3000";
 
 const COPY = {
   tr: {
-    tag: "Y?netim Paneli",
-    title: "Platform Y?netimi",
-    subtitle: "Ba?vuru onay?, sistem g?r?n?rl??? ve operasyon kararlar?n? tek ekrandan y?net.",
-    welcome: "Ho? geldin",
-    updated: "Son g?ncelleme",
+    tag: "Yönetim Paneli",
+    title: "Platform Yönetimi",
+    subtitle: "Başvuru onayı, sistem görünürlüğü ve operasyon kararlarını tek ekrandan yönet.",
+    welcome: "Hoş geldin",
+    updated: "Son güncelleme",
     refresh: "Yenile",
     profile: "Profil",
-    logout: "??k?? Yap",
-    queueTab: "Ba?vuru Merkezi",
+    logout: "Çıkış Yap",
+    queueTab: "Başvuru Merkezi",
     opsTab: "Operasyon",
     pendingTab: "Bekleyenler",
     rejectedTab: "Reddedilenler",
-    queueTitle: "Diyetisyen Ba?vurular?",
-    queueSub: "Ba?vuruyu se?, detaylar? incele ve gerekli aksiyonu al.",
-    search: "Ba?vuru Ara",
+    queueTitle: "Diyetisyen Başvuruları",
+    queueSub: "Başvuruyu seç, detayları incele ve gerekli aksiyonu al.",
+    search: "Başvuru Ara",
     searchPh: "isim, e-posta, klinik",
-    city: "?ehir",
-    allCities: "T?m ?ehirler",
-    sort: "S?ralama",
+    city: "Şehir",
+    allCities: "Tüm şehirler",
+    sort: "Sıralama",
     newest: "Yeni > Eski",
     oldest: "Eski > Yeni",
-    noResult: "Filtrelere uygun ba?vuru bulunamad?.",
-    selectedTitle: "Se?ili Ba?vuru",
-    noSelection: "Detay g?r?nt?lemek i?in soldan bir ba?vuru se?.",
+    noResult: "Filtrelere uygun başvuru bulunamadı.",
+    selectedTitle: "Seçili Başvuru",
+    noSelection: "Detay görüntülemek için soldan bir başvuru seç.",
     approve: "Onayla",
-    approving: "Onaylan?yor...",
+    approving: "Onaylanıyor...",
     reject: "Reddet",
     rejecting: "Reddediliyor...",
     rejectReason: "Red Nedeni",
-    rejectReasonPh: "Ba?vurunun neden reddedildi?ini kullan?c?ya g?sterilecek ?ekilde a??klay?n.",
-    rejectValidation: "Red nedeni en az 5 karakter olmal?d?r.",
-    applicantNote: "Ba?vuru Notu",
-    reviewNote: "?nceleme Notu",
-    summaryTitle: "Canl? ?zet",
-    metricPending: "Bekleyen Ba?vuru",
-    metricRejected: "Reddedilen Ba?vuru",
-    metricApproved: "Onayl? Diyetisyen",
-    metricUsers: "Toplam Kullan?c?",
-    metricActiveUsers: "Aktif Kullan?c?",
+    rejectReasonPh: "Başvurunun neden reddedildiğini kullanıcıya gösterilecek şekilde açıklayın.",
+    rejectValidation: "Red nedeni en az 5 karakter olmalıdır.",
+    applicantNote: "Başvuru Notu",
+    reviewNote: "İnceleme Notu",
+    summaryTitle: "Canlı Özet",
+    metricPending: "Bekleyen Başvuru",
+    metricRejected: "Reddedilen Başvuru",
+    metricApproved: "Onaylı Diyetisyen",
+    metricUsers: "Toplam Kullanıcı",
+    metricActiveUsers: "Aktif Kullanıcı",
     metricDietitians: "Toplam Diyetisyen",
-    activityRate: "Aktiflik Oran?",
-    approvalRate: "Onay Oran?",
-    queuePressure: "Kuyruk Yo?unlu?u",
-    systemTitle: "Sistem Sa?l???",
+    activityRate: "Aktiflik Oranı",
+    approvalRate: "Onay Oranı",
+    queuePressure: "Kuyruk Yoğunluğu",
+    systemTitle: "Sistem Sağlığı",
     stepApi: "API",
     stepOtp: "OTP",
     stepRoles: "Roller",
-    stepQueue: "Onay Kuyru?u",
+    stepQueue: "Onay Kuyruğu",
     healthy: "Stabil",
     check: "Kontrol",
-    opsSummary: "Operasyon ?zeti",
-    sClients: "Aktif Dan??an",
+    opsSummary: "Operasyon Özeti",
+    sClients: "Aktif Danışan",
     sPlans: "Plan",
     sMessages: "Mesaj",
     sAdherence: "Uyum",
     feedTitle: "Son Aktivite",
-    feedEmpty: "Hen?z aktivite bulunmuyor.",
-    cityTitle: "Kuyruk Da??l?m?",
-    cityEmpty: "?ehir bazl? veri bulunmuyor.",
-    managementTitle: "Y?netsel Notlar",
-    managementA: "Ba?vuru Standard?",
-    managementADesc: "Lisans, klinik ve ileti?im alanlar? eksiksiz oldu?unda onay s?reci h?zlan?r.",
-    managementB: "G?venlik Ak???",
+    feedEmpty: "Henüz aktivite bulunmuyor.",
+    cityTitle: "Kuyruk Dağılımı",
+    cityEmpty: "Şehir bazlı veri bulunmuyor.",
+    managementTitle: "Yönetsel Notlar",
+    managementA: "Başvuru Standardı",
+    managementADesc: "Lisans, klinik ve iletişim alanları eksiksiz olduğunda onay süreci hızlanır.",
+    managementB: "Güvenlik Akışı",
     managementBDesc: "OTP, rol ve oturum kontrolleri birlikte izlenmelidir.",
     managementC: "Takip Rutini",
-    managementCDesc: "Panelin d?zenli yenilenmesi operasyon takibini kolayla?t?r?r.",
-    detailName: "?sim",
+    managementCDesc: "Panelin düzenli yenilenmesi operasyon takibini kolaylaştırır.",
+    detailName: "İsim",
     detailEmail: "E-posta",
     detailPhone: "Telefon",
     detailClinic: "Klinik",
-    detailCity: "?ehir",
+    detailCity: "Şehir",
     detailLicense: "Lisans",
     detailAddress: "Adres",
     unknownCity: "Belirsiz",
-    fallbackAdmin: "Y?netici",
-    summaryErr: "?zet verisi al?namad?.",
-    appErr: "Ba?vurular al?namad?.",
-    approveErr: "Onay i?lemi tamamlanamad?.",
-    rejectErr: "Red i?lemi tamamlanamad?.",
-    load: "Y?kleniyor...",
+    fallbackAdmin: "Yönetici",
+    summaryErr: "Özet verisi alınamadı.",
+    appErr: "Başvurular alınamadı.",
+    approveErr: "Onay işlemi tamamlanamadı.",
+    rejectErr: "Red işlemi tamamlanamadı.",
+    load: "Yükleniyor...",
     pagination: "Sayfa",
-    prev: "?nceki",
+    prev: "Önceki",
     next: "Sonraki",
-    historyTitle: "??lem Ge?mi?i",
-    historyEmpty: "Hen?z i?lem ge?mi?i bulunmuyor.",
-    historyLoadError: "??lem ge?mi?i al?namad?.",
-    actionApproved: "Onayland?",
+    historyTitle: "İşlem Geçmişi",
+    historyEmpty: "Henüz işlem geçmişi bulunmuyor.",
+    historyLoadError: "İşlem geçmişi alınamadı.",
+    actionApproved: "Onaylandı",
     actionRejected: "Reddedildi",
-    visibilityTitle: "Rol G?r?n?rl???",
-    visibilitySub: "Admin olarak kullan?c?, diyetisyen, klinik y?neticisi ve kendi operasyon ak???n? ayn? panelde izlersin.",
-    userSystem: "Kullan?c? Ak???",
-    userSystemSub: "Kullan?c? profilini tamamlar, ?l??m girer, plan?n? takip eder ve not tutar.",
-    dietitianSystem: "Diyetisyen Ak???",
-    dietitianSystemSub: "Diyetisyen dan??an, plan, ?l??m ve ileti?im ak???n? y?netir.",
-    managerSystem: "Klinik Y?netici Ak???",
-    managerSystemSub: "Klinik y?neticisi ba?l? diyetisyenleri filtreler, detay g?r?r ve aktiflik y?netir.",
-    adminSystem: "Admin Ak???",
-    adminSystemSub: "T?m rol ak??lar?, onay s?re?leri ve sistem sa?l??? tek panelde toplan?r.",
+    visibilityTitle: "Rol Görünürlüğü",
+    visibilitySub: "Admin olarak kullanıcı, diyetisyen, klinik yöneticisi ve kendi operasyon akışını aynı panelde izlersin.",
+    userSystem: "Kullanıcı Akışı",
+    userSystemSub: "Kullanıcı profilini tamamlar, ölçüm girer, planını takip eder ve not tutar.",
+    dietitianSystem: "Diyetisyen Akışı",
+    dietitianSystemSub: "Diyetisyen danışan, plan, ölçüm ve iletişim akışını yönetir.",
+    managerSystem: "Klinik Yönetici Akışı",
+    managerSystemSub: "Klinik yöneticisi bağlı diyetisyenleri filtreler, detay görür ve aktiflik yönetir.",
+    adminSystem: "Admin Akışı",
+    adminSystemSub: "Tüm rol akışları, onay süreçleri ve sistem sağlığı tek panelde toplanır.",
     userA: "Profil ve hedefler",
-    userB: "?l??m takibi",
+    userB: "Ölçüm takibi",
     userC: "Plan uyumu",
     userD: "Destek ve notlar",
-    dietA: "Dan??an tarama",
-    dietB: "Plan y?netimi",
-    dietC: "?l??m yorumlama",
+    dietA: "Danışan tarama",
+    dietB: "Plan yönetimi",
+    dietC: "Ölçüm yorumlama",
     dietD: "Mesaj ritmi",
     managerA: "Diyetisyen listesi",
     managerB: "Filtre ve detay",
-    managerC: "Aktiflik kontrol?",
-    managerD: "H?zl? ileti?im i?lemleri",
-    adminA: "Ba?vuru onay?",
-    adminB: "Rol g?r?n?rl???",
-    adminC: "Sistem sa?l???",
-    adminD: "??lem ge?mi?i",
+    managerC: "Aktiflik kontrolü",
+    managerD: "Hızlı iletişim işlemleri",
+    adminA: "Başvuru onayı",
+    adminB: "Rol görünürlüğü",
+    adminC: "Sistem sağlığı",
+    adminD: "İşlem geçmişi",
   },
   en: {
     tag: "Admin Panel",
@@ -821,11 +821,11 @@ export default function AdminPanel() {
       const data = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(data?.message || "assign_failed");
       await Promise.all([fetchUsersOverview(token), fetchConnections(token)]);
-      setConnectionMessage(lang === "tr" ? "E?le?me ba?ar?yla kaydedildi." : "Assignment saved successfully.");
+      setConnectionMessage(lang === "tr" ? "Eşleşme başarıyla kaydedildi." : "Assignment saved successfully.");
       setAssignmentNote("");
       setLastUpdatedAt(Date.now());
     } catch {
-      setConnectionError(lang === "tr" ? "E?le?me kaydedilemedi." : "Failed to save assignment.");
+      setConnectionError(lang === "tr" ? "Eşleşme kaydedilemedi." : "Failed to save assignment.");
     } finally {
       setAssigningConnection(false);
     }
@@ -1175,7 +1175,7 @@ export default function AdminPanel() {
 
           <div className="grid gap-5">
             <div className={panelClass(isDark)}>
-              <h2 className="text-sm font-black">{lang === "tr" ? "E?le?me Merkezi" : "Assignment Center"}</h2>
+              <h2 className="text-sm font-black">{lang === "tr" ? "Eşleşme Merkezi" : "Assignment Center"}</h2>
               <p className={hintClass(isDark)}>
                 {lang === "tr"
                   ? "Bağlantı sadece admin tarafından kurulur. Kullanıcı kendi başına diyetisyen seçemez."
@@ -1214,7 +1214,7 @@ export default function AdminPanel() {
                     onChange={(e) => setAssignmentNote(e.target.value)}
                     rows={3}
                     className={inputClass(isDark)}
-                    placeholder={lang === "tr" ? "E?le?me i?in k?sa not" : "Short note for this assignment"}
+                    placeholder={lang === "tr" ? "Eşleşme için kısa not" : "Short note for this assignment"}
                   />
                 </label>
               </div>
@@ -1241,7 +1241,7 @@ export default function AdminPanel() {
                 className="mt-4 w-full rounded-xl bg-gradient-to-r from-emerald-400 to-teal-300 px-4 py-3 text-sm font-black text-zinc-950 disabled:opacity-60"
               >
                 {assigningConnection
-                  ? (lang === "tr" ? "E?le?tiriliyor..." : "Assigning...")
+                  ? (lang === "tr" ? "Eşleştiriliyor..." : "Assigning...")
                   : (lang === "tr" ? "Kullanıcıyı Diyetisyene Bağla" : "Assign User To Dietitian")}
               </button>
             </div>
@@ -1266,7 +1266,7 @@ export default function AdminPanel() {
                   </div>
                 ))}
                 {!connectionsLoading && !connections.length ? (
-                  <div className={hintClass(isDark)}>{lang === "tr" ? "Aktif ba?lant? yok." : "No active connections."}</div>
+                  <div className={hintClass(isDark)}>{lang === "tr" ? "Aktif bağlantı yok." : "No active connections."}</div>
                 ) : null}
               </div>
             </div>
