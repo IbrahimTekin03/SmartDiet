@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useAppSettings } from "../context/AppSettingsContext";
+import { clearAuthSession, setAuthSession } from "../lib/authSession";
 
 type Lang = "tr" | "en";
 
@@ -37,57 +38,57 @@ type Measurement = {
 const COPY = {
   tr: {
     title: "Profil",
-    subtitle: "Hesap yönetimi ve ölçüm analizi",
+    subtitle: "Hesap y?netimi ve ?l??m analizi",
     back: "Ana Sayfa",
-    logout: "Çıkış Yap",
-    loadingProfile: "Profil yükleniyor...",
+    logout: "??k?? Yap",
+    loadingProfile: "Profil y?kleniyor...",
     appearance: "Tema",
     themeDark: "Koyu",
-    themeLight: "Açık",
-    uploadPhoto: "Profil Fotosu",
-    save: "Değişiklikleri Kaydet",
+    themeLight: "A??k",
+    uploadPhoto: "Profil Foto?raf?",
+    save: "De?i?iklikleri Kaydet",
     saving: "Kaydediliyor...",
-    saveOk: "Profil güncellendi.",
-    saveErr: "Güncelleme başarısız.",
-    firstName: "İsim",
+    saveOk: "Profil ba?ar?yla g?ncellendi.",
+    saveErr: "Profil g?ncellenemedi.",
+    firstName: "?sim",
     lastName: "Soyisim",
     email: "E-posta",
     phone: "Telefon",
-    birthDate: "Doğum Tarihi",
+    birthDate: "Do?um Tarihi",
     gender: "Cinsiyet",
     male: "Erkek",
-    female: "Kadın",
-    accountCard: "Hesap Özeti",
-    accountCardSub: "Kimlik ve iletişim bilgilerin tek yerde.",
-    metricsCard: "Ölçüm Analizi",
-    metricsSub: "Son kayıtlarına göre trend takibi",
-    addMeasurement: "Ölçüm Ekle",
-    measurementSaved: "Ölçüm kaydedildi.",
-    measurementFailed: "Ölçüm kaydedilemedi.",
-    noMeasurements: "Bu aralıkta ölçüm bulunmuyor.",
-    rangeLabel: "Aralık",
-    latestWeight: "Güncel Kilo",
-    latestFat: "Güncel Yağ Oranı",
-    trend: "Değişim",
-    recentRecords: "Son Kayıtlar",
+    female: "Kad?n",
+    accountCard: "Hesap ?zeti",
+    accountCardSub: "Kimlik ve ileti?im bilgilerine tek yerden ula?.",
+    metricsCard: "?l??m Analizi",
+    metricsSub: "Son kay?tlar?na g?re geli?im e?ilimini takip et.",
+    addMeasurement: "?l??m Ekle",
+    measurementSaved: "?l??m kaydedildi.",
+    measurementFailed: "?l??m kaydedilemedi.",
+    noMeasurements: "Bu aral?kta ?l??m bulunmuyor.",
+    rangeLabel: "Aral?k",
+    latestWeight: "G?ncel Kilo",
+    latestFat: "G?ncel Ya? Oran?",
+    trend: "De?i?im",
+    recentRecords: "Son Kay?tlar",
     date: "Tarih",
     weight: "Kilo (kg)",
-    bodyFat: "Yağ Oranı (%)",
+    bodyFat: "Ya? Oran? (%)",
     quickStats: "Profil Doluluk",
-    contact: "İletişim",
+    contact: "?leti?im",
     role: "Rol",
     profileDetails: "Profil Bilgileri",
-    liveProfile: "Canlı Profil",
+    liveProfile: "Canl? Profil",
     notProvided: "Belirtilmedi",
-    roleAdmin: "Yönetici",
+    roleAdmin: "Y?netici",
     roleDietitian: "Diyetisyen",
-    roleClient: "Danışan",
-    roleUser: "Kullanıcı",
-    requestFailed: "İşlem sırasında hata oluştu.",
-    unauthorized: "Oturum süresi doldu. Lütfen tekrar giriş yap.",
-    avatarUpdated: "Profil fotoğrafı güncellendi.",
-    avatarResponseInvalid: "Profil verisi alınamadı.",
-    avatarUploadFailed: "Profil fotoğrafı yüklenemedi.",
+    roleClient: "Dan??an",
+    roleUser: "Kullan?c?",
+    requestFailed: "??lem s?ras?nda bir hata olu?tu.",
+    unauthorized: "Oturum s?ren doldu. L?tfen yeniden giri? yap.",
+    avatarUpdated: "Profil foto?raf? g?ncellendi.",
+    avatarResponseInvalid: "Profil verisi al?namad?.",
+    avatarUploadFailed: "Profil foto?raf? y?klenemedi.",
   },
   en: {
     title: "Profile",
@@ -149,6 +150,7 @@ function mapRoleName(roleName: string, lang: Lang, t: (typeof COPY)[Lang]): stri
   const normalized = String(roleName || "").trim().toLowerCase();
   if (!normalized) return t.roleUser;
   if (normalized === "admin") return t.roleAdmin;
+  if (normalized === "clinic_manager") return lang === "tr" ? "Klinik Y?neticisi" : "Clinic Manager";
   if (normalized === "dietitian") return t.roleDietitian;
   if (normalized === "client") return t.roleClient;
   if (normalized === "user") return t.roleUser;
@@ -234,7 +236,7 @@ export default function Profile() {
         const profile = d?.data ?? d;
         if (profile?.id) {
           setUser(profile);
-          localStorage.setItem("sd_user", JSON.stringify(profile));
+          setAuthSession({ user: profile });
           setForm({
             first_name: profile.first_name || "",
             last_name: profile.last_name || "",
@@ -247,6 +249,7 @@ export default function Profile() {
       })
       .catch((err: Error & { status?: number }) => {
         if (err?.status === 401 || err?.status === 403) {
+          clearAuthSession();
           navigate("/login");
         }
       })
@@ -325,9 +328,7 @@ export default function Profile() {
   }, [form]);
 
   const logout = () => {
-    localStorage.removeItem("access_token");
-    localStorage.removeItem("refresh_token");
-    localStorage.removeItem("sd_user");
+    clearAuthSession();
     navigate("/login");
   };
 
@@ -363,7 +364,7 @@ export default function Profile() {
         const profile = data?.data ?? data;
         if (profile?.id) {
           setUser(profile);
-          localStorage.setItem("sd_user", JSON.stringify(profile));
+          setAuthSession({ user: profile });
           setAvatarMsg(t.avatarUpdated);
           return;
         }
@@ -402,7 +403,7 @@ export default function Profile() {
       const profile = data?.data ?? data;
       if (profile?.id) {
         setUser(profile);
-        localStorage.setItem("sd_user", JSON.stringify(profile));
+        setAuthSession({ user: profile });
       }
       setSaveMsg(t.saveOk);
     } catch (e: unknown) {

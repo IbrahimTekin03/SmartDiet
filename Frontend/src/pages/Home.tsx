@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import { useAppSettings } from "../context/AppSettingsContext";
+import { clearAuthSession, parseStoredUser, useAuthSession } from "../lib/authSession";
 
 type Lang = "tr" | "en";
 type SessionUser = {
@@ -68,48 +69,48 @@ type HomeCopy = {
 
 const COPY: Record<Lang, HomeCopy> = {
   tr: {
-    brandSub: "Klinik ve Diyet Yönetimi",
-    signIn: "Giriş Yap",
-    signUp: "Kayıt Ol",
-    welcome: "Hoş geldin",
+    brandSub: "Klinik ve Beslenme Y?netimi",
+    signIn: "Giri? Yap",
+    signUp: "Kay?t Ol",
+    welcome: "Ho? geldin",
     profile: "Profil",
-    logout: "Çıkış Yap",
-    chip: "Bilimsel takip, uzman desteği ve sürdürülebilir sonuç",
-    titleA: "Sağlıklı yaşamı",
+    logout: "??k?? Yap",
+    chip: "Bilimsel takip, uzman deste?i ve s?rd?r?lebilir sonu?lar",
+    titleA: "Sa?l?kl? ya?am?",
     titleB: "uzmanlarla",
-    titleC: "planlayın.",
+    titleC: "planlay?n.",
     subtitle:
-      "SmartDiet; diyetisyen ve danışanı tek platformda buluşturur. Kişiselleştirilmiş plan, ölçüm takibi ve güvenli iletişim ile süreci kolaylaştırır.",
-    ctaStart: "Hemen Başla",
-    ctaAccount: "Hesabım Var",
-    trust: "Gerçek kullanıcı verisi · Onaylı uzmanlar · Güvenli altyapı",
-    stat1: "onaylı diyetisyen",
-    stat2: "kayıtlı kullanıcı",
-    stat3: "oluşturulan plan",
-    stat4: "ölçüm kaydı",
-    today: "Bugün",
-    quick: "Hızlı özet",
-    live: "Canlı",
+      "SmartDiet, diyetisyenlerle dan??anlar? tek platformda bulu?turur. Ki?iselle?tirilmi? planlar, ?l??m takibi ve g?venli ileti?im ile s?reci daha d?zenli ve verimli hale getirir.",
+    ctaStart: "Hemen Ba?la",
+    ctaAccount: "Hesab?m Var",
+    trust: "Ger?ek kullan?c? verisi ? Onayl? uzmanlar ? G?venli altyap?",
+    stat1: "onayl? diyetisyen",
+    stat2: "kay?tl? kullan?c?",
+    stat3: "olu?turulan plan",
+    stat4: "?l??m kayd?",
+    today: "Bug?n",
+    quick: "H?zl? ?zet",
+    live: "Canl?",
     activeClients: "Toplam diyetisyen",
-    dailyPlans: "Toplam kullanıcı",
-    messages: "Onaylı diyetisyen",
-    adherence: "Aktif kullanıcı oranı",
-    marked: "Aktif kullanıcı",
-    missing: "Pasif kullanıcı",
-    measurement: "Ölçüm",
+    dailyPlans: "Toplam kullan?c?",
+    messages: "Onayl? diyetisyen",
+    adherence: "Aktif kullan?c? oran?",
+    marked: "Aktif kullan?c?",
+    missing: "Pasif kullan?c?",
+    measurement: "?l??m",
     chat: "Sohbet",
-    historyTracking: "Tarihçeli takip",
-    photoSeen: "Fotoğraf ve görüldü",
+    historyTracking: "Ge?mi? takibi",
+    photoSeen: "Foto?raf ve g?r?ld? durumu",
     demoPanel: "Neden SmartDiet?",
-    demoSub: "Uzman eşleşmesi, takip ve sürdürülebilir gelişim tek yerde",
-    goPanel: "Panele Git",
-    featureA: "Uzman Eşleşmesi",
-    featureAText: "Hedefine uygun diyetisyenle güvenle çalış.",
-    featureB: "Süreç Takibi",
-    featureBText: "Günlük planları adım adım uygula ve takip et.",
-    featureC: "Ölçüm Geçmişi",
-    featureCText: "Gelişimini raporlarla düzenli olarak gör.",
-    responsiveTag: "Responsive · Modern Arayüz",
+    demoSub: "Uzman e?le?mesi, d?zenli takip ve s?rd?r?lebilir geli?im tek yerde.",
+    goPanel: "Panele Ge?",
+    featureA: "Uzman E?le?mesi",
+    featureAText: "Hedeflerine uygun diyetisyenle g?venle ?al??.",
+    featureB: "S?re? Takibi",
+    featureBText: "G?nl?k planlar?n? ad?m ad?m uygula ve d?zenli takip et.",
+    featureC: "?l??m Ge?mi?i",
+    featureCText: "Geli?imini raporlarla d?zenli olarak izle.",
+    responsiveTag: "Responsive ? Modern aray?z",
   },
   en: {
     brandSub: "Clinic and Nutrition Management",
@@ -169,14 +170,8 @@ export default function Home() {
     totalMeasurements: 0,
   };
   const { lang, isDark } = useAppSettings();
-  const [sessionUser, setSessionUser] = useState<SessionUser | null>(() => {
-    try {
-      const raw = localStorage.getItem("sd_user");
-      return raw ? (JSON.parse(raw) as SessionUser) : null;
-    } catch {
-      return null;
-    }
-  });
+  const { accessToken, userJson } = useAuthSession();
+  const sessionUser = useMemo(() => parseStoredUser<SessionUser>(userJson), [userJson]);
   const [menuOpen, setMenuOpen] = useState(false);
   const [stats, setStats] = useState<LandingStats>(initialStats);
   const [statsLoading, setStatsLoading] = useState(true);
@@ -184,7 +179,7 @@ export default function Home() {
   const menuRef = useRef<HTMLDivElement | null>(null);
   const statsRequestInFlightRef = useRef(false);
   const statsAbortRef = useRef<AbortController | null>(null);
-  const isLoggedIn = Boolean(localStorage.getItem("access_token"));
+  const isLoggedIn = Boolean(accessToken);
 
   useEffect(() => {
     const onDocClick = (e: MouseEvent) => {
@@ -246,7 +241,7 @@ export default function Home() {
     };
   }, [isLoggedIn]);
   const t = COPY[lang];
-  const adminPanelPath = "/admin-panel";
+  const panelPath = "/";
   const numberLocale = lang === "tr" ? "tr-TR" : "en-US";
   const timeLocale = lang === "tr" ? "tr-TR" : "en-US";
   const formatNum = (value: number) => Number(value || 0).toLocaleString(numberLocale);
@@ -264,10 +259,7 @@ export default function Home() {
   }, [sessionUser]);
 
   const handleLogout = () => {
-    localStorage.removeItem("access_token");
-    localStorage.removeItem("refresh_token");
-    localStorage.removeItem("sd_user");
-    setSessionUser(null);
+    clearAuthSession();
     setMenuOpen(false);
   };
 
@@ -447,7 +439,7 @@ export default function Home() {
 
               <div className="home-cta mt-6 flex flex-wrap items-center gap-3">
                 <Link
-                  to={isLoggedIn ? adminPanelPath : "/register"}
+                  to={isLoggedIn ? panelPath : "/register"}
                   className={[
                     "group relative overflow-hidden rounded-2xl px-8 py-4 text-sm font-black transition",
                     isDark
@@ -460,7 +452,7 @@ export default function Home() {
                 </Link>
 
                 <Link
-                  to={isLoggedIn ? adminPanelPath : "/login"}
+                  to={isLoggedIn ? panelPath : "/login"}
                   className={[
                     "rounded-2xl px-8 py-4 text-sm font-black transition",
                     isDark
@@ -579,7 +571,7 @@ export default function Home() {
                       <div className={["text-[11px]", isDark ? "text-zinc-400" : "text-[#4d6b62]"].join(" ")}>{t.demoSub}</div>
                     </div>
                     <Link
-                      to={isLoggedIn ? adminPanelPath : "/login"}
+                      to={isLoggedIn ? panelPath : "/login"}
                       className={[
                         "rounded-xl px-3 py-2 text-xs font-black transition",
                         isDark

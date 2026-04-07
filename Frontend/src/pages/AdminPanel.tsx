@@ -1,6 +1,8 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
+import { RoleWorkspaceBoard, type WorkspaceItem } from "../components/RoleWorkspaceBoard";
 import { useAppSettings } from "../context/AppSettingsContext";
+import { clearAuthSession, setAuthSession } from "../lib/authSession";
 
 type Lang = "tr" | "en";
 type ViewMode = "queue" | "ops";
@@ -68,98 +70,155 @@ type HistoryItem = {
   reviewed_by?: string | null;
 };
 
+type UserOverviewItem = {
+  user_id: string;
+  first_name?: string;
+  last_name?: string;
+  email?: string | null;
+  phone_number?: string | null;
+  roles?: string[];
+  account_type?: "client" | "dietitian";
+  dietitian_verification_status?: string;
+  clinic_name?: string | null;
+  clinic_city?: string | null;
+  is_active?: boolean;
+  assigned_dietitian_id?: string | null;
+  assigned_dietitian_name?: string | null;
+  assigned_clients_count?: number;
+};
+
+type ConnectionItem = {
+  id: string;
+  client_id: string;
+  client_name: string;
+  client_email?: string | null;
+  dietitian_id: string;
+  dietitian_name: string;
+  dietitian_email?: string | null;
+  clinic_name?: string | null;
+  clinic_city?: string | null;
+  start_date?: string | null;
+  notes?: string | null;
+};
+
 const API_BASE = "http://localhost:3000";
 
 const COPY = {
   tr: {
-    tag: "Yönetim Paneli",
-    title: "Platform yönetimi",
-    subtitle: "Başvuru onayı, sistem izleme ve operasyon kararlarını tek ekrandan yönet.",
-    welcome: "Hoş geldin",
-    updated: "Son güncelleme",
+    tag: "Y?netim Paneli",
+    title: "Platform Y?netimi",
+    subtitle: "Ba?vuru onay?, sistem g?r?n?rl??? ve operasyon kararlar?n? tek ekrandan y?net.",
+    welcome: "Ho? geldin",
+    updated: "Son g?ncelleme",
     refresh: "Yenile",
     profile: "Profil",
-    logout: "Çıkış",
-    queueTab: "Başvuru Merkezi",
+    logout: "??k?? Yap",
+    queueTab: "Ba?vuru Merkezi",
     opsTab: "Operasyon",
     pendingTab: "Bekleyenler",
     rejectedTab: "Reddedilenler",
-    queueTitle: "Diyetisyen Başvuruları",
-    queueSub: "Başvuruyu seç, detayını incele ve aksiyon al.",
-    search: "Başvuru ara",
+    queueTitle: "Diyetisyen Ba?vurular?",
+    queueSub: "Ba?vuruyu se?, detaylar? incele ve gerekli aksiyonu al.",
+    search: "Ba?vuru Ara",
     searchPh: "isim, e-posta, klinik",
-    city: "Şehir",
-    allCities: "Tüm şehirler",
-    sort: "Sıralama",
+    city: "?ehir",
+    allCities: "T?m ?ehirler",
+    sort: "S?ralama",
     newest: "Yeni > Eski",
     oldest: "Eski > Yeni",
-    noResult: "Filtreye uygun başvuru yok.",
-    selectedTitle: "Seçili Başvuru",
-    noSelection: "Detay için soldan bir başvuru seç.",
+    noResult: "Filtrelere uygun ba?vuru bulunamad?.",
+    selectedTitle: "Se?ili Ba?vuru",
+    noSelection: "Detay g?r?nt?lemek i?in soldan bir ba?vuru se?.",
     approve: "Onayla",
-    approving: "Onaylanıyor...",
+    approving: "Onaylan?yor...",
     reject: "Reddet",
     rejecting: "Reddediliyor...",
     rejectReason: "Red Nedeni",
-    rejectReasonPh: "Başvuru neden reddedildi? Kullanıcıya gösterilecek açıklama yaz.",
-    rejectValidation: "Red nedeni en az 5 karakter olmalı.",
-    applicantNote: "Başvuru Notu",
-    reviewNote: "İnceleme Notu",
-    summaryTitle: "Canlı Özet",
-    metricPending: "Bekleyen Başvuru",
-    metricRejected: "Reddedilen Başvuru",
-    metricApproved: "Onaylı Diyetisyen",
-    metricUsers: "Toplam Kullanıcı",
-    metricActiveUsers: "Aktif Kullanıcı",
+    rejectReasonPh: "Ba?vurunun neden reddedildi?ini kullan?c?ya g?sterilecek ?ekilde a??klay?n.",
+    rejectValidation: "Red nedeni en az 5 karakter olmal?d?r.",
+    applicantNote: "Ba?vuru Notu",
+    reviewNote: "?nceleme Notu",
+    summaryTitle: "Canl? ?zet",
+    metricPending: "Bekleyen Ba?vuru",
+    metricRejected: "Reddedilen Ba?vuru",
+    metricApproved: "Onayl? Diyetisyen",
+    metricUsers: "Toplam Kullan?c?",
+    metricActiveUsers: "Aktif Kullan?c?",
     metricDietitians: "Toplam Diyetisyen",
-    activityRate: "Aktiflik Oranı",
-    approvalRate: "Onay Oranı",
-    queuePressure: "Kuyruk Yoğunluğu",
-    systemTitle: "Sistem Sağlığı",
+    activityRate: "Aktiflik Oran?",
+    approvalRate: "Onay Oran?",
+    queuePressure: "Kuyruk Yo?unlu?u",
+    systemTitle: "Sistem Sa?l???",
     stepApi: "API",
     stepOtp: "OTP",
     stepRoles: "Roller",
-    stepQueue: "Onay Kuyruğu",
+    stepQueue: "Onay Kuyru?u",
     healthy: "Stabil",
     check: "Kontrol",
-    opsSummary: "Operasyon Özeti",
-    sClients: "Aktif Danışan",
+    opsSummary: "Operasyon ?zeti",
+    sClients: "Aktif Dan??an",
     sPlans: "Plan",
     sMessages: "Mesaj",
     sAdherence: "Uyum",
     feedTitle: "Son Aktivite",
-    feedEmpty: "Henüz aktivite yok.",
-    cityTitle: "Kuyruk Dağılımı",
-    cityEmpty: "Şehir bazlı veri yok.",
-    managementTitle: "Yönetsel Notlar",
-    managementA: "Başvuru Standardı",
-    managementADesc: "Lisans, klinik ve iletişim alanları tam olunca onay süreci hızlanır.",
-    managementB: "Güvenlik Akışı",
-    managementBDesc: "OTP, rol ve oturum kontrolleri birlikte izlenmeli.",
+    feedEmpty: "Hen?z aktivite bulunmuyor.",
+    cityTitle: "Kuyruk Da??l?m?",
+    cityEmpty: "?ehir bazl? veri bulunmuyor.",
+    managementTitle: "Y?netsel Notlar",
+    managementA: "Ba?vuru Standard?",
+    managementADesc: "Lisans, klinik ve ileti?im alanlar? eksiksiz oldu?unda onay s?reci h?zlan?r.",
+    managementB: "G?venlik Ak???",
+    managementBDesc: "OTP, rol ve oturum kontrolleri birlikte izlenmelidir.",
     managementC: "Takip Rutini",
-    managementCDesc: "Panel otomatik yenilenerek operasyon takibini kolaylaştırır.",
-    detailName: "İsim",
+    managementCDesc: "Panelin d?zenli yenilenmesi operasyon takibini kolayla?t?r?r.",
+    detailName: "?sim",
     detailEmail: "E-posta",
     detailPhone: "Telefon",
     detailClinic: "Klinik",
-    detailCity: "Şehir",
+    detailCity: "?ehir",
     detailLicense: "Lisans",
     detailAddress: "Adres",
     unknownCity: "Belirsiz",
-    fallbackAdmin: "Yönetici",
-    summaryErr: "Özet verisi alınamadı.",
-    appErr: "Başvurular alınamadı.",
-    approveErr: "Onay işlemi başarısız.",
-    rejectErr: "Red işlemi başarısız.",
-    load: "Yükleniyor...",
+    fallbackAdmin: "Y?netici",
+    summaryErr: "?zet verisi al?namad?.",
+    appErr: "Ba?vurular al?namad?.",
+    approveErr: "Onay i?lemi tamamlanamad?.",
+    rejectErr: "Red i?lemi tamamlanamad?.",
+    load: "Y?kleniyor...",
     pagination: "Sayfa",
-    prev: "Önceki",
+    prev: "?nceki",
     next: "Sonraki",
-    historyTitle: "İşlem Geçmişi",
-    historyEmpty: "Henüz işlem geçmişi yok.",
-    historyLoadError: "İşlem geçmişi alınamadı.",
-    actionApproved: "Onaylandı",
+    historyTitle: "??lem Ge?mi?i",
+    historyEmpty: "Hen?z i?lem ge?mi?i bulunmuyor.",
+    historyLoadError: "??lem ge?mi?i al?namad?.",
+    actionApproved: "Onayland?",
     actionRejected: "Reddedildi",
+    visibilityTitle: "Rol G?r?n?rl???",
+    visibilitySub: "Admin olarak kullan?c?, diyetisyen, klinik y?neticisi ve kendi operasyon ak???n? ayn? panelde izlersin.",
+    userSystem: "Kullan?c? Ak???",
+    userSystemSub: "Kullan?c? profilini tamamlar, ?l??m girer, plan?n? takip eder ve not tutar.",
+    dietitianSystem: "Diyetisyen Ak???",
+    dietitianSystemSub: "Diyetisyen dan??an, plan, ?l??m ve ileti?im ak???n? y?netir.",
+    managerSystem: "Klinik Y?netici Ak???",
+    managerSystemSub: "Klinik y?neticisi ba?l? diyetisyenleri filtreler, detay g?r?r ve aktiflik y?netir.",
+    adminSystem: "Admin Ak???",
+    adminSystemSub: "T?m rol ak??lar?, onay s?re?leri ve sistem sa?l??? tek panelde toplan?r.",
+    userA: "Profil ve hedefler",
+    userB: "?l??m takibi",
+    userC: "Plan uyumu",
+    userD: "Destek ve notlar",
+    dietA: "Dan??an tarama",
+    dietB: "Plan y?netimi",
+    dietC: "?l??m yorumlama",
+    dietD: "Mesaj ritmi",
+    managerA: "Diyetisyen listesi",
+    managerB: "Filtre ve detay",
+    managerC: "Aktiflik kontrol?",
+    managerD: "H?zl? ileti?im i?lemleri",
+    adminA: "Ba?vuru onay?",
+    adminB: "Rol g?r?n?rl???",
+    adminC: "Sistem sa?l???",
+    adminD: "??lem ge?mi?i",
   },
   en: {
     tag: "Admin Panel",
@@ -250,6 +309,32 @@ const COPY = {
     historyLoadError: "Failed to load action history.",
     actionApproved: "Approved",
     actionRejected: "Rejected",
+    visibilityTitle: "Role Visibility",
+    visibilitySub: "As admin, you can inspect the user, dietitian, clinic manager and your own operations flow from one screen.",
+    userSystem: "Regular User System",
+    userSystemSub: "The user completes profile, records measurements, follows plans and keeps notes.",
+    dietitianSystem: "Dietitian System",
+    dietitianSystemSub: "The dietitian focuses on client, plan, measurement and communication flow.",
+    managerSystem: "Clinic Manager System",
+    managerSystemSub: "The clinic manager filters approved dietitians, opens details and manages activation.",
+    adminSystem: "Admin System",
+    adminSystemSub: "All role flows, approval work and system health are gathered in one panel.",
+    userA: "Profile and goals",
+    userB: "Measurement tracking",
+    userC: "Plan adherence",
+    userD: "Support and notes",
+    dietA: "Client review",
+    dietB: "Plan management",
+    dietC: "Measurement interpretation",
+    dietD: "Message rhythm",
+    managerA: "Dietitian directory",
+    managerB: "Filters and details",
+    managerC: "Activation control",
+    managerD: "Quick contact actions",
+    adminA: "Application approval",
+    adminB: "Role visibility",
+    adminC: "System health",
+    adminD: "Action history",
   },
 } as const;
 
@@ -282,6 +367,16 @@ export default function AdminPanel() {
   const [historyItems, setHistoryItems] = useState<HistoryItem[]>([]);
   const [historyLoading, setHistoryLoading] = useState(true);
   const [historyError, setHistoryError] = useState("");
+  const [usersOverview, setUsersOverview] = useState<UserOverviewItem[]>([]);
+  const [usersLoading, setUsersLoading] = useState(true);
+  const [connections, setConnections] = useState<ConnectionItem[]>([]);
+  const [connectionsLoading, setConnectionsLoading] = useState(true);
+  const [selectedClientId, setSelectedClientId] = useState("");
+  const [selectedDietitianId, setSelectedDietitianId] = useState("");
+  const [assignmentNote, setAssignmentNote] = useState("");
+  const [assigningConnection, setAssigningConnection] = useState(false);
+  const [connectionMessage, setConnectionMessage] = useState("");
+  const [connectionError, setConnectionError] = useState("");
   const [historyPage, setHistoryPage] = useState(1);
   const [historyLimit] = useState(8);
   const [historyTotalPages, setHistoryTotalPages] = useState(0);
@@ -318,12 +413,10 @@ export default function AdminPanel() {
       })
       .then((profile: SessionUser) => {
         setUser(profile);
-        localStorage.setItem("sd_user", JSON.stringify(profile));
+        setAuthSession({ user: profile });
       })
       .catch(() => {
-        localStorage.removeItem("access_token");
-        localStorage.removeItem("refresh_token");
-        localStorage.removeItem("sd_user");
+        clearAuthSession();
         navigate("/login", { replace: true });
       })
       .finally(() => setLoadingProfile(false));
@@ -435,6 +528,49 @@ export default function AdminPanel() {
     }
   }, []);
 
+  const fetchUsersOverview = useCallback(async (token: string) => {
+    setUsersLoading(true);
+    setConnectionError("");
+    try {
+      const params = new URLSearchParams();
+      params.set("page", "1");
+      params.set("limit", "50");
+      const res = await fetch(`${API_BASE}/api/auth/admin/users-overview?${params.toString()}`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error();
+      const payload = (data?.data ?? data) as PagedResponse<UserOverviewItem>;
+      setUsersOverview(Array.isArray(payload?.items) ? payload.items : []);
+    } catch {
+      setUsersOverview([]);
+      setConnectionError(lang === "tr" ? "Kullanıcı listesi alınamadı." : "Failed to load users.");
+    } finally {
+      setUsersLoading(false);
+    }
+  }, [lang]);
+
+  const fetchConnections = useCallback(async (token: string) => {
+    setConnectionsLoading(true);
+    try {
+      const params = new URLSearchParams();
+      params.set("page", "1");
+      params.set("limit", "30");
+      const res = await fetch(`${API_BASE}/api/auth/admin/connections?${params.toString()}`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error();
+      const payload = (data?.data ?? data) as PagedResponse<ConnectionItem>;
+      setConnections(Array.isArray(payload?.items) ? payload.items : []);
+    } catch {
+      setConnections([]);
+      setConnectionError((prev) => prev || (lang === "tr" ? "Baglantilar alinamadi." : "Failed to load connections."));
+    } finally {
+      setConnectionsLoading(false);
+    }
+  }, [lang]);
+
   const refreshAll = useCallback(async () => {
     const token = localStorage.getItem("access_token");
     if (!token || !isAdmin) return;
@@ -446,12 +582,14 @@ export default function AdminPanel() {
         fetchApps(token, applicationStatus, applicationsPage),
         fetchStats(),
         fetchHistory(token, historyPage),
+        fetchUsersOverview(token),
+        fetchConnections(token),
       ]);
       setLastUpdatedAt(Date.now());
     } finally {
       refreshInFlightRef.current = false;
     }
-  }, [applicationStatus, applicationsPage, fetchApps, fetchHistory, fetchStats, fetchSummary, historyPage, isAdmin]);
+  }, [applicationStatus, applicationsPage, fetchApps, fetchConnections, fetchHistory, fetchStats, fetchSummary, fetchUsersOverview, historyPage, isAdmin]);
 
   useEffect(() => {
     refreshAllRef.current = refreshAll;
@@ -506,6 +644,82 @@ export default function AdminPanel() {
   const approvalRate = stats.totalDietitians > 0 ? Math.round((stats.approvedDietitians / stats.totalDietitians) * 100) : 0;
   const activeRate = stats.totalUsers > 0 ? Math.round((stats.activeUsers / stats.totalUsers) * 100) : 0;
   const queuePressure = Math.min(100, Math.round((applicationsTotal / Math.max(stats.approvedDietitians, 1)) * 100));
+  const visibilityBoards: Array<{ title: string; subtitle: string; items: WorkspaceItem[] }> = [
+    {
+      title: t.userSystem,
+      subtitle: t.userSystemSub,
+      items: [
+        { id: "user-profile", title: t.userA, description: t.userSystemSub },
+        { id: "user-measurements", title: t.userB, description: t.userSystemSub },
+        { id: "user-plan", title: t.userC, description: t.userSystemSub },
+        { id: "user-notes", title: t.userD, description: t.userSystemSub },
+      ],
+    },
+    {
+      title: t.dietitianSystem,
+      subtitle: t.dietitianSystemSub,
+      items: [
+        { id: "diet-review", title: t.dietA, description: t.dietitianSystemSub },
+        { id: "diet-plan", title: t.dietB, description: t.dietitianSystemSub },
+        { id: "diet-measurements", title: t.dietC, description: t.dietitianSystemSub },
+        { id: "diet-messages", title: t.dietD, description: t.dietitianSystemSub },
+      ],
+    },
+    {
+      title: t.managerSystem,
+      subtitle: t.managerSystemSub,
+      items: [
+        { id: "manager-list", title: t.managerA, description: t.managerSystemSub },
+        { id: "manager-filter", title: t.managerB, description: t.managerSystemSub },
+        { id: "manager-active", title: t.managerC, description: t.managerSystemSub },
+        { id: "manager-contact", title: t.managerD, description: t.managerSystemSub },
+      ],
+    },
+    {
+      title: t.adminSystem,
+      subtitle: t.adminSystemSub,
+      items: [
+        { id: "admin-approve", title: t.adminA, description: t.adminSystemSub },
+        { id: "admin-visibility", title: t.adminB, description: t.adminSystemSub },
+        { id: "admin-health", title: t.adminC, description: t.adminSystemSub },
+        { id: "admin-history", title: t.adminD, description: t.adminSystemSub },
+      ],
+    },
+  ];
+  const clientCandidates = useMemo(
+    () => usersOverview.filter((item) => item.account_type === "client" && item.is_active),
+    [usersOverview],
+  );
+  const dietitianCandidates = useMemo(
+    () =>
+      usersOverview.filter(
+        (item) =>
+          item.account_type === "dietitian" &&
+          item.is_active &&
+          item.dietitian_verification_status === "approved",
+      ),
+    [usersOverview],
+  );
+  const selectedClient = useMemo(
+    () => clientCandidates.find((item) => item.user_id === selectedClientId) || null,
+    [clientCandidates, selectedClientId],
+  );
+  const selectedDietitian = useMemo(
+    () => dietitianCandidates.find((item) => item.user_id === selectedDietitianId) || null,
+    [dietitianCandidates, selectedDietitianId],
+  );
+
+  useEffect(() => {
+    if (!selectedClientId && clientCandidates.length) {
+      setSelectedClientId(clientCandidates[0].user_id);
+    }
+  }, [clientCandidates, selectedClientId]);
+
+  useEffect(() => {
+    if (!selectedDietitianId && dietitianCandidates.length) {
+      setSelectedDietitianId(dietitianCandidates[0].user_id);
+    }
+  }, [dietitianCandidates, selectedDietitianId]);
 
   const cityDistribution = useMemo(() => {
     const map = new Map<string, number>();
@@ -584,10 +798,41 @@ export default function AdminPanel() {
     }
   };
 
+  const assignConnection = async () => {
+    const token = localStorage.getItem("access_token");
+    if (!token || !selectedClientId || !selectedDietitianId) return;
+    setAssigningConnection(true);
+    setConnectionError("");
+    setConnectionMessage("");
+
+    try {
+      const res = await fetch(`${API_BASE}/api/auth/admin/assign-client`, {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          client_id: selectedClientId,
+          dietitian_id: selectedDietitianId,
+          notes: assignmentNote.trim() || undefined,
+        }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data?.message || "assign_failed");
+      await Promise.all([fetchUsersOverview(token), fetchConnections(token)]);
+      setConnectionMessage(lang === "tr" ? "E?le?me ba?ar?yla kaydedildi." : "Assignment saved successfully.");
+      setAssignmentNote("");
+      setLastUpdatedAt(Date.now());
+    } catch {
+      setConnectionError(lang === "tr" ? "E?le?me kaydedilemedi." : "Failed to save assignment.");
+    } finally {
+      setAssigningConnection(false);
+    }
+  };
+
   const logout = () => {
-    localStorage.removeItem("access_token");
-    localStorage.removeItem("refresh_token");
-    localStorage.removeItem("sd_user");
+    clearAuthSession();
     navigate("/login", { replace: true });
   };
 
@@ -857,6 +1102,172 @@ export default function AdminPanel() {
                 >
                   {t.next}
                 </button>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <section className="mt-5">
+          <div className={panelClass(isDark)}>
+            <h2 className="text-sm font-black">{t.visibilityTitle}</h2>
+            <p className={hintClass(isDark)}>{t.visibilitySub}</p>
+            <div className="mt-4 grid gap-4 xl:grid-cols-2">
+              {visibilityBoards.map((board) => (
+                <RoleWorkspaceBoard
+                  key={board.title}
+                  isDark={isDark}
+                  title={board.title}
+                  subtitle={board.subtitle}
+                  items={board.items}
+                  readOnly
+                />
+              ))}
+            </div>
+          </div>
+        </section>
+
+        <section className="mt-5 grid gap-5 xl:grid-cols-[1.15fr_0.85fr]">
+          <div className={panelClass(isDark)}>
+            <div className="mb-3 flex items-center justify-between gap-3">
+              <div>
+                <h2 className="text-sm font-black">{lang === "tr" ? "Tüm Kullanıcılar" : "All Users"}</h2>
+                <p className={hintClass(isDark)}>
+                  {lang === "tr"
+                    ? "Admin tum rolleri burada gorur. Normal kullanicilar sadece atanmis diyetisyenle ilerler."
+                    : "Admin sees every role here. Regular users only move forward with the assigned dietitian."}
+                </p>
+              </div>
+              <div className={["rounded-full px-3 py-1 text-xs font-black", isDark ? "bg-white/5 text-zinc-200" : "bg-[#eef6f2] text-[#23493f]"].join(" ")}>
+                {usersLoading ? "..." : usersOverview.length}
+              </div>
+            </div>
+            {connectionError ? <ErrorBox isDark={isDark}>{connectionError}</ErrorBox> : null}
+            <div className="grid gap-3 md:grid-cols-2">
+              {usersOverview.map((item) => (
+                <div key={item.user_id} className={innerPanel(isDark)}>
+                  <div className="flex items-start justify-between gap-3">
+                    <div>
+                      <div className="text-sm font-black">
+                        {[item.first_name, item.last_name].filter(Boolean).join(" ").trim() || item.email || item.user_id}
+                      </div>
+                      <div className={hintClass(isDark)}>
+                        {item.account_type === "dietitian"
+                          ? item.clinic_name || item.clinic_city || "-"
+                          : item.assigned_dietitian_name || (lang === "tr" ? "Atama yok" : "No assignment")}
+                      </div>
+                    </div>
+                    <span className={["rounded-full px-2 py-1 text-[10px] font-bold", item.account_type === "dietitian" ? (isDark ? "bg-cyan-500/16 text-cyan-100" : "bg-cyan-100 text-cyan-800") : (isDark ? "bg-emerald-500/16 text-emerald-100" : "bg-emerald-100 text-emerald-800")].join(" ")}>
+                      {item.account_type === "dietitian" ? "Dietitian" : "User"}
+                    </span>
+                  </div>
+                  <div className={["mt-2 text-xs", isDark ? "text-zinc-400" : "text-[#5f8177]"].join(" ")}>
+                    {(item.roles || []).join(", ") || "-"}
+                  </div>
+                  <div className={["mt-2 text-xs", isDark ? "text-zinc-300" : "text-[#45685e]"].join(" ")}>
+                    {item.account_type === "dietitian"
+                      ? `${lang === "tr" ? "Bağlı danışan" : "Assigned clients"}: ${item.assigned_clients_count || 0}`
+                      : `${lang === "tr" ? "Bagli diyetisyen" : "Assigned dietitian"}: ${item.assigned_dietitian_name || "-"}`}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          <div className="grid gap-5">
+            <div className={panelClass(isDark)}>
+              <h2 className="text-sm font-black">{lang === "tr" ? "E?le?me Merkezi" : "Assignment Center"}</h2>
+              <p className={hintClass(isDark)}>
+                {lang === "tr"
+                  ? "Bağlantı sadece admin tarafından kurulur. Kullanıcı kendi başına diyetisyen seçemez."
+                  : "Connections are created only by admin. Users cannot choose a dietitian on their own."}
+              </p>
+
+              <div className="mt-4 grid gap-3">
+                <label>
+                  <span className={labelClass(isDark)}>{lang === "tr" ? "Kullanıcı Seç" : "Select User"}</span>
+                  <select value={selectedClientId} onChange={(e) => setSelectedClientId(e.target.value)} className={inputClass(isDark)}>
+                    <option value="">{lang === "tr" ? "Kullanıcı seç" : "Select user"}</option>
+                    {clientCandidates.map((item) => (
+                      <option key={item.user_id} value={item.user_id}>
+                        {[item.first_name, item.last_name].filter(Boolean).join(" ").trim() || item.email || item.user_id}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+
+                <label>
+                  <span className={labelClass(isDark)}>{lang === "tr" ? "Diyetisyen Sec" : "Select Dietitian"}</span>
+                  <select value={selectedDietitianId} onChange={(e) => setSelectedDietitianId(e.target.value)} className={inputClass(isDark)}>
+                    <option value="">{lang === "tr" ? "Diyetisyen sec" : "Select dietitian"}</option>
+                    {dietitianCandidates.map((item) => (
+                      <option key={item.user_id} value={item.user_id}>
+                        {[item.first_name, item.last_name].filter(Boolean).join(" ").trim() || item.email || item.user_id}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+
+                <label>
+                  <span className={labelClass(isDark)}>{lang === "tr" ? "Admin Notu" : "Admin Note"}</span>
+                  <textarea
+                    value={assignmentNote}
+                    onChange={(e) => setAssignmentNote(e.target.value)}
+                    rows={3}
+                    className={inputClass(isDark)}
+                    placeholder={lang === "tr" ? "E?le?me i?in k?sa not" : "Short note for this assignment"}
+                  />
+                </label>
+              </div>
+
+              {selectedClient ? (
+                <div className={["mt-4 rounded-xl border px-3 py-3 text-xs", isDark ? "border-white/10 bg-black/20 text-zinc-200" : "border-[#2f6154]/18 bg-white text-[#2f564a]"].join(" ")}>
+                  {lang === "tr" ? "Mevcut bag: " : "Current link: "}
+                  <span className="font-black">{selectedClient.assigned_dietitian_name || "-"}</span>
+                </div>
+              ) : null}
+              {selectedDietitian ? (
+                <div className={["mt-2 rounded-xl border px-3 py-3 text-xs", isDark ? "border-white/10 bg-black/20 text-zinc-200" : "border-[#2f6154]/18 bg-white text-[#2f564a]"].join(" ")}>
+                  {lang === "tr" ? "Diyetisyen aktif danışan sayısı: " : "Dietitian active client count: "}
+                  <span className="font-black">{selectedDietitian.assigned_clients_count || 0}</span>
+                </div>
+              ) : null}
+
+              {connectionMessage ? <div className={["mt-4 rounded-xl border px-3 py-2 text-xs", isDark ? "border-emerald-500/30 bg-emerald-500/10 text-emerald-100" : "border-emerald-400/40 bg-emerald-100 text-emerald-800"].join(" ")}>{connectionMessage}</div> : null}
+
+              <button
+                type="button"
+                onClick={assignConnection}
+                disabled={!selectedClientId || !selectedDietitianId || assigningConnection}
+                className="mt-4 w-full rounded-xl bg-gradient-to-r from-emerald-400 to-teal-300 px-4 py-3 text-sm font-black text-zinc-950 disabled:opacity-60"
+              >
+                {assigningConnection
+                  ? (lang === "tr" ? "E?le?tiriliyor..." : "Assigning...")
+                  : (lang === "tr" ? "Kullanıcıyı Diyetisyene Bağla" : "Assign User To Dietitian")}
+              </button>
+            </div>
+
+            <div className={panelClass(isDark)}>
+              <h2 className="text-sm font-black">{lang === "tr" ? "Aktif Baglantilar" : "Active Connections"}</h2>
+              <p className={hintClass(isDark)}>
+                {lang === "tr" ? "Kullanıcılar sadece bu bağlantılar üzerinden profesyonel akışa girer." : "Users enter the professional flow only through these active connections."}
+              </p>
+              {connectionsLoading ? <div className={hintClass(isDark)}>{t.load}</div> : null}
+              <div className="mt-4 space-y-2">
+                {connections.map((item) => (
+                  <div key={item.id} className={innerPanel(isDark)}>
+                    <div className="text-xs font-black">{item.client_name}</div>
+                    <div className={hintClass(isDark)}>
+                      {item.dietitian_name} {item.clinic_name ? `- ${item.clinic_name}` : ""}
+                    </div>
+                    <div className={["mt-1 text-[11px]", isDark ? "text-zinc-500" : "text-[#6f8e84]"].join(" ")}>
+                      {formatDate(item.start_date, lang)}
+                    </div>
+                    {item.notes ? <div className={["mt-2 text-xs", isDark ? "text-zinc-300" : "text-[#496c62]"].join(" ")}>{item.notes}</div> : null}
+                  </div>
+                ))}
+                {!connectionsLoading && !connections.length ? (
+                  <div className={hintClass(isDark)}>{lang === "tr" ? "Aktif ba?lant? yok." : "No active connections."}</div>
+                ) : null}
               </div>
             </div>
           </div>

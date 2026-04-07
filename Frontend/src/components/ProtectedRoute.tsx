@@ -1,12 +1,13 @@
 import React from "react";
 import { Navigate } from "react-router-dom";
+import { useAuthSession } from "../lib/authSession";
 
 type Props = {
   children: React.ReactNode;
 };
 
 export default function ProtectedRoute({ children }: Props) {
-  const token = localStorage.getItem("access_token");
-  if (!token) return <Navigate to="/login" replace />;
+  const { accessToken } = useAuthSession();
+  if (!accessToken) return <Navigate to="/login" replace />;
   return <>{children}</>;
 }

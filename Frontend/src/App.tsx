@@ -2,11 +2,11 @@ import { Routes, Route, Navigate } from "react-router-dom";
 
 import Login from "./pages/Login";
 import Register from "./pages/Register";
+import ResetPassword from "./pages/ResetPassword";
 import AdminPanel from "./pages/AdminPanel";
+import ClinicManagerPanel from "./pages/ClinicManagerPanel";
 import Profile from "./pages/Profile";
 import AppEntry from "./pages/AppEntry";
-import ClientHome from "./pages/ClientHome";
-import DietitianHome from "./pages/DietitianHome";
 import DietitianVerification from "./pages/DietitianVerification";
 import ProtectedRoute from "./components/ProtectedRoute";
 import SettingsDrawer from "./components/SettingsDrawer";
@@ -19,12 +19,21 @@ export default function App() {
 
         <Route path="/login" element={<Login />} />
         <Route path="/register" element={<Register />} />
+        <Route path="/reset-password" element={<ResetPassword />} />
 
         <Route
           path="/admin-panel"
           element={
             <ProtectedRoute>
               <AdminPanel />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/clinic-manager"
+          element={
+            <ProtectedRoute>
+              <ClinicManagerPanel />
             </ProtectedRoute>
           }
         />
@@ -41,7 +50,7 @@ export default function App() {
           path="/client-home"
           element={
             <ProtectedRoute>
-              <ClientHome profile={{}} />
+              <Navigate to="/" replace />
             </ProtectedRoute>
           }
         />
@@ -49,7 +58,7 @@ export default function App() {
           path="/dietitian-home"
           element={
             <ProtectedRoute>
-              <DietitianHome profile={{}} />
+              <Navigate to="/" replace />
             </ProtectedRoute>
           }
         />

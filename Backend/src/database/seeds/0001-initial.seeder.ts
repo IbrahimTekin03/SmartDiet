@@ -13,13 +13,13 @@ export default class InitialSeeder0001 implements Seeder {
     const userRepository = dataSource.getRepository(User);
 
     const basePermissions: Array<Partial<Permission>> = [
-      { name: 'user.create', description: 'Kullanici olusturma', group: 'user' },
-      { name: 'user.read', description: 'Kullanici goruntuleme', group: 'user' },
-      { name: 'user.update', description: 'Kullanici guncelleme', group: 'user' },
-      { name: 'user.delete', description: 'Kullanici silme', group: 'user' },
-      { name: 'role.create', description: 'Rol olusturma', group: 'role' },
-      { name: 'role.read', description: 'Rol goruntuleme', group: 'role' },
-      { name: 'role.update', description: 'Rol guncelleme', group: 'role' },
+      { name: 'user.create', description: 'Kullanıcı oluşturma', group: 'user' },
+      { name: 'user.read', description: 'Kullanıcı görüntüleme', group: 'user' },
+      { name: 'user.update', description: 'Kullanıcı güncelleme', group: 'user' },
+      { name: 'user.delete', description: 'Kullanıcı silme', group: 'user' },
+      { name: 'role.create', description: 'Rol olu?turma', group: 'role' },
+      { name: 'role.read', description: 'Rol g?r?nt?leme', group: 'role' },
+      { name: 'role.update', description: 'Rol güncelleme', group: 'role' },
       { name: 'role.delete', description: 'Rol silme', group: 'role' },
     ];
 
@@ -53,6 +53,7 @@ export default class InitialSeeder0001 implements Seeder {
       { name: 'user', description: 'Standart kullanici' },
       { name: 'client', description: 'Danisan kullanici' },
       { name: 'dietitian', description: 'Diyetisyen kullanici' },
+      { name: 'clinic_manager', description: 'Klinik yoneticisi' },
     ];
 
     for (const roleDef of roleDefinitions) {

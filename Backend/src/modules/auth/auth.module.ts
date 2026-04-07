@@ -16,11 +16,13 @@ import { OtpTrustKey } from './otp/entities/otp-trust-key.entity';
 import { OtpService } from './otp/otp.service';
 import { MailModule } from '../mail/mail.module';
 import { UserProfile } from '../users/entities/user.profile.entity';
+import { Subscription } from './entities/subscription.entity';
+import { ChatRoom } from './entities/chat-room.entity';
 
 @Module({
   imports: [
     UsersModule,
-    TypeOrmModule.forFeature([User, Role, OtpCode, OtpTrustKey, UserProfile]),
+    TypeOrmModule.forFeature([User, Role, OtpCode, OtpTrustKey, UserProfile, Subscription, ChatRoom]),
     PassportModule,
     JwtModule.registerAsync({
       imports: [ConfigModule],

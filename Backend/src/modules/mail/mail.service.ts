@@ -25,7 +25,7 @@ export class MailService {
   }
 
   async sendPasswordResetMail(to: string, token: string) {
-    const appUrl = this.configService.get('APP_URL');
+    const appUrl = this.configService.get('APP_URL') || 'http://localhost:5173';
     const resetUrl = `${appUrl}/reset-password?token=${token}`;
 
     return this.sendMail(

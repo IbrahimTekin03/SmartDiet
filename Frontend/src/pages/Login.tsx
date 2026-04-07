@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useAppSettings } from "../context/AppSettingsContext";
+import { setAuthSession, useAuthSession } from "../lib/authSession";
 
 type Lang = "tr" | "en";
 type OtpChannel = "email" | "sms";
@@ -64,6 +65,15 @@ type CopyText = {
   errOtpDeviceRate: string;
   errUserNotFound: string;
   errNetwork: string;
+  forgotPassword: string;
+  forgotPasswordHint: string;
+  forgotPasswordEmail: string;
+  forgotPasswordEmailPh: string;
+  forgotPasswordSend: string;
+  forgotPasswordSending: string;
+  forgotPasswordSuccess: string;
+  forgotPasswordLocked: string;
+  forgotPasswordAfterAttempts: string;
 };
 
 type LoginPayload = {
@@ -87,67 +97,85 @@ const PHONE_REGEX = /^\+?[0-9\s()-]{10,}$/;
 
 const COPY: Record<Lang, CopyText> = {
   tr: {
-    brandSub: "Klinik ve Diyet Yönetimi",
-    signUp: "Kayıt Ol",
-    secureLogin: "Güvenli giriş",
-    titleA: "Hesabına",
-    titleB: "giriş yap",
-    subtitle: "Danışanların, planların, ölçüm raporların ve sohbetlerin tek panelde.",
-    pillA: "Tek Panel",
-    pillAText: "Akış tek yerde",
+    forgotPassword: "?ifremi unuttum",
+    forgotPasswordHint: "3 ba?ar?s?z denemeden sonra e-posta adresine ?ifre yenileme ba?lant?s? g?nderebiliriz.",
+    forgotPasswordEmail: "E-posta Adresi",
+    forgotPasswordEmailPh: "ornek@smartdiet.com",
+    forgotPasswordSend: "Ba?lant? G?nder",
+    forgotPasswordSending: "G?nderiliyor...",
+    forgotPasswordSuccess: "E-posta adresi uygunsa ?ifre yenileme ba?lant?s? g?nderildi.",
+    forgotPasswordLocked: "?ifre yenileme hen?z aktif de?il. Bu alan 3 ba?ar?s?z giri? denemesinden sonra a??l?r.",
+    forgotPasswordAfterAttempts: "Bu alan 3 ba?ar?s?z giri? denemesinin ard?ndan a??ld?.",
+    brandSub: "Klinik ve Beslenme Y?netimi",
+    signUp: "Kay?t Ol",
+    secureLogin: "G?venli Giri?",
+    titleA: "Hesab?na",
+    titleB: "giri? yap",
+    subtitle: "Dan??an y?netimi, plan takibi, ?l??m raporlar? ve ileti?im tek ekranda.",
+    pillA: "Tek Merkez",
+    pillAText: "T?m s?re? tek panelde",
     pillB: "Takip",
-    pillBText: "Ölçüm ve uyum",
-    pillC: "Mesaj",
-    pillCText: "Anlık iletişim",
-    cardTitle: "Giriş Yap",
-    cardSub: "Mail veya telefon ve şifreni gir. Son adımda OTP ile doğrula.",
-    identifier: "Mail",
-    identifierPh: "Mail veya telefon girin",
-    password: "Şifre",
+    pillBText: "?l??m ve uyum takibi",
+    pillC: "?leti?im",
+    pillCText: "H?zl? ve g?venli mesajla?ma",
+    cardTitle: "Giri? Yap",
+    cardSub: "E-posta veya telefon numaran ve ?ifren ile devam et. Gerekirse son ad?mda do?rulama kodu istenir.",
+    identifier: "E-posta veya Telefon",
+    identifierPh: "E-posta adresi veya telefon numaras?",
+    password: "?ifre",
     hide: "Gizle",
-    show: "Göster",
+    show: "G?ster",
     nextStep: "Devam Et",
     nextStepBusy: "Kontrol ediliyor...",
-    noAccount: "Hesabın yok mu?",
-    toRegister: "Kayıt ol",
-    idReq: "Mail veya telefon zorunlu.",
-    idInvalid: "Geçerli bir mail ya da telefon gir.",
-    passwordReq: "Şifre zorunlu.",
-    loginFail: "Giriş başarısız. Bilgileri kontrol et.",
-    genericErr: "Bir hata oluştu.",
-    otpTitle: "Doğrulama Yöntemi",
-    otpSub: "Hesaba girmeden önce kod gönderim türünü seç.",
-    otpByEmail: "Mail ile doğrula",
-    otpBySms: "SMS gönder",
-    sendCode: "Kodu Gönder",
-    sendingCode: "Kod gönderiliyor...",
-    codeLabel: "Doğrulama Kodu",
+    noAccount: "Hen?z hesab?n yok mu?",
+    toRegister: "Kay?t ol",
+    idReq: "E-posta veya telefon numaras? zorunludur.",
+    idInvalid: "Ge?erli bir e-posta adresi ya da telefon numaras? gir.",
+    passwordReq: "?ifre zorunludur.",
+    loginFail: "Giri? ba?ar?s?z. Bilgilerini kontrol ederek tekrar dene.",
+    genericErr: "Beklenmeyen bir hata olu?tu.",
+    otpTitle: "Do?rulama Y?ntemi",
+    otpSub: "Hesaba giri? yapmadan ?nce do?rulama y?ntemini se?.",
+    otpByEmail: "E-posta ile do?rula",
+    otpBySms: "SMS ile do?rula",
+    sendCode: "Kodu G?nder",
+    sendingCode: "Kod g?nderiliyor...",
+    codeLabel: "Do?rulama Kodu",
     codePh: "123456",
-    verifyCode: "Kodu Doğrula ve Gir",
-    verifyingCode: "Doğrulanıyor...",
-    resendCode: "Kodu Tekrar Gönder",
-    resendIn: "Tekrar gönderim",
-    cancelOtp: "İptal",
-    otpHint: "Kod gönderildi. Gelen 6 haneli kodu gir.",
-    otpInvalid: "Kod 6 haneli olmalıdır.",
-    otpSentTo: "Kod gönderildi:",
-    otpExpiresIn: "Kodun geçerlilik süresi",
-    otpExpired: "Kod süresi doldu. Lütfen yeniden kod isteyin.",
-    missingOtpEmail: "Bu hesapta OTP için e-posta bulunamadı.",
-    missingOtpPhone: "Bu hesapta OTP için telefon bulunamadı.",
-    smsNotConfigured: "SMS servisi aktif değil. Mail seçimi ile devam et.",
-    otpExpiry: "Kod geçerlilik süresi: 5 dakika",
-    errOtpInvalidCode: "Hatalı kod girdiniz.",
-    errOtpExpired: "Kod geçersiz veya süresi dolmuş.",
-    errOtpUsed: "Bu kod kullanılmış. Lütfen yeni kod isteyin.",
-    errOtpLocked: "Çok fazla hatalı deneme yapıldı. Lütfen daha sonra tekrar deneyin.",
-    errOtpRateLimit: "Çok sık kod istediniz. Biraz bekleyip tekrar deneyin.",
-    errOtpCooldown: "Tekrar kod istemek için biraz bekleyin.",
-    errOtpDeviceRate: "Bu cihazdan çok fazla kod istendi. Lütfen daha sonra tekrar deneyin.",
-    errUserNotFound: "Kullanıcı bulunamadı.",
-    errNetwork: "Sunucuya ulaşılamıyor. Bağlantıyı kontrol edip tekrar deneyin.",
+    verifyCode: "Kodu Do?rula ve Giri? Yap",
+    verifyingCode: "Do?rulan?yor...",
+    resendCode: "Kodu Yeniden G?nder",
+    resendIn: "Tekrar g?nderim",
+    cancelOtp: "?ptal",
+    otpHint: "Kod g?nderildi. L?tfen gelen 6 haneli do?rulama kodunu gir.",
+    otpInvalid: "Kod 6 haneli olmal?d?r.",
+    otpSentTo: "Kod g?nderildi:",
+    otpExpiresIn: "Kodun ge?erlilik s?resi",
+    otpExpired: "Kodun s?resi doldu. L?tfen yeniden kod iste.",
+    missingOtpEmail: "Bu hesap i?in do?rulama e-postas? bulunamad?.",
+    missingOtpPhone: "Bu hesap i?in do?rulama telefonu bulunamad?.",
+    smsNotConfigured: "SMS servisi ?u anda aktif de?il. L?tfen e-posta ile devam et.",
+    otpExpiry: "Kodun ge?erlilik s?resi: 5 dakika",
+    errOtpInvalidCode: "Girdi?in do?rulama kodu hatal?.",
+    errOtpExpired: "Kod ge?ersiz ya da s?resi dolmu?.",
+    errOtpUsed: "Bu kod daha ?nce kullan?lm??. L?tfen yeni bir kod iste.",
+    errOtpLocked: "?ok fazla hatal? deneme yap?ld?. L?tfen daha sonra tekrar dene.",
+    errOtpRateLimit: "?ok s?k kod talep edildi. Biraz bekleyip tekrar dene.",
+    errOtpCooldown: "Yeniden kod istemeden ?nce k?sa bir s?re bekle.",
+    errOtpDeviceRate: "Bu cihazdan ?ok fazla kod talep edildi. L?tfen daha sonra tekrar dene.",
+    errUserNotFound: "Kullan?c? bulunamad?.",
+    errNetwork: "Sunucuya ula??lam?yor. Ba?lant?n? kontrol edip tekrar dene.",
   },
   en: {
+    forgotPassword: "Forgot password",
+    forgotPasswordHint: "After 3 failed attempts, we can send a password reset link by email.",
+    forgotPasswordEmail: "Email address",
+    forgotPasswordEmailPh: "name@example.com",
+    forgotPasswordSend: "Send Link",
+    forgotPasswordSending: "Sending...",
+    forgotPasswordSuccess: "If the email belongs to an eligible account, a reset link has been sent.",
+    forgotPasswordLocked: "Password reset is not available yet. It opens after 3 failed attempts.",
+    forgotPasswordAfterAttempts: "This section opened after 3 failed attempts.",
     brandSub: "Clinic and Nutrition Management",
     signUp: "Sign Up",
     secureLogin: "Secure login",
@@ -291,6 +319,7 @@ function mapApiError(message: string, t: CopyText): string {
   if (normalized.includes("e-posta veya telefon") || normalized.includes("email or phone")) return t.idReq;
   if (normalized.includes("user not found")) return t.errUserNotFound;
   if (normalized.includes("failed to fetch") || normalized.includes("networkerror")) return t.errNetwork;
+  if (normalized.includes("password reset becomes available") || normalized.includes("şifre sıfırlama yalnızca")) return t.forgotPasswordLocked;
   if (normalized.includes("unauthorized")) return t.loginFail;
   if (normalized.includes("invalid credentials")) return t.loginFail;
 
@@ -299,9 +328,11 @@ function mapApiError(message: string, t: CopyText): string {
 
 export default function Login() {
   const navigate = useNavigate();
+  const { accessToken } = useAuthSession();
 
   const API_BASE = "http://localhost:3000";
   const LOGIN_URL = `${API_BASE}/api/auth/login`;
+  const FORGOT_PASSWORD_URL = `${API_BASE}/api/auth/forgot-password`;
   const REQUEST_OTP_URL = `${API_BASE}/api/auth/request-otp`;
   const VERIFY_OTP_URL = `${API_BASE}/api/auth/verify-otp`;
   const { lang, isDark } = useAppSettings();
@@ -314,6 +345,12 @@ export default function Login() {
 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [failedAttempts, setFailedAttempts] = useState(0);
+  const [forgotPasswordEnabled, setForgotPasswordEnabled] = useState(false);
+  const [forgotEmail, setForgotEmail] = useState("");
+  const [forgotLoading, setForgotLoading] = useState(false);
+  const [forgotError, setForgotError] = useState("");
+  const [forgotSuccess, setForgotSuccess] = useState("");
 
   const [otpOpen, setOtpOpen] = useState(false);
   const [otpChannel, setOtpChannel] = useState<OtpChannel>(readLastChannel());
@@ -331,8 +368,19 @@ export default function Login() {
   const [pendingUser, setPendingUser] = useState<SessionUser | null>(null);
 
   useEffect(() => {
-    if (localStorage.getItem("access_token")) navigate("/", { replace: true });
-  }, [navigate]);
+    if (accessToken) navigate("/", { replace: true });
+  }, [accessToken, navigate]);
+
+  useEffect(() => {
+    const idType = guessIdentifierType(identifier);
+    if (idType === "email") {
+      setForgotEmail(identifier.trim());
+    }
+    setForgotError("");
+    setForgotSuccess("");
+    setFailedAttempts(0);
+    setForgotPasswordEnabled(false);
+  }, [identifier]);
 
   useEffect(() => {
     if (otpCooldown <= 0) return;
@@ -427,6 +475,8 @@ export default function Login() {
   const handleCredentialSubmit = async (ev: React.FormEvent) => {
     ev.preventDefault();
     setError("");
+    setForgotError("");
+    setForgotSuccess("");
 
     const validationError = validateCredentials();
     if (validationError) {
@@ -456,8 +506,14 @@ export default function Login() {
 
       const data = await res.json().catch(() => ({}));
       if (!res.ok) {
-        const msg = extractApiMessage(data, t.loginFail);
-        throw new Error(msg);
+        const nextFailedAttempts = failedAttempts + 1;
+        setFailedAttempts(nextFailedAttempts);
+        setForgotPasswordEnabled(idType === "email" && nextFailedAttempts >= 3);
+        if (idType === "email") {
+          setForgotEmail(identifier.trim());
+        }
+        setError(mapApiError(extractApiMessage(data, t.loginFail), t));
+        return;
       }
 
       const result = data?.data ?? data;
@@ -466,21 +522,61 @@ export default function Login() {
         const refreshToken = result?.refreshToken;
         const user = result?.user;
 
-        if (accessToken) localStorage.setItem("access_token", accessToken);
-        if (refreshToken) localStorage.setItem("refresh_token", refreshToken);
-        if (user) localStorage.setItem("sd_user", JSON.stringify(user));
+        setAuthSession({
+          accessToken,
+          refreshToken,
+          user,
+        });
 
-        navigate("/");
+        setFailedAttempts(0);
+        setForgotPasswordEnabled(false);
+        navigate("/", { replace: true });
         return;
       }
 
       const user = (result?.user ?? {}) as SessionUser;
+      setFailedAttempts(0);
+      setForgotPasswordEnabled(false);
       openOtpModal(user);
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : "";
       setError(mapApiError(message, t));
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleForgotPassword = async () => {
+    setForgotError("");
+    setForgotSuccess("");
+
+    const email = forgotEmail.trim().toLowerCase();
+    if (!EMAIL_REGEX.test(email)) {
+      setForgotError(t.idInvalid);
+      return;
+    }
+
+    setForgotLoading(true);
+    try {
+      const res = await fetch(FORGOT_PASSWORD_URL, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ email }),
+      });
+
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        throw new Error(extractApiMessage(data, t.genericErr));
+      }
+
+      setForgotSuccess(t.forgotPasswordSuccess);
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : "";
+      setForgotError(mapApiError(message, t));
+    } finally {
+      setForgotLoading(false);
     }
   };
 
@@ -551,12 +647,14 @@ export default function Login() {
       const refreshToken = result?.refreshToken;
       const user = result?.user;
 
-      if (accessToken) localStorage.setItem("access_token", accessToken);
-      if (refreshToken) localStorage.setItem("refresh_token", refreshToken);
-      if (user) localStorage.setItem("sd_user", JSON.stringify(user));
+      setAuthSession({
+        accessToken,
+        refreshToken,
+        user,
+      });
 
       setOtpOpen(false);
-      navigate("/");
+      navigate("/", { replace: true });
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : "";
       setOtpError(mapApiError(message, t));
@@ -704,6 +802,52 @@ export default function Login() {
               >
                 {loading ? t.nextStepBusy : t.nextStep}
               </button>
+
+              {forgotPasswordEnabled ? (
+                <div className={isDark ? "rounded-2xl border border-amber-400/20 bg-amber-500/10 p-4" : "rounded-2xl border border-amber-700/20 bg-amber-50 p-4"}>
+                  <div className={isDark ? "text-sm font-bold text-amber-100" : "text-sm font-bold text-amber-900"}>
+                    {t.forgotPassword}
+                  </div>
+                  <div className={isDark ? "mt-1 text-xs text-amber-50/80" : "mt-1 text-xs text-amber-800/80"}>
+                    {t.forgotPasswordAfterAttempts}
+                  </div>
+                  <div className={isDark ? "mt-2 text-xs text-zinc-300" : "mt-2 text-xs text-[#5f5a3c]"}>
+                    {t.forgotPasswordHint}
+                  </div>
+
+                  <div className="mt-3 space-y-3">
+                    <Field
+                      isDark={isDark}
+                      label={t.forgotPasswordEmail}
+                      value={forgotEmail}
+                      onChange={(v) => {
+                        setForgotEmail(v);
+                        setForgotError("");
+                        setForgotSuccess("");
+                      }}
+                      placeholder={t.forgotPasswordEmailPh}
+                      autoComplete="email"
+                      name="forgot_email"
+                    />
+
+                    {forgotError ? <div className="rounded-xl border border-rose-500/25 bg-rose-500/10 px-3 py-2 text-xs text-rose-100">{forgotError}</div> : null}
+                    {forgotSuccess ? <div className="rounded-xl border border-emerald-500/25 bg-emerald-500/10 px-3 py-2 text-xs text-emerald-100">{forgotSuccess}</div> : null}
+
+                    <button
+                      type="button"
+                      onClick={() => void handleForgotPassword()}
+                      disabled={forgotLoading}
+                      className={isDark ? "w-full rounded-xl border border-amber-300/20 bg-white/5 px-4 py-3 text-sm font-bold text-white disabled:cursor-not-allowed disabled:opacity-60" : "w-full rounded-xl border border-amber-700/20 bg-white px-4 py-3 text-sm font-bold text-[#5d4823] disabled:cursor-not-allowed disabled:opacity-60"}
+                    >
+                      {forgotLoading ? t.forgotPasswordSending : t.forgotPasswordSend}
+                    </button>
+                  </div>
+                </div>
+              ) : failedAttempts > 0 ? (
+                <div className={isDark ? "rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-xs text-zinc-300" : "rounded-2xl border border-[#325d51]/20 bg-white px-4 py-3 text-xs text-[#36544c]"}>
+                  {lang === "tr" ? `Hatali deneme: ${failedAttempts}/3` : `Failed attempts: ${failedAttempts}/3`}
+                </div>
+              ) : null}
 
               <div className={isDark ? "pt-2 text-center text-xs text-zinc-400" : "pt-2 text-center text-xs text-[#4d6b62]"}>
                 {t.noAccount}{" "}

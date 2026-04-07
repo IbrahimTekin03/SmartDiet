@@ -14,7 +14,6 @@ import { AuthService } from './auth.service';
 import { RequestOtpDto } from './dto/request-otp.dto';
 import { VerifyOtpDto } from './dto/verify-otp.dto';
 import { OtpService } from './otp/otp.service';
-import { LocalAuthGuard } from './guards/local-auth.guard';
 import { JwtAuthGuard } from './guards/jwt-auth.guard';
 import { RegisterDto } from './dto/register.dto';
 import { RefreshTokenDto } from './dto/refresh-token.dto';
@@ -23,9 +22,12 @@ import { ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
 import { ResponseDto } from '@/common/dto/response.dto';
 import { I18nService } from 'nestjs-i18n';
 import { LoginDto } from './dto/login.dto';
+import { ForgotPasswordDto } from './dto/forgot-password.dto';
+import { ResetPasswordDto } from './dto/reset-password.dto';
 import { RolesGuard } from '../acl/guards/roles.guard';
 import { Roles } from '../acl/decorators/roles.decorator';
 import { AdminRegisterDto } from './dto/admin.register.dto';
+import { AssignClientDietitianDto } from './dto/assign-client-dietitian.dto';
 import { SubmitDietitianVerificationDto } from './dto/submit-dietitian-verification.dto';
 import { RejectDietitianApplicationDto } from './dto/reject-dietitian-application.dto';
 import { FileInterceptor } from '@nestjs/platform-express';
@@ -44,7 +46,6 @@ export class AuthController {
   ) {}
 
   @Post('login')
-  @UseGuards(LocalAuthGuard)
   @ApiOperation({ summary: 'Kullanıcı girişi' })
   @ApiResponse({
     status: 200,
@@ -56,8 +57,10 @@ export class AuthController {
       return ResponseDto.error('E-posta veya telefon numarası gereklidir');
     }
 
+    const authenticatedUser = await this.authService.authenticateForLogin(loginDto);
+
     const otpCheck = await this.otpService.shouldRequireOtpForUser(
-      req.user,
+      authenticatedUser,
       OtpPurpose.Login,
       {
         ip: this.resolveClientIp(req),
@@ -70,11 +73,11 @@ export class AuthController {
       const message = await this.i18n.translate('common.auth.login_success');
       return ResponseDto.success(message, {
         otpRequired: true,
-        user: this.authService.buildSessionUser(req.user),
+        user: this.authService.buildSessionUser(authenticatedUser),
       });
     }
 
-    const result = await this.authService.login(req.user);
+    const result = await this.authService.login(authenticatedUser);
     const message = await this.i18n.translate('common.auth.login_success');
     return ResponseDto.success(message, {
       ...result,
@@ -82,6 +85,24 @@ export class AuthController {
       otpTrusted: true,
       otpTrustedTtlSeconds: otpCheck.trustedTtlSeconds,
     });
+  }
+
+  @Post('forgot-password')
+  @ApiOperation({ summary: 'Şifre sıfırlama linki gönder' })
+  @ApiResponse({ status: 200, description: 'Şifre sıfırlama e-postası gönderildi', type: ResponseDto })
+  async forgotPassword(@Body() dto: ForgotPasswordDto) {
+    const result = await this.authService.requestPasswordReset(dto.email);
+    const message = await this.i18n.translate('common.auth.password_reset_email_sent');
+    return ResponseDto.success(message, result);
+  }
+
+  @Post('reset-password')
+  @ApiOperation({ summary: 'Şifreyi sıfırla' })
+  @ApiResponse({ status: 200, description: 'Şifre sıfırlama tamamlandı', type: ResponseDto })
+  async resetPassword(@Body() dto: ResetPasswordDto) {
+    const result = await this.authService.resetPassword(dto.token, dto.password);
+    const message = await this.i18n.translate('common.auth.password_reset_success');
+    return ResponseDto.success(message, result);
   }
 
   @Post('register')
@@ -158,27 +179,27 @@ export class AuthController {
 
   @Post('dietitian/verification')
   @UseGuards(JwtAuthGuard)
-  @ApiOperation({ summary: 'Diyetisyen dogrulama bilgilerini gonder' })
-  @ApiResponse({ status: 200, description: 'Dogrulama talebi alindi', type: ResponseDto })
+  @ApiOperation({ summary: 'Diyetisyen doğrulama bilgilerini gönder' })
+  @ApiResponse({ status: 200, description: 'Do?rulama talebi al?nd?', type: ResponseDto })
   async submitDietitianVerification(@Request() req, @Body() dto: SubmitDietitianVerificationDto) {
     const result = await this.authService.submitDietitianVerification(req.user.id, dto);
-    return ResponseDto.success('Dogrulama talebi alindi', result);
+    return ResponseDto.success('Do?rulama talebi al?nd?', result);
   }
 
   @Get('dietitian/verification-status')
   @UseGuards(JwtAuthGuard)
-  @ApiOperation({ summary: 'Diyetisyen dogrulama durumunu getir' })
-  @ApiResponse({ status: 200, description: 'Dogrulama durumu', type: ResponseDto })
+  @ApiOperation({ summary: 'Diyetisyen do?rulama durumunu getir' })
+  @ApiResponse({ status: 200, description: 'Do?rulama durumu', type: ResponseDto })
   async getDietitianVerificationStatus(@Request() req) {
     const result = await this.authService.getDietitianVerificationStatus(req.user.id);
-    return ResponseDto.success('Dogrulama durumu', result);
+    return ResponseDto.success('Do?rulama durumu', result);
   }
 
   @Get('admin/dietitian-applications')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles('admin')
-  @ApiOperation({ summary: 'Diyetisyen basvurularini durum filtresi ile listele' })
-  @ApiResponse({ status: 200, description: 'Filtreli basvuru listesi', type: ResponseDto })
+  @ApiOperation({ summary: 'Diyetisyen ba?vurular?n? durum filtresi ile listele' })
+  @ApiResponse({ status: 200, description: 'Filtreli ba?vuru listesi', type: ResponseDto })
   async listDietitianApplications(
     @Query('status') status?: string,
     @Query('search') search?: string,
@@ -195,14 +216,14 @@ export class AuthController {
       page: Number(page),
       limit: Number(limit),
     });
-    return ResponseDto.success('Basvuru listesi', result);
+    return ResponseDto.success('Ba?vuru listesi', result);
   }
 
   @Get('admin/dietitian-applications/history')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles('admin')
-  @ApiOperation({ summary: 'Diyetisyen basvuru islem gecmisini getir' })
-  @ApiResponse({ status: 200, description: 'Islem gecmisi', type: ResponseDto })
+  @ApiOperation({ summary: 'Diyetisyen ba?vuru i?lem ge?mi?ini getir' })
+  @ApiResponse({ status: 200, description: '??lem ge?mi?i', type: ResponseDto })
   async listDietitianApplicationHistory(
     @Query('page') page?: string,
     @Query('limit') limit?: string,
@@ -211,31 +232,114 @@ export class AuthController {
       page: Number(page),
       limit: Number(limit),
     });
-    return ResponseDto.success('Islem gecmisi', result);
+    return ResponseDto.success('??lem ge?mi?i', result);
+  }
+
+  @Get('clinic-manager/dietitians')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('clinic_manager', 'admin')
+  @ApiOperation({ summary: 'Onayl? diyetisyenleri klinik y?netimi i?in listele' })
+  @ApiResponse({ status: 200, description: 'Onayl? diyetisyen listesi', type: ResponseDto })
+  async listClinicDietitians(
+    @Query('search') search?: string,
+    @Query('city') city?: string,
+    @Query('sort') sort?: string,
+    @Query('page') page?: string,
+    @Query('limit') limit?: string,
+  ) {
+    const result = await this.authService.listClinicDietitians({
+      search,
+      city,
+      sort,
+      page: Number(page),
+      limit: Number(limit),
+    });
+    return ResponseDto.success('Onayl? diyetisyen listesi', result);
+  }
+
+  @Post('clinic-manager/dietitians/:userId/activation')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('clinic_manager', 'admin')
+  @ApiOperation({ summary: 'Onaylı diyetisyenin aktiflik durumunu güncelle' })
+  @ApiResponse({ status: 200, description: 'Aktiflik durumu güncellendi', type: ResponseDto })
+  async updateClinicDietitianActivation(
+    @Param('userId') userId: string,
+    @Body('isActive') isActive: boolean,
+  ) {
+    const result = await this.authService.updateClinicDietitianActivation(userId, Boolean(isActive));
+    return ResponseDto.success('Aktiflik durumu güncellendi', result);
   }
 
   @Post('admin/dietitian-applications/:userId/approve')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles('admin')
-  @ApiOperation({ summary: 'Diyetisyen basvurusunu onayla' })
-  @ApiResponse({ status: 200, description: 'Basvuru onaylandi', type: ResponseDto })
+  @ApiOperation({ summary: 'Diyetisyen ba?vurusunu onayla' })
+  @ApiResponse({ status: 200, description: 'Ba?vuru onayland?', type: ResponseDto })
   async approveDietitianApplication(@Request() req, @Param('userId') userId: string) {
     const result = await this.authService.approveDietitianApplication(req.user.id, userId);
-    return ResponseDto.success('Basvuru onaylandi', result);
+    return ResponseDto.success('Ba?vuru onayland?', result);
   }
 
   @Post('admin/dietitian-applications/:userId/reject')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles('admin')
-  @ApiOperation({ summary: 'Diyetisyen basvurusunu reddet' })
-  @ApiResponse({ status: 200, description: 'Basvuru reddedildi', type: ResponseDto })
+  @ApiOperation({ summary: 'Diyetisyen ba?vurusunu reddet' })
+  @ApiResponse({ status: 200, description: 'Ba?vuru reddedildi', type: ResponseDto })
   async rejectDietitianApplication(
     @Request() req,
     @Param('userId') userId: string,
     @Body() dto: RejectDietitianApplicationDto,
   ) {
     const result = await this.authService.rejectDietitianApplication(req.user.id, userId, dto.reason);
-    return ResponseDto.success('Basvuru reddedildi', result);
+    return ResponseDto.success('Ba?vuru reddedildi', result);
+  }
+
+  @Get('admin/users-overview')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('admin')
+  @ApiOperation({ summary: 'T?m kullan?c?lar? admin g?r?n?m? i?in listele' })
+  @ApiResponse({ status: 200, description: 'Kullanıcı listesi', type: ResponseDto })
+  async listAdminUsers(
+    @Query('search') search?: string,
+    @Query('accountType') accountType?: string,
+    @Query('page') page?: string,
+    @Query('limit') limit?: string,
+  ) {
+    const result = await this.authService.listAdminUsers({
+      search,
+      accountType,
+      page: Number(page),
+      limit: Number(limit),
+    });
+    return ResponseDto.success('Kullanıcı listesi', result);
+  }
+
+  @Get('admin/connections')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('admin')
+  @ApiOperation({ summary: 'Aktif kullan?c?-diyetisyen ba?lant?lar?n? listele' })
+  @ApiResponse({ status: 200, description: 'Aktif ba?lant?lar', type: ResponseDto })
+  async listAdminConnections(
+    @Query('search') search?: string,
+    @Query('page') page?: string,
+    @Query('limit') limit?: string,
+  ) {
+    const result = await this.authService.listAdminConnections({
+      search,
+      page: Number(page),
+      limit: Number(limit),
+    });
+    return ResponseDto.success('Aktif ba?lant?lar', result);
+  }
+
+  @Post('admin/assign-client')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('admin')
+  @ApiOperation({ summary: 'Bir kullan?c?y? onayl? bir diyetisyene ba?la' })
+  @ApiResponse({ status: 200, description: 'E?le?me olu?turuldu', type: ResponseDto })
+  async assignClientToDietitian(@Request() req, @Body() dto: AssignClientDietitianDto) {
+    const result = await this.authService.assignClientToDietitian(req.user.id, dto);
+    return ResponseDto.success('E?le?me olu?turuldu', result);
   }
 
   @Post('admin/register')
@@ -346,10 +450,10 @@ export class AuthController {
 
   @Post('profile/update')
   @UseGuards(JwtAuthGuard)
-  @ApiOperation({ summary: 'KullanÄ±cÄ± profilini gÃ¼ncelle' })
+  @ApiOperation({ summary: 'Kullanıcı profilini güncelle' })
   @ApiResponse({
     status: 200,
-    description: 'Profil baÅŸarÄ±yla gÃ¼ncellendi',
+    description: 'Profil başarıyla güncellendi',
     type: ResponseDto,
   })
   async updateProfile(@Request() req, @Body() dto: UpdateProfileDto) {
@@ -359,10 +463,10 @@ export class AuthController {
 
   @Get('dashboard/summary')
   @UseGuards(JwtAuthGuard)
-  @ApiOperation({ summary: 'Dashboard Ã¶zet verileri' })
+  @ApiOperation({ summary: 'Dashboard özet verileri' })
   @ApiResponse({
     status: 200,
-    description: 'Dashboard ozet verileri basariyla getirildi',
+    description: 'Dashboard özet verileri başarıyla getirildi',
     type: ResponseDto,
   })
   async getDashboardSummary(@Request() req) {
@@ -370,11 +474,20 @@ export class AuthController {
     return ResponseDto.success('Dashboard summary', summary);
   }
 
+  @Get('workspace/network')
+  @UseGuards(JwtAuthGuard)
+  @ApiOperation({ summary: 'Kullanıcının profesyonel bağlantılarını getir' })
+  @ApiResponse({ status: 200, description: 'Profesyonel ba?lant?lar', type: ResponseDto })
+  async getProfessionalWorkspace(@Request() req) {
+    const result = await this.authService.getProfessionalWorkspace(req.user.id);
+    return ResponseDto.success('Professional workspace', result);
+  }
+
   @Get('public/landing-stats')
-  @ApiOperation({ summary: 'Landing sayfasi genel istatistikleri' })
+  @ApiOperation({ summary: 'Landing sayfas? genel istatistikleri' })
   @ApiResponse({
     status: 200,
-    description: 'Landing istatistikleri basariyla getirildi',
+    description: 'Landing istatistikleri ba?ar?yla getirildi',
     type: ResponseDto,
   })
   async getPublicLandingStats() {

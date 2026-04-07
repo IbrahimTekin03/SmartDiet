@@ -51,6 +51,15 @@ export class User {
   @Column({default: null})
   last_login: Date;
 
+  @Column({ type: 'int', default: 0 })
+  failed_login_attempts: number;
+
+  @Column({ type: 'varchar', length: 128, nullable: true })
+  password_reset_token: string | null;
+
+  @Column({ type: 'timestamptz', nullable: true })
+  password_reset_expires_at: Date | null;
+
   @CreateDateColumn()
   createdAt: Date;
 
