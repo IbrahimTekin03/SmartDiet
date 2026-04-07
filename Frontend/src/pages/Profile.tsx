@@ -151,7 +151,7 @@ function mapRoleName(roleName: string, lang: Lang, t: (typeof COPY)[Lang]): stri
   if (!normalized) return t.roleUser;
   if (normalized === "admin") return t.roleAdmin;
   if (normalized === "clinic_manager") return lang === "tr" ? "Klinik Yöneticisi" : "Clinic Manager";
-  if (normalized === "dietitian") return t.roleDietitian;
+  if (normalized === "dietitian" || normalized === "diyetisyen") return t.roleDietitian;
   if (normalized === "client") return t.roleClient;
   if (normalized === "user") return t.roleUser;
   return lang === "tr" ? normalized : roleName;

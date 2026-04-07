@@ -1,10 +1,10 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useAppSettings } from "../context/AppSettingsContext";
 
 type Lang = "tr" | "en";
 type Gender = "male" | "female";
-type AccountType = "client" | "dietitian";
+type AccountType = "client" | "Diyetisyen";
 
 type RegisterPayload = {
   first_name: string;
@@ -15,6 +15,7 @@ type RegisterPayload = {
   account_type: AccountType;
   email?: string;
   phone_number?: string;
+  clinic_id?: string;
 };
 
 const PASSWORD_REGEX = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{8,}$/;
@@ -89,6 +90,8 @@ const COPY: Record<
     invalidPhone: string;
     registerFail: string;
     genericErr: string;
+    selectClinic: string;
+    clinicPH: string;
   }
 > = {
   tr: {
@@ -144,6 +147,8 @@ const COPY: Record<
     invalidPhone: "Geçerli bir telefon numarası gir. Örnek: +905555555555",
     registerFail: "Kayıt oluşturulamadı. Bilgilerini kontrol ederek tekrar dene.",
     genericErr: "Beklenmeyen bir hata oluştu.",
+    selectClinic: "Klinik Seçin (İsteğe Bağlı)",
+    clinicPH: "Hizmet aldığınız kliniği seçin",
   },
   en: {
     brandSub: "Clinic and Nutrition Management",
@@ -198,6 +203,8 @@ const COPY: Record<
     invalidPhone: "Enter a valid phone number. Example: +905555555555",
     registerFail: "Registration failed. Check your details.",
     genericErr: "An error occurred.",
+    selectClinic: "Select Clinic (Optional)",
+    clinicPH: "Select the clinic you receive service from",
   },
 };
 
@@ -226,6 +233,14 @@ export default function Register() {
   const [serverError, setServerError] = useState<string>("");
   const [successMsg, setSuccessMsg] = useState("");
   const [duplicateContact, setDuplicateContact] = useState(false);
+  const [clinics, setClinics] = useState<any[]>([]);
+
+  useEffect(() => {
+    fetch(`${API_BASE}/api/clinics`)
+      .then((r) => r.json())
+      .then((d) => setClinics(Array.isArray(d) ? d : []))
+      .catch(() => {});
+  }, []);
 
   const validate = () => {
     const e: Record<string, string> = {};
@@ -293,6 +308,7 @@ export default function Register() {
         account_type: form.account_type,
         email: form.email?.trim() || undefined,
         phone_number: form.phone_number?.trim() || undefined,
+        clinic_id: form.clinic_id || undefined,
       };
 
       const res = await fetch(REGISTER_URL, {
@@ -510,10 +526,10 @@ export default function Register() {
                   </button>
                   <button
                     type="button"
-                    onClick={() => setField("account_type", "dietitian")}
+                    onClick={() => setField("account_type", "Diyetisyen")}
                     className={[
                       "rounded-2xl border px-4 py-3 text-sm font-extrabold transition",
-                      form.account_type === "dietitian"
+                      form.account_type === "Diyetisyen"
                         ? isDark
                           ? "border-emerald-400/30 bg-emerald-500/15 text-emerald-100"
                           : "border-[#1b7358]/35 bg-[#dff0e8] text-[#145443]"
@@ -526,6 +542,31 @@ export default function Register() {
                   </button>
                 </div>
               </div>
+
+              {form.account_type === "client" && clinics.length > 0 && (
+                <div className="animate-in fade-in slide-in-from-top-2 duration-300">
+                  <label className={isDark ? "mb-2 block text-xs font-semibold text-zinc-200" : "mb-2 block text-xs font-semibold text-[#36544c]"}>
+                    {t.selectClinic}
+                  </label>
+                  <select
+                    value={form.clinic_id || ""}
+                    onChange={(e) => setField("clinic_id", e.target.value)}
+                    className={[
+                      "w-full rounded-2xl border px-4 py-3 text-sm outline-none transition",
+                      isDark ? "bg-black/20 text-white" : "bg-white text-[#0e2d27]",
+                      isDark ? "border-white/10" : "border-[#325d51]/25",
+                      "focus:border-emerald-400/40 focus:ring-4 focus:ring-emerald-500/10",
+                    ].join(" ")}
+                  >
+                    <option value="">{t.clinicPH}</option>
+                    {clinics.map((c) => (
+                      <option key={c.id} value={c.id}>
+                        {c.name} - {c.city}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              )}
 
               <div>
                 <label className={isDark ? "mb-2 block text-xs font-semibold text-zinc-200" : "mb-2 block text-xs font-semibold text-[#36544c]"}>{t.password}</label>

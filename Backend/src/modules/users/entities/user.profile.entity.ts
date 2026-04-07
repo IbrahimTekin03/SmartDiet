@@ -9,7 +9,8 @@ import { Gender } from '../enums/gender.enum';
 
 export enum AccountType {
   Client = 'client',
-  Dietitian = 'dietitian',
+  Dietitian = 'Diyetisyen',
+  OldDietitian = 'dietitian',
 }
 
 export enum DietitianVerificationStatus {
@@ -50,6 +51,9 @@ export class UserProfile {
   dietitian_verification_status: DietitianVerificationStatus;
 
   @Column({ nullable: true })
+  clinic_id: string | null;
+
+  @Column({ nullable: true })
   clinic_name: string | null;
 
   @Column({ nullable: true })
@@ -57,9 +61,6 @@ export class UserProfile {
 
   @Column({ nullable: true })
   clinic_address: string | null;
-
-  @Column({ nullable: true })
-  clinic_license_no: string | null;
 
   @Column({ nullable: true })
   verification_note: string | null;

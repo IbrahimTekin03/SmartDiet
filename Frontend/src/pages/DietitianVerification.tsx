@@ -6,12 +6,11 @@ type Lang = "tr" | "en";
 type Status = "not_submitted" | "pending" | "approved" | "rejected";
 
 type VerificationStatusResponse = {
-  account_type: "client" | "dietitian";
+  account_type: "client" | "Diyetisyen";
   status: Status;
   clinic_name?: string | null;
   clinic_city?: string | null;
   clinic_address?: string | null;
-  clinic_license_no?: string | null;
   verification_note?: string | null;
   review_note?: string | null;
   submitted_at?: string | null;
@@ -22,7 +21,6 @@ type FormState = {
   clinic_name: string;
   clinic_city: string;
   clinic_address: string;
-  clinic_license_no: string;
   verification_note: string;
 };
 
@@ -43,7 +41,6 @@ const COPY = {
     fieldClinicName: "Klinik Adı",
     fieldCity: "Şehir",
     fieldAddress: "Adres",
-    fieldLicense: "Lisans / Belge No",
     fieldNote: "Ek Not (opsiyonel)",
     requiredError: "Lütfen tüm zorunlu alanları doldur.",
     submitSuccess: "Başvurun admin onayına gönderildi.",
@@ -69,7 +66,6 @@ const COPY = {
     fieldClinicName: "Clinic Name",
     fieldCity: "City",
     fieldAddress: "Address",
-    fieldLicense: "License No",
     fieldNote: "Note (optional)",
     requiredError: "Fill in all required fields.",
     submitSuccess: "Application sent to admin.",
@@ -99,6 +95,8 @@ export default function DietitianVerification() {
   const navigate = useNavigate();
   const { lang, isDark } = useAppSettings();
   const t = COPY[lang];
+  const [clinics, setClinics] = useState<any[]>([]);
+  const [selectedClinicId, setSelectedClinicId] = useState("");
 
   const [status, setStatus] = useState<Status>("not_submitted");
   const [loadingStatus, setLoadingStatus] = useState(true);
@@ -112,7 +110,6 @@ export default function DietitianVerification() {
     clinic_name: "",
     clinic_city: "",
     clinic_address: "",
-    clinic_license_no: "",
     verification_note: "",
   });
 
@@ -145,7 +142,6 @@ export default function DietitianVerification() {
         clinic_name: payload.clinic_name || "",
         clinic_city: payload.clinic_city || "",
         clinic_address: payload.clinic_address || "",
-        clinic_license_no: payload.clinic_license_no || "",
         verification_note: payload.verification_note || "",
       });
       setError("");
@@ -156,9 +152,26 @@ export default function DietitianVerification() {
     }
   }, [navigate, t.statusFetchError]);
 
+  const loadClinics = useCallback(async () => {
+    const token = localStorage.getItem("access_token");
+    if (!token) return;
+    try {
+      const res = await fetch(`${API_BASE}/api/clinics`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      const data = await res.json().catch(() => ({}));
+      if (res.ok) {
+        setClinics(data?.data || []);
+      }
+    } catch {
+      // ignore
+    }
+  }, []);
+
   useEffect(() => {
     loadStatus();
-  }, [loadStatus]);
+    loadClinics();
+  }, [loadStatus, loadClinics]);
 
   useEffect(() => {
     if (status !== "pending") return;
@@ -179,7 +192,7 @@ export default function DietitianVerification() {
     setError("");
     setMessage("");
 
-    if (!form.clinic_name || !form.clinic_city || !form.clinic_address || !form.clinic_license_no) {
+    if (!form.clinic_name || !form.clinic_city || !form.clinic_address) {
       setError(t.requiredError);
       return;
     }
@@ -198,7 +211,10 @@ export default function DietitianVerification() {
           Authorization: `Bearer ${token}`,
           "Content-Type": "application/json",
         },
-        body: JSON.stringify(form),
+        body: JSON.stringify({
+          ...form,
+          clinic_id: selectedClinicId || undefined,
+        }),
       });
       const data = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(data?.message || "verification_submit_error");
@@ -212,6 +228,19 @@ export default function DietitianVerification() {
       setError(mapVerificationError(raw, lang));
     } finally {
       setSubmitting(false);
+    }
+  };
+
+  const onClinicSelect = (id: string) => {
+    setSelectedClinicId(id);
+    const clinic = clinics.find((c) => c.id === id);
+    if (clinic) {
+      setForm((p) => ({
+        ...p,
+        clinic_name: clinic.name,
+        clinic_city: clinic.city,
+        clinic_address: clinic.address,
+      }));
     }
   };
 
@@ -250,10 +279,28 @@ export default function DietitianVerification() {
 
         {!loadingStatus && status !== "approved" && status !== "pending" ? (
           <form onSubmit={onSubmit} className="mt-4 space-y-4">
+            <div className="mb-4">
+              <label className={isDark ? "mb-1 block text-xs text-zinc-300" : "mb-1 block text-xs text-[#4d6b62]"}>
+                {lang === "tr" ? "Kayıtlı Kliniklerden Seç (Opsiyonel)" : "Select From Registered Clinics (Optional)"}
+              </label>
+              <select
+                value={selectedClinicId}
+                onChange={(e) => onClinicSelect(e.target.value)}
+                className={[
+                  "w-full rounded-xl border px-3 py-2 text-sm outline-none",
+                  isDark ? "border-white/10 bg-white/5 text-white" : "border-[#2f6154]/20 bg-white text-[#123a32]",
+                ].join(" ")}
+              >
+                <option value="">{lang === "tr" ? "Manuel Giriş veya Seçim Yapın" : "Manual Entry or Select Clinic"}</option>
+                {clinics.map((c) => (
+                  <option key={c.id} value={c.id}>{c.name} ({c.city})</option>
+                ))}
+              </select>
+            </div>
+
             <Field isDark={isDark} label={t.fieldClinicName} value={form.clinic_name} onChange={(v) => setForm((p) => ({ ...p, clinic_name: v }))} />
             <Field isDark={isDark} label={t.fieldCity} value={form.clinic_city} onChange={(v) => setForm((p) => ({ ...p, clinic_city: v }))} />
             <Field isDark={isDark} label={t.fieldAddress} value={form.clinic_address} onChange={(v) => setForm((p) => ({ ...p, clinic_address: v }))} />
-            <Field isDark={isDark} label={t.fieldLicense} value={form.clinic_license_no} onChange={(v) => setForm((p) => ({ ...p, clinic_license_no: v }))} />
             <Field isDark={isDark} label={t.fieldNote} value={form.verification_note} onChange={(v) => setForm((p) => ({ ...p, verification_note: v }))} />
 
             {error ? <div className="rounded-xl border border-rose-500/30 bg-rose-500/10 px-3 py-2 text-sm text-rose-100">{error}</div> : null}

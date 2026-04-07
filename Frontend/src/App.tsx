@@ -8,6 +8,8 @@ import ClinicManagerPanel from "./pages/ClinicManagerPanel";
 import Profile from "./pages/Profile";
 import AppEntry from "./pages/AppEntry";
 import DietitianVerification from "./pages/DietitianVerification";
+import MealPlanner from "./pages/MealPlanner";
+import DietitianDashboard from "./pages/DietitianDashboard";
 import ProtectedRoute from "./components/ProtectedRoute";
 import SettingsDrawer from "./components/SettingsDrawer";
 
@@ -58,7 +60,15 @@ export default function App() {
           path="/dietitian-home"
           element={
             <ProtectedRoute>
-              <Navigate to="/" replace />
+              <DietitianDashboard />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/meal-planner"
+          element={
+            <ProtectedRoute>
+              <MealPlanner />
             </ProtectedRoute>
           }
         />

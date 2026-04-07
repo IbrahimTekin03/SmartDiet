@@ -93,4 +93,9 @@ export class RegisterDto {
   @IsOptional()
   @IsEnum(AccountType)
   account_type?: AccountType;
+
+  @ApiPropertyOptional({ description: 'Klinik ID (danışan için)', example: 'uuid-of-clinic' })
+  @IsOptional()
+  @IsString()
+  clinic_id?: string;
 }

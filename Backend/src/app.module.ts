@@ -13,6 +13,9 @@ import { WebsocketModule } from './modules/websocket/websocket.module';
 import { LoggerModule } from './modules/logger/logger.module';
 import { AclModule } from './modules/acl/acl.module';
 import { MeasurementsModule } from './modules/measurements/measurements.module';
+import { ClinicsModule } from './modules/clinics/clinics.module';
+import { FoodsModule } from './modules/foods/foods.module';
+import { DietPlansModule } from './modules/diet-plans/diet-plans.module';
 import { APP_GUARD } from '@nestjs/core';
 import { ThrottlerGuard } from '@nestjs/throttler';
 
@@ -76,6 +79,9 @@ const I18N_PATH = fs.existsSync(DIST_I18N_PATH) ? DIST_I18N_PATH : SRC_I18N_PATH
     LoggerModule,
     AclModule,
     MeasurementsModule,
+    ClinicsModule,
+    FoodsModule,
+    DietPlansModule,
   ],
   controllers: [],
   providers: [

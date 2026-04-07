@@ -15,7 +15,7 @@ const options: DataSourceOptions & SeederOptions = {
   database: 'smartDiet',
 
   synchronize: true,
-
+  entities: ['src/**/*.entity.{ts,js}'],
   seeds: ['src/database/seeds/**/*.{ts,js}'],
   factories: ['src/database/factories/**/*.{ts,js}'],
 };

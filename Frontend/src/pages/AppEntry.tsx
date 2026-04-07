@@ -18,7 +18,7 @@ type Profile = {
   email?: string;
   phone_number?: string;
   roles?: Array<{ name?: string }>;
-  account_type?: "client" | "dietitian";
+  account_type?: "client" | "Diyetisyen";
   dietitian_verification_status?: "not_submitted" | "pending" | "approved" | "rejected";
   clinic_name?: string | null;
 };
@@ -92,7 +92,7 @@ export default function AppEntry() {
 
   const isAdmin = roleNames.includes("admin");
   const isClinicManager = roleNames.includes("clinic_manager");
-  const isDietitian = roleNames.includes("dietitian") || profile.account_type === "dietitian";
+  const isDietitian = roleNames.includes("diyetisyen") || profile.account_type === "Diyetisyen";
   const isClient = roleNames.includes("client") || roleNames.includes("user") || !isDietitian;
 
   if (isAdmin) return <AdminPanel />;

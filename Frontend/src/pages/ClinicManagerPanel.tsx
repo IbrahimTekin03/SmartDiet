@@ -35,7 +35,6 @@ type DietitianItem = {
   clinic_name?: string | null;
   clinic_city?: string | null;
   clinic_address?: string | null;
-  clinic_license_no?: string | null;
   verification_note?: string | null;
   reviewed_at?: string | null;
   is_active?: boolean;
@@ -89,7 +88,6 @@ const COPY = {
     email: "E-posta",
     phone: "Telefon",
     cityLabel: "Şehir",
-    license: "Lisans No",
     address: "Adres",
     note: "Başvuru Notu",
     reviewedAt: "Onay Tarihi",
@@ -153,7 +151,6 @@ const COPY = {
     email: "Email",
     phone: "Phone",
     cityLabel: "City",
-    license: "License No",
     address: "Address",
     note: "Application Note",
     reviewedAt: "Approved At",
@@ -633,7 +630,6 @@ export default function ClinicManagerPanel() {
                   <DetailCard isDark={isDark} label={t.phone} value={selected.phone_number || t.noData} />
                   <DetailCard isDark={isDark} label={t.clinic} value={selected.clinic_name || t.noData} />
                   <DetailCard isDark={isDark} label={t.cityLabel} value={selected.clinic_city || t.noData} />
-                  <DetailCard isDark={isDark} label={t.license} value={selected.clinic_license_no || t.noData} />
                   <DetailCard isDark={isDark} label={t.reviewedAt} value={formatDate(selected.reviewed_at)} />
                 </div>
 

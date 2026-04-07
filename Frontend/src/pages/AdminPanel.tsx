@@ -5,7 +5,7 @@ import { useAppSettings } from "../context/AppSettingsContext";
 import { clearAuthSession, setAuthSession } from "../lib/authSession";
 
 type Lang = "tr" | "en";
-type ViewMode = "queue" | "ops";
+type ViewMode = "queue" | "ops" | "clinics";
 type SortMode = "newest" | "oldest";
 type ApplicationStatus = "pending" | "rejected";
 
@@ -41,7 +41,6 @@ type DietitianApplication = {
   clinic_name?: string | null;
   clinic_city?: string | null;
   clinic_address?: string | null;
-  clinic_license_no?: string | null;
   verification_note?: string | null;
   review_note?: string | null;
   submitted_at?: string | null;
@@ -101,6 +100,15 @@ type ConnectionItem = {
   notes?: string | null;
 };
 
+type Clinic = {
+  id: string;
+  name: string;
+  city: string;
+  address: string;
+  createdAt?: string;
+  updatedAt?: string;
+};
+
 const API_BASE = "http://localhost:3000";
 
 const COPY = {
@@ -114,6 +122,7 @@ const COPY = {
     profile: "Profil",
     logout: "Çıkış Yap",
     queueTab: "Başvuru Merkezi",
+    clinicsTab: "Klinikler",
     opsTab: "Operasyon",
     pendingTab: "Bekleyenler",
     rejectedTab: "Reddedilenler",
@@ -176,7 +185,6 @@ const COPY = {
     detailPhone: "Telefon",
     detailClinic: "Klinik",
     detailCity: "Şehir",
-    detailLicense: "Lisans",
     detailAddress: "Adres",
     unknownCity: "Belirsiz",
     fallbackAdmin: "Yönetici",
@@ -219,6 +227,21 @@ const COPY = {
     adminB: "Rol görünürlüğü",
     adminC: "Sistem sağlığı",
     adminD: "İşlem geçmişi",
+    clinicsTitle: "Klinik Yönetimi",
+    clinicsSub: "Sistemde kayıtlı klinikleri yönetin veya yeni klinik ekleyin.",
+    addClinic: "Yeni Klinik Ekle",
+    editClinic: "Düzenle",
+    deleteClinic: "Sil",
+    clinicName: "Klinik Adı",
+    clinicCity: "Şehir",
+    clinicAddress: "Adres",
+    saveClinic: "Kaydet",
+    savingClinic: "Kaydediliyor...",
+    cancel: "İptal",
+    deleteConfirm: "Bu kliniği silmek istediğinize emin misiniz?",
+    clinicLoadErr: "Klinikler yüklenemedi.",
+    clinicSaveErr: "Klinik kaydedilemedi.",
+    clinicDeleteErr: "Klinik silinemedi.",
   },
   en: {
     tag: "Admin Panel",
@@ -230,6 +253,7 @@ const COPY = {
     profile: "Profile",
     logout: "Logout",
     queueTab: "Application Hub",
+    clinicsTab: "Clinics",
     opsTab: "Operations",
     pendingTab: "Pending",
     rejectedTab: "Rejected",
@@ -292,7 +316,6 @@ const COPY = {
     detailPhone: "Phone",
     detailClinic: "Clinic",
     detailCity: "City",
-    detailLicense: "License",
     detailAddress: "Address",
     unknownCity: "Unknown",
     fallbackAdmin: "Admin",
@@ -335,6 +358,21 @@ const COPY = {
     adminB: "Role visibility",
     adminC: "System health",
     adminD: "Action history",
+    clinicsTitle: "Clinic Management",
+    clinicsSub: "Manage existing clinics or add new ones to the system.",
+    addClinic: "Add New Clinic",
+    editClinic: "Edit",
+    deleteClinic: "Delete",
+    clinicName: "Clinic Name",
+    clinicCity: "City",
+    clinicAddress: "City",
+    saveClinic: "Save",
+    savingClinic: "Saving...",
+    cancel: "Cancel",
+    deleteConfirm: "Are you sure you want to delete this clinic?",
+    clinicLoadErr: "Failed to load clinics.",
+    clinicSaveErr: "Failed to save clinic.",
+    clinicDeleteErr: "Failed to delete clinic.",
   },
 } as const;
 
@@ -389,6 +427,12 @@ export default function AdminPanel() {
   const [sortMode, setSortMode] = useState<SortMode>("newest");
   const [selectedId, setSelectedId] = useState("");
   const [rejectReason, setRejectReason] = useState("");
+
+  const [clinics, setClinics] = useState<Clinic[]>([]);
+  const [loadingClinics, setLoadingClinics] = useState(false);
+  const [clinicError, setClinicError] = useState("");
+  const [editingClinic, setEditingClinic] = useState<Partial<Clinic> | null>(null);
+  const [savingClinic, setSavingClinic] = useState(false);
   const refreshInFlightRef = useRef(false);
   const refreshAllRef = useRef<() => Promise<void>>(async () => undefined);
 
@@ -571,6 +615,72 @@ export default function AdminPanel() {
     }
   }, [lang]);
 
+  const fetchClinics = useCallback(async (token: string) => {
+    setClinicError("");
+    setLoadingClinics(true);
+    try {
+      const res = await fetch(`${API_BASE}/api/clinics`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error();
+      setClinics(Array.isArray(data?.data) ? data.data : []);
+    } catch {
+      setClinicError(t.clinicLoadErr);
+    } finally {
+      setLoadingClinics(false);
+    }
+  }, [t.clinicLoadErr]);
+
+  const saveClinic = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingClinic?.name || !editingClinic?.city || !editingClinic?.address) return;
+    const token = localStorage.getItem("access_token");
+    if (!token) return;
+
+    setSavingClinic(true);
+    setClinicError("");
+    try {
+      const isNew = !editingClinic.id;
+      const url = isNew ? `${API_BASE}/api/clinics` : `${API_BASE}/api/clinics/${editingClinic.id}`;
+      const method = isNew ? "POST" : "PATCH";
+
+      const res = await fetch(url, {
+        method,
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(editingClinic),
+      });
+      if (!res.ok) throw new Error();
+      setEditingClinic(null);
+      await fetchClinics(token);
+    } catch {
+      setClinicError(t.clinicSaveErr);
+    } finally {
+      setSavingClinic(false);
+    }
+  };
+
+  const deleteClinic = async (id: string) => {
+    if (!window.confirm(t.deleteConfirm)) return;
+    const token = localStorage.getItem("access_token");
+    if (!token) return;
+
+    setClinicError("");
+    try {
+      const res = await fetch(`${API_BASE}/api/clinics/${id}`, {
+        method: "DELETE",
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (!res.ok) throw new Error();
+      await fetchClinics(token);
+    } catch {
+      setClinicError(t.clinicDeleteErr);
+    }
+  };
+
   const refreshAll = useCallback(async () => {
     const token = localStorage.getItem("access_token");
     if (!token || !isAdmin) return;
@@ -584,6 +694,7 @@ export default function AdminPanel() {
         fetchHistory(token, historyPage),
         fetchUsersOverview(token),
         fetchConnections(token),
+        fetchClinics(token),
       ]);
       setLastUpdatedAt(Date.now());
     } finally {
@@ -866,6 +977,7 @@ export default function AdminPanel() {
           <div className={panelClass(isDark)}>
             <div className="mb-4 flex items-center gap-2">
               <button type="button" onClick={() => setViewMode("queue")} className={tabClass(isDark, viewMode === "queue")}>{t.queueTab}</button>
+              <button type="button" onClick={() => setViewMode("clinics")} className={tabClass(isDark, viewMode === "clinics")}>{t.clinicsTab}</button>
               <button type="button" onClick={() => setViewMode("ops")} className={tabClass(isDark, viewMode === "ops")}>{t.opsTab}</button>
             </div>
 
@@ -940,7 +1052,6 @@ export default function AdminPanel() {
                         <DetailRow isDark={isDark} k={t.detailPhone} v={selected.phone_number || "-"} />
                         <DetailRow isDark={isDark} k={t.detailClinic} v={selected.clinic_name || "-"} />
                         <DetailRow isDark={isDark} k={t.detailCity} v={selected.clinic_city || "-"} />
-                        <DetailRow isDark={isDark} k={t.detailLicense} v={selected.clinic_license_no || "-"} />
                         <DetailRow isDark={isDark} k={t.detailAddress} v={selected.clinic_address || "-"} />
                         <DetailRow isDark={isDark} k={t.applicantNote} v={selected.verification_note || "-"} />
                         {selected.review_note ? <DetailRow isDark={isDark} k={t.reviewNote} v={selected.review_note} /> : null}
@@ -981,6 +1092,109 @@ export default function AdminPanel() {
                   </div>
                 </div>
               </>
+            ) : viewMode === "clinics" ? (
+              <div className="space-y-4">
+                <div className="flex items-center justify-between gap-3">
+                  <div>
+                    <h2 className="text-sm font-black">{t.clinicsTitle}</h2>
+                    <p className={hintClass(isDark)}>{t.clinicsSub}</p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setEditingClinic({ name: "", city: "", address: "" })}
+                    className={btnClass(isDark)}
+                  >
+                    {t.addClinic}
+                  </button>
+                </div>
+
+                {clinicError ? <ErrorBox isDark={isDark}>{clinicError}</ErrorBox> : null}
+
+                {editingClinic && (
+                  <form onSubmit={saveClinic} className={innerPanel(isDark)}>
+                    <div className="grid gap-3 sm:grid-cols-2">
+                      <label>
+                        <span className={labelClass(isDark)}>{t.clinicName}</span>
+                        <input
+                          value={editingClinic.name || ""}
+                          onChange={(e) => setEditingClinic({ ...editingClinic, name: e.target.value })}
+                          className={inputClass(isDark)}
+                          required
+                        />
+                      </label>
+                      <label>
+                        <span className={labelClass(isDark)}>{t.clinicCity}</span>
+                        <input
+                          value={editingClinic.city || ""}
+                          onChange={(e) => setEditingClinic({ ...editingClinic, city: e.target.value })}
+                          className={inputClass(isDark)}
+                          required
+                        />
+                      </label>
+                    </div>
+                    <label className="mt-3 block">
+                      <span className={labelClass(isDark)}>{t.clinicAddress}</span>
+                      <textarea
+                        value={editingClinic.address || ""}
+                        onChange={(e) => setEditingClinic({ ...editingClinic, address: e.target.value })}
+                        className={inputClass(isDark)}
+                        rows={2}
+                        required
+                      />
+                    </label>
+                    <div className="mt-4 flex gap-2">
+                      <button
+                        type="submit"
+                        disabled={savingClinic}
+                        className="rounded-xl bg-gradient-to-r from-emerald-400 to-teal-300 px-4 py-2 text-xs font-black text-zinc-950 disabled:opacity-60"
+                      >
+                        {savingClinic ? t.savingClinic : t.saveClinic}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setEditingClinic(null)}
+                        className={btnClass(isDark)}
+                      >
+                        {t.cancel}
+                      </button>
+                    </div>
+                  </form>
+                )}
+
+                <div className="grid gap-3 sm:grid-cols-2">
+                  {loadingClinics ? <div className={hintClass(isDark)}>{t.load}</div> : null}
+                  {!loadingClinics && clinics.length === 0 ? <div className={hintClass(isDark)}>{t.noResult}</div> : null}
+                  {clinics.map((clinic) => (
+                    <div key={clinic.id} className={innerPanel(isDark)}>
+                      <div className="flex items-start justify-between gap-3">
+                        <div>
+                          <div className="text-sm font-black">{clinic.name}</div>
+                          <div className={hintClass(isDark)}>{clinic.city}</div>
+                        </div>
+                        <div className="flex gap-2">
+                          <button
+                            type="button"
+                            onClick={() => setEditingClinic(clinic)}
+                            className={["text-[10px] font-bold uppercase tracking-wider", isDark ? "text-emerald-400 hover:text-emerald-300" : "text-[#236b58] hover:text-[#184a3d]"].join(" ")}
+                          >
+                            {t.editClinic}
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => deleteClinic(clinic.id)}
+                            className={["text-[10px] font-bold uppercase tracking-wider", isDark ? "text-rose-400 hover:text-rose-300" : "text-rose-600 hover:text-rose-800"].join(" ")}
+                          >
+                            {t.deleteClinic}
+                          </button>
+                        </div>
+                      </div>
+                      <div className={["mt-2 text-xs opacity-80", isDark ? "text-zinc-300" : "text-[#3f6459]"].join(" ")}>
+                        {clinic.address}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
             ) : (
               <>
                 {summaryError ? <ErrorBox isDark={isDark}>{summaryError}</ErrorBox> : null}

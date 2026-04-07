@@ -1,7 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { DashboardPanel, DashboardSectionHeader, DashboardShell, DashboardStatCard, dashboardButtonClass } from "../components/DashboardShell";
-import { RoleWorkspaceBoard, type WorkspaceItem } from "../components/RoleWorkspaceBoard";
 import { useAppSettings } from "../context/AppSettingsContext";
 import { clearAuthSession, useAuthSession } from "../lib/authSession";
 
@@ -238,24 +237,7 @@ export default function DietitianHome({ profile, isAdmin }: { profile: Profile; 
     navigate("/login", { replace: true });
   };
 
-  const summaryCards = [
-    { label: t.statClients, value: summary.activeClients, tone: "from-emerald-400/20 to-teal-300/10" },
-    { label: t.statPlans, value: summary.plans, tone: "from-sky-400/20 to-cyan-300/10" },
-    { label: t.statMessages, value: summary.messages, tone: "from-fuchsia-400/20 to-pink-300/10" },
-    { label: t.statAdherence, value: `${summary.adherence}%`, tone: "from-amber-400/20 to-orange-300/10" },
-  ];
 
-  const actionCards = [
-    { title: t.a1, text: t.a1d, to: "/profile" },
-    { title: t.a2, text: t.a2d, to: "/" },
-    { title: t.a3, text: t.a3d, to: "/profile" },
-  ];
-  const workspaceItems: WorkspaceItem[] = [
-    { id: "review", title: t.w1, description: t.w1d },
-    { id: "plans", title: t.w2, description: t.w2d },
-    { id: "measurements", title: t.w3, description: t.w3d },
-    { id: "communication", title: t.w4, description: t.w4d },
-  ];
 
   return (
     <DashboardShell
@@ -283,117 +265,100 @@ export default function DietitianHome({ profile, isAdmin }: { profile: Profile; 
         <DashboardSectionHeader isDark={isDark} title={t.overview} subtitle={t.overviewSub} />
         {summaryError ? <div className="mb-4 rounded-2xl border border-rose-500/20 bg-rose-500/10 px-4 py-3 text-sm text-rose-100">{summaryError}</div> : null}
         <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-          {summaryCards.map((card) => (
-            <DashboardStatCard key={card.label} isDark={isDark} title={card.label} value={loadingSummary ? "..." : String(card.value)} accent={card.tone} />
-          ))}
+          <DashboardStatCard isDark={isDark} title={t.statClients} value={loadingSummary ? "..." : String(network.clients?.length || 0)} accent="from-emerald-400/20 to-teal-300/10" />
+          <DashboardStatCard isDark={isDark} title={t.statPlans} value={loadingSummary ? "..." : String(summary.plans)} accent="from-sky-400/20 to-cyan-300/10" />
+          <DashboardStatCard isDark={isDark} title={t.statMessages} value={loadingSummary ? "..." : String(summary.messages)} accent="from-fuchsia-400/20 to-pink-300/10" />
+          <DashboardStatCard isDark={isDark} title={t.statAdherence} value={loadingSummary ? "..." : `${summary.adherence}%`} accent="from-amber-400/20 to-orange-300/10" />
         </div>
       </section>
 
-      <section className="grid gap-6 lg:grid-cols-[1.2fr_0.8fr]">
-        <DashboardPanel isDark={isDark}>
-          <DashboardSectionHeader isDark={isDark} title={t.actions} subtitle={t.actionsSub} />
-          <div className="grid gap-4">
-            {actionCards.map((action) => (
-              <Link
-                key={action.title}
-                to={action.to}
-                className={["group rounded-[22px] border p-4 transition", isDark ? "border-white/10 bg-black/20 hover:bg-white/5" : "border-[#2f6154]/15 bg-[#f7faf8] hover:bg-white"].join(" ")}
+      <section className="mt-8">
+        <DashboardSectionHeader isDark={isDark} title={t.assignedTitle} subtitle={t.assignedSub} />
+        {network.clients?.length ? (
+          <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+            {network.clients.map((client) => (
+              <div
+                key={client.user_id}
+                className={[
+                  "group relative overflow-hidden rounded-[32px] border p-1 transition-all duration-500",
+                  isDark 
+                    ? "border-white/10 bg-white/5 hover:border-emerald-500/40 hover:bg-emerald-500/5 shadow-[0_20px_50px_rgba(0,0,0,0.3)]" 
+                    : "border-emerald-900/5 bg-white hover:border-emerald-500/30 hover:shadow-[0_20px_50px_rgba(16,185,129,0.1)] shadow-sm"
+                ].join(" ")}
               >
-                <div className="flex items-start justify-between gap-4">
-                  <div>
-                    <div className="text-sm font-extrabold">{action.title}</div>
-                    <div className={["mt-1 text-sm leading-6", isDark ? "text-zinc-300" : "text-[#4d6b62]"].join(" ")}>{action.text}</div>
+                <div className="p-6">
+                  <div className="flex items-center gap-4">
+                    <div className={["flex h-14 w-14 items-center justify-center rounded-2xl text-xl font-bold transition-transform duration-500 group-hover:scale-110", isDark ? "bg-emerald-500/20 text-emerald-400" : "bg-emerald-50 text-emerald-600"].join(" ")}>
+                      {client.name?.charAt(0) || "D"}
+                    </div>
+                    <div className="flex-1 overflow-hidden">
+                      <h3 className="truncate text-lg font-extrabold tracking-tight">{client.name || t.empty}</h3>
+                      <p className={["truncate text-xs font-medium", isDark ? "text-zinc-500" : "text-emerald-800/60"].join(" ")}>
+                        {client.email || t.empty}
+                      </p>
+                    </div>
                   </div>
-                  <span className={["rounded-full px-3 py-1 text-[11px] font-bold", isDark ? "bg-emerald-500/10 text-emerald-200" : "bg-emerald-100 text-emerald-800"].join(" ")}>Go</span>
+
+                  <div className="mt-8 flex flex-col gap-3">
+                    <button
+                      onClick={() => navigate(`/meal-planner?clientId=${client.user_id}`)}
+                      className="w-full rounded-[20px] bg-emerald-500 py-3.5 text-sm font-bold text-white shadow-lg shadow-emerald-500/25 transition-all hover:bg-emerald-400 hover:-translate-y-0.5 active:translate-y-0"
+                    >
+                      {lang === "tr" ? "Beslenme Planı Oluştur" : "Create Nutrition Plan"}
+                    </button>
+                    <div className="flex items-center justify-center gap-1.5 py-1 text-[11px] font-bold uppercase tracking-widest text-zinc-500 opacity-60">
+                      <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
+                      {lang === "tr" ? "Aktif Danışan" : "Active Client"}
+                    </div>
+                  </div>
                 </div>
-              </Link>
+                
+                {/* Decorative background element */}
+                <div className="absolute -right-8 -bottom-8 h-24 w-24 rounded-full bg-emerald-500/5 blur-2xl transition-all duration-500 group-hover:bg-emerald-500/10 group-hover:scale-150"></div>
+              </div>
             ))}
           </div>
-        </DashboardPanel>
-
-        <div className="grid gap-6">
-          <DashboardPanel isDark={isDark}>
-            <DashboardSectionHeader isDark={isDark} title={t.today} subtitle={t.todaySub} />
-            <div className="space-y-3">
-              {[t.t1, t.t2, t.t3].map((item, index) => (
-                <div key={item} className="flex gap-3">
-                  <div className={["mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-xs font-extrabold", isDark ? "bg-emerald-500/15 text-emerald-200" : "bg-emerald-100 text-emerald-800"].join(" ")}>
-                    {index + 1}
-                  </div>
-                  <div className={["text-sm leading-6", isDark ? "text-zinc-300" : "text-[#36544c]"].join(" ")}>{item}</div>
-                </div>
-              ))}
-            </div>
-          </DashboardPanel>
-
-          <DashboardPanel isDark={isDark}>
-            <DashboardSectionHeader isDark={isDark} title={t.account} subtitle={t.accountSub} />
-            <div className="space-y-3">
-              <InfoRow isDark={isDark} label={t.mail} value={profile.email || t.empty} />
-              <InfoRow isDark={isDark} label={t.clinic} value={profile.clinic_name || t.empty} />
-              <InfoRow isDark={isDark} label={t.status} value={t.statusValue} />
-            </div>
-          </DashboardPanel>
-
-          <DashboardPanel isDark={isDark}>
-            <DashboardSectionHeader isDark={isDark} title={t.notesTitle} subtitle={t.notesSub} />
-            <textarea
-              value={dailyNotes}
-              onChange={(event) => setDailyNotes(event.target.value)}
-              placeholder={t.notesPlaceholder}
-              rows={5}
-              className={[
-                "w-full resize-none rounded-[22px] border px-4 py-3 text-sm outline-none transition",
-                isDark
-                  ? "border-white/10 bg-black/20 text-white placeholder:text-zinc-500 focus:border-emerald-400/40"
-                  : "border-[#2f6154]/15 bg-[#f7faf8] text-[#123a32] placeholder:text-[#70867f] focus:border-[#1f705a]/30",
-              ].join(" ")}
-            />
-          </DashboardPanel>
-        </div>
+        ) : (
+          <div className={isDark ? "rounded-[32px] border border-dashed border-white/10 bg-white/2 p-16 text-center shadow-inner" : "rounded-[32px] border border-dashed border-emerald-900/10 bg-emerald-50/30 p-16 text-center"}>
+             <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-emerald-500/10 text-emerald-500">
+               <svg className="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />
+               </svg>
+             </div>
+            <p className={["text-lg font-bold", isDark ? "text-white" : "text-emerald-900"].join(" ")}>{t.assignedNone}</p>
+            <p className={["mt-2 text-sm", isDark ? "text-zinc-500" : "text-emerald-800/60"].join(" ")}>{lang === "tr" ? "Yeni danışanlar atandığında burada görünecektir." : "New clients will appear here once assigned."}</p>
+          </div>
+        )}
       </section>
 
-      <section>
-        <RoleWorkspaceBoard
-          isDark={isDark}
-          title={t.workspaceTitle}
-          subtitle={t.workspaceSub}
-          items={workspaceItems}
-          storageKey={`sd-dietitian-workspace:${profile.email || profile.clinic_name || displayName}`}
-        />
-      </section>
-
-      <section>
+      <section className="mt-8 grid gap-6 lg:grid-cols-2">
         <DashboardPanel isDark={isDark}>
-          <DashboardSectionHeader isDark={isDark} title={t.assignedTitle} subtitle={t.assignedSub} />
-          {network.clients?.length ? (
-            <div className="grid gap-4 lg:grid-cols-2">
-              {network.clients.map((client) => (
-                <div
-                  key={client.user_id}
-                  className={["rounded-[22px] border p-4", isDark ? "border-white/10 bg-black/20" : "border-[#2f6154]/15 bg-[#f7faf8]"].join(" ")}
-                >
-                  <div className="text-sm font-extrabold">{client.name || t.empty}</div>
-                  <div className={["mt-1 text-sm", isDark ? "text-zinc-300" : "text-[#4d6b62]"].join(" ")}>
-                    {client.email || t.empty}
-                  </div>
-                  <div className={["mt-1 text-sm", isDark ? "text-zinc-400" : "text-[#5e776e]"].join(" ")}>
-                    {client.phone_number || t.empty}
-                  </div>
-                  {client.notes ? (
-                    <div className={["mt-3 rounded-2xl px-3 py-2 text-xs", isDark ? "bg-white/5 text-zinc-200" : "bg-white text-[#36544c]"].join(" ")}>
-                      <span className="font-extrabold">{t.assignedNote}: </span>
-                      {client.notes}
-                    </div>
-                  ) : null}
-                </div>
-              ))}
-            </div>
-          ) : (
-            <div className={isDark ? "text-sm text-zinc-400" : "text-sm text-[#4d6b62]"}>{t.assignedNone}</div>
-          )}
+          <DashboardSectionHeader isDark={isDark} title={t.notesTitle} subtitle={t.notesSub} />
+          <textarea
+            value={dailyNotes}
+            onChange={(event) => setDailyNotes(event.target.value)}
+            placeholder={t.notesPlaceholder}
+            rows={6}
+            className={[
+              "w-full resize-none rounded-[24px] border px-5 py-4 text-sm outline-none transition-all duration-300",
+              isDark
+                ? "border-white/10 bg-black/20 text-white placeholder:text-zinc-600 focus:border-emerald-500/50 focus:bg-black/40"
+                : "border-emerald-900/10 bg-emerald-50/20 text-emerald-950 placeholder:text-emerald-900/30 focus:border-emerald-500/30 focus:bg-white",
+            ].join(" ")}
+          />
+        </DashboardPanel>
+
+        <DashboardPanel isDark={isDark}>
+          <DashboardSectionHeader isDark={isDark} title={t.account} subtitle={t.accountSub} />
+          <div className="space-y-3">
+            <InfoRow isDark={isDark} label={t.mail} value={profile.email || t.empty} />
+            <InfoRow isDark={isDark} label={t.clinic} value={profile.clinic_name || t.empty} />
+            <InfoRow isDark={isDark} label={t.status} value={t.statusValue} />
+          </div>
         </DashboardPanel>
       </section>
+
+
     </DashboardShell>
   );
 }

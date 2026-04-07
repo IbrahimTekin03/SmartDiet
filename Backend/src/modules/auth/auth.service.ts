@@ -1,4 +1,4 @@
-﻿import {
+import {
   BadRequestException,
   Injectable,
   UnauthorizedException,
@@ -29,6 +29,7 @@ import { MailService } from '../mail/mail.service';
 import { Subscription, SubscriptionStatus } from './entities/subscription.entity';
 import { ChatRoom } from './entities/chat-room.entity';
 import { AssignClientDietitianDto } from './dto/assign-client-dietitian.dto';
+import { UserAssignedDietitian } from '../users/entities/user-assigned-dietitian.entity';
 
 type ListDietitianApplicationsOptions = {
   status?: string;
@@ -81,6 +82,8 @@ export class AuthService {
     private readonly subscriptionRepository: Repository<Subscription>,
     @InjectRepository(ChatRoom)
     private readonly chatRoomRepository: Repository<ChatRoom>,
+    @InjectRepository(UserAssignedDietitian)
+    private readonly userAssignedDietitianRepository: Repository<UserAssignedDietitian>,
     public readonly jwtService: JwtService,
     private readonly configService: ConfigService,
     private readonly i18n: I18nService,
@@ -353,14 +356,14 @@ export class AuthService {
     const requestedAccountType =
       registerDto.account_type === AccountType.Dietitian ? AccountType.Dietitian : AccountType.Client;
     const requestedRoleName =
-      requestedAccountType === AccountType.Dietitian ? 'dietitian' : 'client';
+      requestedAccountType === AccountType.Dietitian ? 'Diyetisyen' : 'client';
 
     let assignedRole = await this.roleRepository.findOne({ where: { name: requestedRoleName } });
     if (!assignedRole) {
       assignedRole = this.roleRepository.create({
         name: requestedRoleName,
         description:
-          requestedRoleName === 'dietitian' ? 'Diyetisyen kullanici' : 'Danisan kullanici',
+        requestedRoleName === 'Diyetisyen' ? 'Diyetisyen kullanici' : 'Danisan kullanici',
       });
       assignedRole = await this.roleRepository.save(assignedRole);
     }
@@ -397,14 +400,26 @@ export class AuthService {
       clinic_name: null,
       clinic_city: null,
       clinic_address: null,
-      clinic_license_no: null,
       verification_note: null,
       verification_review_note: null,
       verification_submitted_at: null,
       verification_reviewed_at: null,
       verification_reviewed_by: null,
     });
-    await this.userProfileRepository.save(newProfile);
+    
+    console.log(`[Register] User ${savedUser.id} registered as ${requestedAccountType}. ClinicID: ${(registerDto as any).clinic_id}`);
+    
+    // Eğer danışan ise otomatik ata
+    if (requestedAccountType === AccountType.Client) {
+        if ((registerDto as any).clinic_id) {
+            newProfile.clinic_id = (registerDto as any).clinic_id;
+        }
+        await this.userProfileRepository.save(newProfile);
+        console.log(`[Register] Triggering auto-assignment for client ${savedUser.id}`);
+        await this.autoAssignToDietitian(savedUser.id, (registerDto as any).clinic_id);
+    } else {
+        await this.userProfileRepository.save(newProfile);
+    }
     // Kay?t olan kullan?c?y? rolleriyle birlikte y?kle
     const {...createdUser} = savedUser;
 
@@ -664,7 +679,6 @@ export class AuthService {
       clinic_name: profile?.clinic_name ?? null,
       clinic_city: profile?.clinic_city ?? null,
       clinic_address: profile?.clinic_address ?? null,
-      clinic_license_no: profile?.clinic_license_no ?? null,
       verification_note: profile?.verification_note ?? null,
       verification_review_note: profile?.verification_review_note ?? null,
       verification_submitted_at: profile?.verification_submitted_at ?? null,
@@ -699,7 +713,6 @@ export class AuthService {
       clinic_name: null,
       clinic_city: null,
       clinic_address: null,
-      clinic_license_no: null,
       verification_note: null,
       verification_review_note: null,
       verification_submitted_at: null,
@@ -783,8 +796,8 @@ export class AuthService {
       throw new UnauthorizedException(await this.i18n.translate('common.auth.user_not_found'));
     }
 
-    const dietitianRole = await this.roleRepository.findOne({ where: { name: 'dietitian' } });
-    if (dietitianRole && !this.hasRole(user, 'dietitian')) {
+    const dietitianRole = await this.roleRepository.findOne({ where: { name: 'Diyetisyen' } });
+    if (dietitianRole && !this.hasRole(user, 'Diyetisyen')) {
       user.roles = [...(user.roles || []), dietitianRole];
       await this.userRepository.save(user);
     }
@@ -792,10 +805,10 @@ export class AuthService {
     const profile = await this.ensureUserProfile(userId);
     profile.account_type = AccountType.Dietitian;
     profile.dietitian_verification_status = DietitianVerificationStatus.Pending;
+    profile.clinic_id = dto.clinic_id ?? null;
     profile.clinic_name = dto.clinic_name.trim();
     profile.clinic_city = dto.clinic_city.trim();
     profile.clinic_address = dto.clinic_address.trim();
-    profile.clinic_license_no = dto.clinic_license_no.trim();
     profile.verification_note = dto.verification_note?.trim() || null;
     profile.verification_review_note = null;
     profile.verification_submitted_at = new Date();
@@ -818,7 +831,6 @@ export class AuthService {
       clinic_name: profile.clinic_name ?? null,
       clinic_city: profile.clinic_city ?? null,
       clinic_address: profile.clinic_address ?? null,
-      clinic_license_no: profile.clinic_license_no ?? null,
       verification_note: profile.verification_note ?? null,
       review_note: profile.verification_review_note ?? null,
       submitted_at: profile.verification_submitted_at ?? null,
@@ -905,7 +917,6 @@ export class AuthService {
         clinic_name: p.clinic_name,
         clinic_city: p.clinic_city,
         clinic_address: p.clinic_address,
-        clinic_license_no: p.clinic_license_no,
         verification_note: p.verification_note,
         review_note: p.verification_review_note,
         submitted_at: p.verification_submitted_at,
@@ -1041,7 +1052,6 @@ export class AuthService {
         clinic_name: p.clinic_name ?? null,
         clinic_city: p.clinic_city ?? null,
         clinic_address: p.clinic_address ?? null,
-        clinic_license_no: p.clinic_license_no ?? null,
         verification_note: p.verification_note ?? null,
         reviewed_at: p.verification_reviewed_at ?? null,
         is_active: Boolean(user?.is_active),
@@ -1358,6 +1368,25 @@ export class AuthService {
       );
     }
 
+    const existingAssignment = await this.userAssignedDietitianRepository.findOne({
+      where: { clientId: dto.client_id },
+    });
+
+    if (existingAssignment) {
+      existingAssignment.dietitianId = dto.dietitian_id;
+      existingAssignment.clinicId = dietitianProfile.clinic_id || null;
+      existingAssignment.assignedAt = new Date();
+      await this.userAssignedDietitianRepository.save(existingAssignment);
+    } else {
+      const newAssignment = this.userAssignedDietitianRepository.create({
+        clientId: dto.client_id,
+        dietitianId: dto.dietitian_id,
+        clinicId: dietitianProfile.clinic_id || null,
+        assignedAt: new Date(),
+      });
+      await this.userAssignedDietitianRepository.save(newAssignment);
+    }
+
     return {
       ok: true,
       subscription_id: activeSubscription.id,
@@ -1416,12 +1445,14 @@ export class AuthService {
       };
     }
 
-    if (profile.account_type === AccountType.Dietitian) {
-      const subscriptions = await this.subscriptionRepository.find({
-        where: { dietitian_id: userId, status: SubscriptionStatus.Active },
-        order: { updated_at: 'DESC' },
+    if (profile.account_type === AccountType.Dietitian || isAdmin || isClinicManager) {
+      // Diyetisyen ise veya yetkili ise, kendisine bağlı danışanları çek
+      const assignments = await this.userAssignedDietitianRepository.find({
+        where: { dietitianId: userId },
+        order: { assignedAt: 'DESC' },
       });
-      const clientIds = subscriptions.map((subscription) => subscription.client_id);
+      
+      const clientIds = assignments.map((a) => a.clientId);
       const clientUsers =
         clientIds.length > 0
           ? await this.userRepository.find({
@@ -1440,19 +1471,20 @@ export class AuthService {
       return {
         account_type: profile.account_type,
         assignedDietitian: null,
-        clients: subscriptions.map((subscription) => {
-          const clientUser = clientUsersById.get(subscription.client_id);
-          const clientProfile = clientProfilesById.get(subscription.client_id);
+        clients: assignments.map((a) => {
+          const clientUser = clientUsersById.get(a.clientId);
+          const clientProfile = clientProfilesById.get(a.clientId);
           return {
-            user_id: subscription.client_id,
+            user_id: a.clientId,
             name:
               [clientUser?.first_name, clientUser?.last_name].filter(Boolean).join(' ').trim() ||
               clientUser?.email ||
-              subscription.client_id,
+              a.clientId,
             email: clientUser?.email ?? null,
             phone_number: clientUser?.phone_number ?? null,
-            notes: subscription.notes ?? null,
+            notes: null, // Relation tablosunda not yoksa null
             birth_date: clientProfile?.birth_date ?? null,
+            assignedAt: a.assignedAt,
           };
         }),
         isAdmin,
@@ -1509,10 +1541,10 @@ export class AuthService {
 
     const user = await this.userRepository.findOne({ where: { id: userId }, relations: ['roles'] });
     if (user) {
-      const dietitianRole = await this.roleRepository.findOne({ where: { name: 'dietitian' } });
-      if (dietitianRole && !this.hasRole(user, 'dietitian')) {
-        user.roles = [...(user.roles || []), dietitianRole];
-      }
+    const dietitianRole = await this.roleRepository.findOne({ where: { name: 'Diyetisyen' } });
+    if (dietitianRole && !this.hasRole(user, 'Diyetisyen')) {
+      user.roles = [...(user.roles || []), dietitianRole];
+    }
       user.is_active = true;
       user.is_verified = true;
       await this.userRepository.save(user);
@@ -1619,6 +1651,141 @@ export class AuthService {
       totalPlans,
       totalMeasurements,
     };
+  }
+
+  async autoAssignToDietitian(clientId: string, clinicId?: string) {
+    console.log(
+      `[AutoAssign] Starting assignment for client ${clientId}${clinicId ? ` in clinic ${clinicId}` : ' (Global)'}`,
+    );
+
+    // Potansiyel diyetisyenleri bul (sadece onaylı olanlar)
+    const whereClause: any = {
+      account_type: AccountType.Dietitian,
+      dietitian_verification_status: DietitianVerificationStatus.Approved,
+    };
+    if (clinicId) {
+      whereClause.clinic_id = clinicId;
+    }
+
+    const dietitians = await this.userProfileRepository.find({ where: whereClause });
+
+    if (dietitians.length === 0) {
+      console.log(`[AutoAssign] No approved dietitians found for assignment.`);
+      // Fallback: Klinik bazlı aramada bulunamadıysa global havuzdan dene
+      if (clinicId) {
+        console.log(`[AutoAssign] Fallback to global pool...`);
+        return this.autoAssignToDietitian(clientId);
+      }
+      return;
+    }
+
+    console.log(`[AutoAssign] Candidates: ${dietitians.length} approved dietitians.`);
+
+    // Mevcut iş yüklerini (danışan sayılarını) çek
+    const dietitianIds = dietitians.map((d) => d.user_id);
+    const workloads = await this.userAssignedDietitianRepository
+      .createQueryBuilder('assignment')
+      .select('assignment.dietitianId', 'dietitianId')
+      .addSelect('COUNT(assignment.id)', 'count')
+      .where('assignment.dietitianId IN (:...ids)', { ids: dietitianIds })
+      .groupBy('assignment.dietitianId')
+      .getRawMany();
+
+    const workloadMap = new Map<string, number>(
+      workloads.map((w) => [w.dietitianId, parseInt(w.count, 10)]),
+    );
+
+    // İş yükü olmayanları 0 olarak ata
+    dietitians.forEach((d) => {
+      if (!workloadMap.has(d.user_id)) {
+        workloadMap.set(d.user_id, 0);
+      }
+    });
+
+    // Minimum iş yükünü bul
+    const loadValues = Array.from(workloadMap.values());
+    const minLoad = Math.min(...loadValues);
+
+    // Minimum iş yüküne sahip tüm diyetisyenleri filtrele
+    const candidatesWithMinLoad = dietitians.filter(
+      (d) => workloadMap.get(d.user_id) === minLoad,
+    );
+
+    // Rastgele birini seç
+    const selectedDietitian =
+      candidatesWithMinLoad[Math.floor(Math.random() * candidatesWithMinLoad.length)];
+
+    console.log(
+      `[AutoAssign] Selected dietitian ${selectedDietitian.user_id} with load ${minLoad} among ${candidatesWithMinLoad.length} equals.`,
+    );
+    await this.performAssignment(clientId, selectedDietitian.user_id, selectedDietitian.clinic_id);
+  }
+
+  private async performAssignment(
+    clientId: string,
+    dietitianId: string,
+    clinicId: string | null,
+  ) {
+    // 1. Atama Kaydı (user_assigned_dietitian)
+    const assignment = this.userAssignedDietitianRepository.create({
+      clientId: clientId,
+      dietitianId: dietitianId,
+      clinicId: clinicId,
+    });
+    await this.userAssignedDietitianRepository.save(assignment);
+
+    // 2. Abonelik Kaydı (Subscription - Dashboard görünürlüğü için kritik)
+    const subscription = this.subscriptionRepository.create({
+      client_id: clientId,
+      dietitian_id: dietitianId,
+      clinic_id: clinicId,
+      status: SubscriptionStatus.Active,
+      start_date: new Date(),
+      notes: 'Sistem tarafından otomatik atandı',
+    });
+    await this.subscriptionRepository.save(subscription);
+
+    // 3. Sohbet Odası (Chat Room)
+    const existingRoom = await this.chatRoomRepository.findOne({
+      where: { client_id: clientId, dietitian_id: dietitianId },
+    });
+    if (!existingRoom) {
+      const room = this.chatRoomRepository.create({
+        client_id: clientId,
+        dietitian_id: dietitianId,
+        is_active: true,
+      });
+      await this.chatRoomRepository.save(room);
+    } else {
+      existingRoom.is_active = true;
+      await this.chatRoomRepository.save(existingRoom);
+    }
+
+    console.log(
+      `[AutoAssign] Full sync completed for client ${clientId} <-> dietitian ${dietitianId}`,
+    );
+  }
+
+  async getDietitianClients(dietitianId: string) {
+    const assignments = await this.userAssignedDietitianRepository.find({
+      where: { dietitianId },
+    });
+
+    if (assignments.length === 0) return [];
+
+    const clientIds = assignments.map((a) => a.clientId);
+    const profiles = await this.userProfileRepository.find({
+      where: { user_id: In(clientIds) },
+    });
+
+    return profiles.map((p) => ({
+      user_id: p.user_id,
+      first_name: p.first_name,
+      last_name: p.last_name,
+      avatar_url: p.avatar_url,
+      gender: p.gender,
+      birth_date: p.birth_date,
+    }));
   }
 }
 

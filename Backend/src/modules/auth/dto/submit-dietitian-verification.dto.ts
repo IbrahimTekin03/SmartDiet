@@ -8,6 +8,11 @@ export class SubmitDietitianVerificationDto {
   @MinLength(2)
   clinic_name: string;
 
+  @ApiPropertyOptional({ example: 'uuid-of-clinic' })
+  @IsString()
+  @IsOptional()
+  clinic_id?: string;
+
   @ApiProperty({ example: 'Istanbul' })
   @IsString()
   @IsNotEmpty()
@@ -17,11 +22,6 @@ export class SubmitDietitianVerificationDto {
   @IsString()
   @IsNotEmpty()
   clinic_address: string;
-
-  @ApiProperty({ example: 'DT-2026-0001' })
-  @IsString()
-  @IsNotEmpty()
-  clinic_license_no: string;
 
   @ApiPropertyOptional({ example: 'Yetki belgesi sisteme eklenecektir.' })
   @IsOptional()

@@ -186,6 +186,16 @@ export class AuthController {
     return ResponseDto.success('Do?rulama talebi al?nd?', result);
   }
 
+  @Get('dietitian/clients')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('Diyetisyen')
+  @ApiOperation({ summary: 'Diyetisyene atanmış danışanları getir' })
+  @ApiResponse({ status: 200, description: 'Atanmış danışan listesi', type: ResponseDto })
+  async getDietitianClients(@Request() req) {
+    const result = await this.authService.getDietitianClients(req.user.id);
+    return ResponseDto.success('Danışan listesi getirildi', result);
+  }
+
   @Get('dietitian/verification-status')
   @UseGuards(JwtAuthGuard)
   @ApiOperation({ summary: 'Diyetisyen do?rulama durumunu getir' })
