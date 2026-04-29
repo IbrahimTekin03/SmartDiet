@@ -4,8 +4,10 @@ import { DataSource, Repository } from 'typeorm';
 import { DietPlan } from './entities/diet-plan.entity';
 import { DietPlanMeal } from './entities/diet-plan-meal.entity';
 import { DietPlanMealItem } from './entities/diet-plan-meal-item.entity';
+import { DietPlanTracking } from './entities/diet-plan-tracking.entity';
 import { CreateDietPlanDto } from './dto/create-diet-plan.dto';
 import { User } from '@/modules/users/entities/user.entity';
+import { NotificationsService } from '../notifications/notifications.service';
 
 @Injectable()
 export class DietPlansService {
@@ -16,9 +18,12 @@ export class DietPlansService {
     private readonly mealRepository: Repository<DietPlanMeal>,
     @InjectRepository(DietPlanMealItem)
     private readonly mealItemRepository: Repository<DietPlanMealItem>,
+    @InjectRepository(DietPlanTracking)
+    private readonly trackingRepository: Repository<DietPlanTracking>,
     @InjectRepository(User)
     private readonly userRepository: Repository<User>,
     private readonly dataSource: DataSource,
+    private readonly notificationsService: NotificationsService,
   ) {}
 
   async create(dietitianId: string, dto: CreateDietPlanDto) {
@@ -38,6 +43,7 @@ export class DietPlansService {
         dietitian_id: dietitianId,
         title: dto.title,
         description: dto.description,
+        plan_type: dto.plan_type || 'weekly',
       });
       const savedPlan = await queryRunner.manager.save(plan);
 
@@ -48,6 +54,7 @@ export class DietPlansService {
           name: mealDto.name,
           time: mealDto.time,
           note: mealDto.note,
+          day_of_week: mealDto.day_of_week,
         });
         const savedMeal = await queryRunner.manager.save(meal);
 
@@ -62,6 +69,13 @@ export class DietPlansService {
       }
 
       await queryRunner.commitTransaction();
+
+      await this.notificationsService.create(
+        dto.client_id,
+        'Yeni Diyet Planı',
+        `Diyetisyeniniz tarafından '${dto.title}' başlıklı yeni bir diyet planı oluşturuldu.`
+      );
+
       return savedPlan;
     } catch (err) {
       await queryRunner.rollbackTransaction();
@@ -77,5 +91,77 @@ export class DietPlansService {
       relations: ['meals', 'meals.items', 'meals.items.food'],
       order: { createdAt: 'DESC' },
     });
+  }
+
+  async findOne(id: string, clientId: string) {
+    const plan = await this.dietPlanRepository.findOne({
+      where: { id, client_id: clientId },
+      relations: ['meals', 'meals.items', 'meals.items.food'],
+    });
+    if (!plan) throw new NotFoundException('Diyet planı bulunamadı');
+    return plan;
+  }
+
+  async trackMealItem(clientId: string, planId: string, mealItemId: string, date: string, isConsumed: boolean) {
+    let tracking = await this.trackingRepository.findOne({
+      where: { client_id: clientId, plan_id: planId, meal_item_id: mealItemId, date },
+    });
+
+    if (tracking) {
+      tracking.is_consumed = isConsumed;
+    } else {
+      tracking = this.trackingRepository.create({
+        client_id: clientId,
+        plan_id: planId,
+        meal_item_id: mealItemId,
+        date,
+        is_consumed: isConsumed,
+      });
+    }
+
+    return this.trackingRepository.save(tracking);
+  }
+
+  async getTracking(clientId: string, planId: string, date: string) {
+    return this.trackingRepository.find({
+      where: { client_id: clientId, plan_id: planId, date },
+    });
+  }
+
+  async trackMealItemBatch(clientId: string, planId: string, date: string, items: { meal_item_id: string, is_consumed: boolean }[]) {
+    // 1. Get existing records for this date
+    const existing = await this.trackingRepository.find({
+      where: { client_id: clientId, plan_id: planId, date },
+    });
+    
+    const trackingMap = new Map(existing.map(t => [t.meal_item_id, t]));
+    
+    // 2. Prepare upsert operations
+    const toSave: DietPlanTracking[] = [];
+    
+    for (const item of items) {
+      const track = trackingMap.get(item.meal_item_id);
+      if (track) {
+        if (track.is_consumed !== item.is_consumed) {
+          track.is_consumed = item.is_consumed;
+          toSave.push(track);
+        }
+      } else {
+        toSave.push(this.trackingRepository.create({
+          client_id: clientId,
+          plan_id: planId,
+          meal_item_id: item.meal_item_id,
+          date,
+          is_consumed: item.is_consumed,
+        }));
+      }
+    }
+    
+    // 3. Save all in batch
+    if (toSave.length > 0) {
+      await this.trackingRepository.save(toSave);
+    }
+    
+    return { success: true, updatedCount: toSave.length };
   }
 }

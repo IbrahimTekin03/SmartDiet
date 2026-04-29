@@ -39,6 +39,9 @@ export class DietPlan {
   @Column({ default: true })
   is_active: boolean;
 
+  @Column({ default: 'weekly' })
+  plan_type: string;
+
   @OneToMany(() => DietPlanMeal, (meal) => meal.plan, { cascade: true })
   meals: DietPlanMeal[];
 

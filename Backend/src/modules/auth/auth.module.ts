@@ -19,6 +19,7 @@ import { UserProfile } from '../users/entities/user.profile.entity';
 import { Subscription } from './entities/subscription.entity';
 import { ChatRoom } from './entities/chat-room.entity';
 import { UserAssignedDietitian } from '../users/entities/user-assigned-dietitian.entity';
+import { NotificationsModule } from '../notifications/notifications.module';
 
 @Module({
   imports: [
@@ -44,6 +45,7 @@ import { UserAssignedDietitian } from '../users/entities/user-assigned-dietitian
     }),
     RedisModule.register(),
     MailModule,
+    NotificationsModule,
   ],
   controllers: [AuthController],
   providers: [AuthService, LocalStrategy, JwtStrategy, OtpService],

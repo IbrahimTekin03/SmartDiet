@@ -12,6 +12,7 @@ type Profile = {
   full_name?: string;
   email?: string;
   phone_number?: string;
+  clinic_id?: string | null;
   clinic_name?: string | null;
 };
 
@@ -184,12 +185,42 @@ export default function ClientHome({ profile }: { profile: Profile }) {
   const [loadingSummary, setLoadingSummary] = useState(Boolean(accessToken));
   const [summaryError, setSummaryError] = useState("");
   const [measurementError, setMeasurementError] = useState("");
+  const [dietPlans, setDietPlans] = useState<any[]>([]);
   const [network, setNetwork] = useState<WorkspaceNetwork>({});
   const notesStorageKey = useMemo(
     () => `sd-client-notes:${profile.email || profile.phone_number || profile.display_name || "default"}`,
     [profile.display_name, profile.email, profile.phone_number],
   );
   const [dailyNotes, setDailyNotes] = useState("");
+  const [clinics, setClinics] = useState<any[]>([]);
+  const [selectedClinic, setSelectedClinic] = useState("");
+  const [savingClinic, setSavingClinic] = useState(false);
+  
+  useEffect(() => {
+    if (!profile.clinic_id) {
+      fetch(`${API_BASE}/api/clinics`)
+        .then((r) => r.json())
+        .then((d) => setClinics(Array.isArray(d?.data) ? d.data : Array.isArray(d) ? d : []))
+        .catch(() => {});
+    }
+  }, [profile.clinic_id]);
+
+  const saveClinic = async () => {
+    if (!selectedClinic) return;
+    setSavingClinic(true);
+    try {
+      const res = await fetch(`${API_BASE}/api/auth/profile/update-clinic`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${accessToken}` },
+        body: JSON.stringify({ clinic_id: selectedClinic }),
+      });
+      if (res.ok) {
+        window.location.reload();
+      }
+    } finally {
+      setSavingClinic(false);
+    }
+  };
 
   const displayName = useMemo(() => {
     const full = [profile.first_name, profile.last_name].filter(Boolean).join(" ").trim();
@@ -252,6 +283,17 @@ export default function ClientHome({ profile }: { profile: Profile }) {
       .catch(() => {
         if (!cancelled) setMeasurementError(t.measurementErr);
       });
+
+    fetch(`${API_BASE}/api/diet-plans/client`, {
+      headers: { Authorization: `Bearer ${accessToken}` },
+    })
+      .then(async (res) => {
+        const data = await res.json().catch(() => ({}));
+        if (res.ok && !cancelled) {
+          setDietPlans(Array.isArray(data?.data) ? data.data : []);
+        }
+      })
+      .catch(() => {});
 
     return () => {
       cancelled = true;
@@ -437,6 +479,56 @@ export default function ClientHome({ profile }: { profile: Profile }) {
         </DashboardPanel>
       </section>
 
+      {dietPlans.length > 0 && (
+        <section>
+          <DashboardPanel isDark={isDark}>
+            <DashboardSectionHeader isDark={isDark} title={t.lang === "tr" ? "Aktif Diyet Programları" : "Active Diet Plans"} subtitle={t.lang === "tr" ? "Diyetisyeninizin sizin için hazırladığı programlar." : "Programs prepared by your dietitian."} />
+            <div className="mt-6 grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+              {dietPlans.map((plan: any) => {
+                const planTypeLabel = plan.plan_type === 'daily' ? (t.lang === 'tr' ? 'Günlük' : 'Daily') : plan.plan_type === 'monthly' ? (t.lang === 'tr' ? 'Aylık' : 'Monthly') : (t.lang === 'tr' ? 'Haftalık' : 'Weekly');
+                
+                return (
+                  <Link key={plan.id} to={`/plan/${plan.id}`} className={["group relative flex flex-col justify-between overflow-hidden rounded-[32px] border p-6 transition-all hover:-translate-y-1", isDark ? "border-white/10 bg-white/5 hover:bg-white/[0.07] hover:border-emerald-500/30" : "border-[#2f6154]/15 bg-white shadow-sm hover:shadow-md hover:border-emerald-500/30"].join(" ")}>
+                    <div>
+                      <div className="flex items-center justify-between mb-4">
+                        <div className={["inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-[10px] font-bold uppercase tracking-wider", isDark ? "bg-emerald-500/15 text-emerald-300" : "bg-emerald-50 text-emerald-700"].join(" ")}>
+                          {planTypeLabel} Plan
+                        </div>
+                        <div className={isDark ? "text-xs text-zinc-500" : "text-xs text-[#4d6b62]"}>
+                          {new Date(plan.created_at || new Date()).toLocaleDateString(t.lang === "tr" ? "tr-TR" : "en-US")}
+                        </div>
+                      </div>
+                      <h3 className={["text-xl font-extrabold tracking-tight mb-2", isDark ? "text-white" : "text-[#0e2d27]"].join(" ")}>
+                        {plan.title}
+                      </h3>
+                      {plan.description && (
+                        <p className={["text-sm line-clamp-2", isDark ? "text-zinc-400" : "text-[#4d6b62]"].join(" ")}>
+                          {plan.description}
+                        </p>
+                      )}
+                    </div>
+                    
+                    <div className="mt-6 flex items-center justify-between border-t border-dashed pt-4 border-emerald-500/20">
+                      <div className="flex -space-x-2">
+                        <div className={["flex h-8 w-8 items-center justify-center rounded-full text-xs font-bold ring-2", isDark ? "bg-black text-emerald-400 ring-zinc-900" : "bg-emerald-100 text-emerald-700 ring-white"].join(" ")}>
+                          {plan.meals?.length || 0}
+                        </div>
+                        <div className={["flex h-8 pl-4 items-center rounded-full text-[10px] font-bold uppercase tracking-wider", isDark ? "text-zinc-400" : "text-[#4d6b62]"].join(" ")}>
+                          {t.lang === "tr" ? "Öğün" : "Meals"}
+                        </div>
+                      </div>
+                      <div className={["flex h-10 w-10 items-center justify-center rounded-2xl transition-colors", isDark ? "bg-white/5 text-emerald-400 group-hover:bg-emerald-500 group-hover:text-white" : "bg-emerald-50 text-emerald-600 group-hover:bg-emerald-500 group-hover:text-white"].join(" ")}>
+                        <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" /></svg>
+                      </div>
+                    </div>
+                  </Link>
+                );
+              })}
+            </div>
+          </DashboardPanel>
+        </section>
+      )}
+
       <DashboardPanel isDark={isDark}>
         <DashboardSectionHeader
           isDark={isDark}
@@ -475,6 +567,45 @@ export default function ClientHome({ profile }: { profile: Profile }) {
           </div>
         </div>
       </DashboardPanel>
+
+      {!profile.clinic_id && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm">
+          <div className={["w-full max-w-md rounded-3xl p-6 shadow-2xl", isDark ? "bg-[#111] border border-white/10" : "bg-white"].join(" ")}>
+            <h2 className={["text-xl font-extrabold mb-2", isDark ? "text-white" : "text-gray-900"].join(" ")}>Klinik Seçimi Zorunlu</h2>
+            <p className={["text-sm mb-6", isDark ? "text-gray-400" : "text-gray-600"].join(" ")}>Sistemi kullanmaya devam edebilmeniz ve bir diyetisyene atanabilmeniz için lütfen hizmet aldığınız kliniği seçin.</p>
+            
+            <select
+              value={selectedClinic}
+              onChange={(e) => setSelectedClinic(e.target.value)}
+              className={[
+                "w-full rounded-2xl border px-4 py-3 mb-6 text-sm outline-none transition",
+                isDark ? "bg-white/5 border-white/10 text-white" : "bg-gray-50 border-gray-200 text-gray-900"
+              ].join(" ")}
+            >
+              <option value="">{t.empty} / Klinik Seç</option>
+              {clinics.map((c) => (
+                <option key={c.id} value={c.id}>
+                  {c.name} - {c.city}
+                </option>
+              ))}
+            </select>
+            
+            <button
+              onClick={saveClinic}
+              disabled={!selectedClinic || savingClinic}
+              className="w-full rounded-2xl bg-emerald-500 py-3 text-sm font-bold text-white transition hover:bg-emerald-600 disabled:opacity-50"
+            >
+              {savingClinic ? "Kaydediliyor..." : "Kliniği Kaydet ve Devam Et"}
+            </button>
+            <button
+              onClick={onLogout}
+              className="mt-3 w-full rounded-2xl py-3 text-sm font-bold text-red-500 transition hover:bg-red-500/10"
+            >
+              {t.logout}
+            </button>
+          </div>
+        </div>
+      )}
     </DashboardShell>
   );
 }

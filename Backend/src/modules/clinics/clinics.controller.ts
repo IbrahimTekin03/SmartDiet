@@ -22,7 +22,6 @@ export class ClinicsController {
   constructor(private readonly clinicsService: ClinicsService) {}
 
   @Get()
-  @UseGuards(JwtAuthGuard)
   @ApiOperation({ summary: 'Tüm klinikleri listele' })
   @ApiResponse({ status: 200, type: ResponseDto })
   async findAll() {

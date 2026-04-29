@@ -179,11 +179,29 @@ export class AuthController {
 
   @Post('dietitian/verification')
   @UseGuards(JwtAuthGuard)
+  @UseInterceptors(
+    FileInterceptor('certificate', {
+      storage: diskStorage({
+        destination: './uploads/certificates',
+        filename: (req, file, cb) => {
+          const randomName = Array(32).fill(null).map(() => (Math.round(Math.random() * 16)).toString(16)).join('');
+          cb(null, `${randomName}${extname(file.originalname)}`);
+        },
+      }),
+    }),
+  )
   @ApiOperation({ summary: 'Diyetisyen doğrulama bilgilerini gönder' })
-  @ApiResponse({ status: 200, description: 'Do?rulama talebi al?nd?', type: ResponseDto })
-  async submitDietitianVerification(@Request() req, @Body() dto: SubmitDietitianVerificationDto) {
+  @ApiResponse({ status: 200, description: 'Doğrulama talebi alındı', type: ResponseDto })
+  async submitDietitianVerification(
+    @Request() req,
+    @Body() dto: SubmitDietitianVerificationDto,
+    @UploadedFile() file?: Express.Multer.File,
+  ) {
+    if (file) {
+      dto.certificate_url = `/uploads/certificates/${file.filename}`;
+    }
     const result = await this.authService.submitDietitianVerification(req.user.id, dto);
-    return ResponseDto.success('Do?rulama talebi al?nd?', result);
+    return ResponseDto.success('Doğrulama talebi alındı', result);
   }
 
   @Get('dietitian/clients')
@@ -469,6 +487,22 @@ export class AuthController {
   async updateProfile(@Request() req, @Body() dto: UpdateProfileDto) {
     const profile = await this.authService.updateProfile(req.user.id, dto);
     return ResponseDto.success('Profile updated', profile);
+  }
+
+  @Post('profile/update-clinic')
+  @UseGuards(JwtAuthGuard)
+  @ApiOperation({ summary: 'Danışan kliniğini güncelle ve atama yap' })
+  @ApiResponse({
+    status: 200,
+    description: 'Klinik başarıyla güncellendi',
+    type: ResponseDto,
+  })
+  async updateClientClinic(@Request() req, @Body('clinic_id') clinicId: string) {
+    if (!clinicId) {
+      return ResponseDto.error('clinic_id gereklidir');
+    }
+    const profile = await this.authService.updateClientClinic(req.user.id, clinicId);
+    return ResponseDto.success('Klinik güncellendi ve atama yapıldı', profile);
   }
 
   @Get('dashboard/summary')

@@ -12,6 +12,10 @@ class MealItemDto {
 }
 
 class MealDto {
+  @IsNumber()
+  @IsOptional()
+  day_of_week?: number;
+
   @IsString()
   @IsNotEmpty()
   name: string;
@@ -42,6 +46,10 @@ export class CreateDietPlanDto {
   @IsString()
   @IsOptional()
   description?: string;
+
+  @IsString()
+  @IsOptional()
+  plan_type?: string;
 
   @IsArray()
   @ValidateNested({ each: true })

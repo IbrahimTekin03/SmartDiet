@@ -147,7 +147,7 @@ const COPY: Record<
     invalidPhone: "Geçerli bir telefon numarası gir. Örnek: +905555555555",
     registerFail: "Kayıt oluşturulamadı. Bilgilerini kontrol ederek tekrar dene.",
     genericErr: "Beklenmeyen bir hata oluştu.",
-    selectClinic: "Klinik Seçin (İsteğe Bağlı)",
+    selectClinic: "Klinik Seçin",
     clinicPH: "Hizmet aldığınız kliniği seçin",
   },
   en: {
@@ -203,7 +203,7 @@ const COPY: Record<
     invalidPhone: "Enter a valid phone number. Example: +905555555555",
     registerFail: "Registration failed. Check your details.",
     genericErr: "An error occurred.",
-    selectClinic: "Select Clinic (Optional)",
+    selectClinic: "Select Clinic",
     clinicPH: "Select the clinic you receive service from",
   },
 };
@@ -238,7 +238,7 @@ export default function Register() {
   useEffect(() => {
     fetch(`${API_BASE}/api/clinics`)
       .then((r) => r.json())
-      .then((d) => setClinics(Array.isArray(d) ? d : []))
+      .then((d) => setClinics(Array.isArray(d?.data) ? d.data : Array.isArray(d) ? d : []))
       .catch(() => {});
   }, []);
 
@@ -272,6 +272,10 @@ export default function Register() {
     } else {
       if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) e.email = t.invalidEmail;
       if (phone && !/^\+?[0-9\s()-]{10,}$/.test(phone)) e.phone_number = t.invalidPhone;
+    }
+
+    if (form.account_type === "client" && clinics.length > 0 && !form.clinic_id) {
+      e.clinic_id = t.selectClinic;
     }
 
     setErrors(e);
@@ -554,7 +558,7 @@ export default function Register() {
                     className={[
                       "w-full rounded-2xl border px-4 py-3 text-sm outline-none transition",
                       isDark ? "bg-black/20 text-white" : "bg-white text-[#0e2d27]",
-                      isDark ? "border-white/10" : "border-[#325d51]/25",
+                      errors.clinic_id ? "border-rose-500/40" : isDark ? "border-white/10" : "border-[#325d51]/25",
                       "focus:border-emerald-400/40 focus:ring-4 focus:ring-emerald-500/10",
                     ].join(" ")}
                   >
@@ -565,6 +569,7 @@ export default function Register() {
                       </option>
                     ))}
                   </select>
+                  {errors.clinic_id ? <div className="mt-2 text-xs text-rose-200">{errors.clinic_id}</div> : null}
                 </div>
               )}
 

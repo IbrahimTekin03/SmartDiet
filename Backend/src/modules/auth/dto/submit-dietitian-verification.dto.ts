@@ -27,4 +27,9 @@ export class SubmitDietitianVerificationDto {
   @IsOptional()
   @IsString()
   verification_note?: string;
+
+  @ApiPropertyOptional({ example: '/uploads/certificates/abc.pdf' })
+  @IsOptional()
+  @IsString()
+  certificate_url?: string;
 }

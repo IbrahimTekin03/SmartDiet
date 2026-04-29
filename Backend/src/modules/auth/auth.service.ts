@@ -30,6 +30,7 @@ import { Subscription, SubscriptionStatus } from './entities/subscription.entity
 import { ChatRoom } from './entities/chat-room.entity';
 import { AssignClientDietitianDto } from './dto/assign-client-dietitian.dto';
 import { UserAssignedDietitian } from '../users/entities/user-assigned-dietitian.entity';
+import { NotificationsService } from '../notifications/notifications.service';
 
 type ListDietitianApplicationsOptions = {
   status?: string;
@@ -89,6 +90,7 @@ export class AuthService {
     private readonly i18n: I18nService,
     private readonly redisService: RedisService,
     private readonly mailService: MailService,
+    private readonly notificationsService: NotificationsService,
     @Inject('REDIS_ENABLED') private readonly redisEnabled: boolean,
   ) {}
 
@@ -676,6 +678,7 @@ export class AuthService {
       account_type: profile?.account_type ?? AccountType.Client,
       dietitian_verification_status:
         profile?.dietitian_verification_status ?? DietitianVerificationStatus.NotSubmitted,
+      clinic_id: profile?.clinic_id ?? null,
       clinic_name: profile?.clinic_name ?? null,
       clinic_city: profile?.clinic_city ?? null,
       clinic_address: profile?.clinic_address ?? null,
@@ -787,6 +790,22 @@ export class AuthService {
     return this.getProfile(userId);
   }
 
+  async updateClientClinic(userId: string, clinicId: string) {
+    const profile = await this.ensureUserProfile(userId);
+    
+    if (profile.account_type !== AccountType.Client) {
+      throw new BadRequestException('Only clients can select a clinic');
+    }
+
+    profile.clinic_id = clinicId;
+    await this.userProfileRepository.save(profile);
+
+    // Otomatik atama sürecini tetikle
+    await this.autoAssignToDietitian(userId, clinicId);
+
+    return this.getProfile(userId);
+  }
+
   async submitDietitianVerification(userId: string, dto: SubmitDietitianVerificationDto) {
     const user = await this.userRepository.findOne({
       where: { id: userId },
@@ -810,6 +829,9 @@ export class AuthService {
     profile.clinic_city = dto.clinic_city.trim();
     profile.clinic_address = dto.clinic_address.trim();
     profile.verification_note = dto.verification_note?.trim() || null;
+    if (dto.certificate_url) {
+      profile.certificate_url = dto.certificate_url;
+    }
     profile.verification_review_note = null;
     profile.verification_submitted_at = new Date();
     profile.verification_reviewed_at = null;
@@ -1387,6 +1409,17 @@ export class AuthService {
       await this.userAssignedDietitianRepository.save(newAssignment);
     }
 
+    await this.notificationsService.create(
+      dto.client_id,
+      'Yeni Diyetisyen Ataması',
+      'Size yeni bir diyetisyen atandı. Sağlıklı yaşam yolculuğunuzda başarılar dileriz.'
+    );
+    await this.notificationsService.create(
+      dto.dietitian_id,
+      'Yeni Danışan Ataması',
+      'Size yeni bir danışan atandı. Hemen program oluşturabilirsiniz.'
+    );
+
     return {
       ok: true,
       subscription_id: activeSubscription.id,
@@ -1763,6 +1796,17 @@ export class AuthService {
 
     console.log(
       `[AutoAssign] Full sync completed for client ${clientId} <-> dietitian ${dietitianId}`,
+    );
+
+    await this.notificationsService.create(
+      clientId,
+      'Yeni Diyetisyen Ataması',
+      'Size yeni bir diyetisyen atandı. Sağlıklı yaşam yolculuğunuzda başarılar dileriz.'
+    );
+    await this.notificationsService.create(
+      dietitianId,
+      'Yeni Danışan Ataması',
+      'Size yeni bir danışan atandı. Hemen program oluşturabilirsiniz.'
     );
   }
 

@@ -10,6 +10,7 @@ import AppEntry from "./pages/AppEntry";
 import DietitianVerification from "./pages/DietitianVerification";
 import MealPlanner from "./pages/MealPlanner";
 import DietitianDashboard from "./pages/DietitianDashboard";
+import DietPlanView from "./pages/DietPlanView";
 import ProtectedRoute from "./components/ProtectedRoute";
 import SettingsDrawer from "./components/SettingsDrawer";
 
@@ -26,7 +27,7 @@ export default function App() {
         <Route
           path="/admin-panel"
           element={
-            <ProtectedRoute>
+            <ProtectedRoute allowedRoles={['admin']}>
               <AdminPanel />
             </ProtectedRoute>
           }
@@ -34,7 +35,7 @@ export default function App() {
         <Route
           path="/clinic-manager"
           element={
-            <ProtectedRoute>
+            <ProtectedRoute allowedRoles={['clinic_manager', 'admin']}>
               <ClinicManagerPanel />
             </ProtectedRoute>
           }
@@ -57,9 +58,17 @@ export default function App() {
           }
         />
         <Route
-          path="/dietitian-home"
+          path="/plan/:id"
           element={
             <ProtectedRoute>
+              <DietPlanView />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/dietitian-home"
+          element={
+            <ProtectedRoute allowedRoles={['diyetisyen', 'admin']}>
               <DietitianDashboard />
             </ProtectedRoute>
           }
@@ -67,7 +76,7 @@ export default function App() {
         <Route
           path="/meal-planner"
           element={
-            <ProtectedRoute>
+            <ProtectedRoute allowedRoles={['diyetisyen', 'admin']}>
               <MealPlanner />
             </ProtectedRoute>
           }
@@ -75,7 +84,7 @@ export default function App() {
         <Route
           path="/dietitian-verification"
           element={
-            <ProtectedRoute>
+            <ProtectedRoute allowedRoles={['diyetisyen']}>
               <DietitianVerification />
             </ProtectedRoute>
           }

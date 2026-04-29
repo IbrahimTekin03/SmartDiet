@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import { useAppSettings } from "../context/AppSettingsContext";
 import { Link, useSearchParams } from "react-router-dom";
 
@@ -36,9 +36,95 @@ type Meal = {
   time: string;
   items: MealItem[];
   note: string;
+  day_of_week?: number;
 };
 
 const API_BASE = "http://localhost:3000";
+
+const MealFoodSearch = React.memo(function MealFoodSearch({ mealId, isDark, lang, onAddFood, onFocus }: { mealId: string, isDark: boolean, lang: string, onAddFood: (mealId: string, food: Food) => void, onFocus?: () => void }) {
+  const [foodSearch, setFoodSearch] = useState("");
+  const [foodResults, setFoodResults] = useState<Food[]>([]);
+
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState(false);
+
+  useEffect(() => {
+    if (foodSearch.length < 2) {
+      setFoodResults([]);
+      setError(false);
+      return;
+    }
+
+    setIsLoading(true);
+    setError(false);
+    const timer = setTimeout(() => {
+      fetch(`${API_BASE}/api/foods?search=${foodSearch}`)
+        .then((res) => {
+          if (!res.ok) throw new Error();
+          return res.json();
+        })
+        .then((data) => {
+          setFoodResults(data.data || []);
+          setIsLoading(false);
+        })
+        .catch(() => {
+          setError(true);
+          setIsLoading(false);
+        });
+    }, 300);
+
+    return () => clearTimeout(timer);
+  }, [foodSearch]);
+
+  return (
+    <div className="relative">
+      <div className="flex items-center gap-3">
+        <div className="relative flex-1">
+          <input 
+            placeholder={lang === "tr" ? "Yiyecek ara..." : "Search foods..."}
+            value={foodSearch}
+            onChange={(e) => setFoodSearch(e.target.value)}
+            onFocus={() => onFocus?.()}
+            className={isDark ? "w-full rounded-2xl bg-black/40 border border-white/10 px-4 py-3 text-xs text-white outline-none focus:border-emerald-500" : "w-full rounded-2xl bg-zinc-50 border border-[#325d51]/10 px-4 py-3 text-xs text-[#0e2d27] outline-none focus:border-emerald-500"}
+          />
+          {isLoading && (
+            <div className="absolute right-3 top-3.5">
+              <div className="h-4 w-4 animate-spin rounded-full border-2 border-emerald-500 border-t-transparent" />
+            </div>
+          )}
+          {foodResults.length > 0 && (
+            <div className={isDark ? "absolute top-full left-0 right-0 mt-2 max-h-64 overflow-y-auto rounded-2xl border border-white/10 bg-zinc-900 shadow-2xl z-[100] p-2" : "absolute top-full left-0 right-0 mt-2 max-h-64 overflow-y-auto rounded-2xl border border-[#325d51]/10 bg-white shadow-2xl z-[100] p-2"}>
+              {foodResults.map((food) => (
+                <button
+                  key={food.id}
+                  onClick={() => {
+                    onAddFood(mealId, food);
+                    setFoodSearch("");
+                    setFoodResults([]);
+                  }}
+                  className={isDark ? "flex w-full flex-col p-3 text-left hover:bg-emerald-500/10 rounded-xl transition-all" : "flex w-full flex-col p-3 text-left hover:bg-emerald-500/5 rounded-xl transition-all"}
+                >
+                  <span className={isDark ? "text-xs font-bold text-white" : "text-xs font-bold text-[#0e2d27]"}>{food.name}</span>
+                  <span className="text-[10px] text-zinc-500">{food.calories}kcal | P:{food.protein}g | K:{food.carbohydrates}g</span>
+                </button>
+              ))}
+            </div>
+          )}
+          {foodSearch.length >= 2 && !isLoading && foodResults.length === 0 && !error && (
+              <div className={isDark ? "absolute top-full left-0 right-0 mt-2 rounded-2xl border border-white/10 bg-zinc-900 p-4 text-center text-[10px] text-zinc-500 z-[100]" : "absolute top-full left-0 right-0 mt-2 rounded-2xl border border-[#325d51]/10 bg-white p-4 text-center text-[10px] text-zinc-500 z-[100]"}>
+                 {lang === "tr" ? "Sonuç bulunamadı." : "No results found."}
+              </div>
+          )}
+          {error && (
+            <div className={isDark ? "absolute top-full left-0 right-0 mt-2 rounded-2xl border border-rose-500/50 bg-rose-500/10 p-4 text-center text-[10px] text-rose-500 z-[100]" : "absolute top-full left-0 right-0 mt-2 rounded-2xl border border-rose-500/50 bg-rose-50 p-4 text-center text-[10px] text-rose-500 z-[100]"}>
+               {lang === "tr" ? "Arama sırasında bir hata oluştu." : "Error during search."}
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+});
 
 export default function MealPlanner() {
   const { isDark, lang } = useAppSettings();
@@ -47,14 +133,34 @@ export default function MealPlanner() {
 
   const [selectedClient, setSelectedClient] = useState<Client | null>(null);
   const [clients, setClients] = useState<Client[]>([]);
+  const [planType, setPlanType] = useState("weekly");
+  const [selectedDay, setSelectedDay] = useState(1);
+  const [focusedMealId, setFocusedMealId] = useState<string | null>(null);
   const [meals, setMeals] = useState<Meal[]>([
     {
       id: "1",
       name: "Kahvaltı",
       time: "08:00",
       items: [],
-      note: "Yumurta haşlanmış olsun.",
+      note: "",
+      day_of_week: 1,
     },
+    {
+      id: "2",
+      name: "Öğle Yemeği",
+      time: "13:00",
+      items: [],
+      note: "",
+      day_of_week: 1,
+    },
+    {
+      id: "3",
+      name: "Akşam Yemeği",
+      time: "19:00",
+      items: [],
+      note: "",
+      day_of_week: 1,
+    }
   ]);
   const [loading, setLoading] = useState(true);
   
@@ -62,10 +168,7 @@ export default function MealPlanner() {
   const [planTitle, setPlanTitle] = useState("");
   const [isSaving, setIsSaving] = useState(false);
 
-  // Search state
-  const [foodSearch, setFoodSearch] = useState("");
-  const [foodResults, setFoodResults] = useState<Food[]>([]);
-  const [activeMealId, setActiveMealId] = useState<string | null>(null);
+  // We will handle search individually per meal to prevent state collisions.
 
   useEffect(() => {
     const token = localStorage.getItem("access_token");
@@ -88,23 +191,28 @@ export default function MealPlanner() {
       .catch(() => setLoading(false));
   }, [clientIdFromUrl]);
 
-  // Food Search debounce
-  useEffect(() => {
-    if (foodSearch.length < 2) {
-      setFoodResults([]);
-      return;
+  const handlePlanTypeChange = (type: string) => {
+    setPlanType(type);
+    if (type === 'weekly' || type === 'monthly') {
+      const defaultMeals: Meal[] = [];
+      const daysCount = type === 'weekly' ? 7 : 30;
+      for (let day = 1; day <= daysCount; day++) {
+        defaultMeals.push(
+          { id: Math.random().toString(36).substr(2, 9), name: "Kahvaltı", time: "08:00", items: [], note: "", day_of_week: day },
+          { id: Math.random().toString(36).substr(2, 9), name: "Öğle Yemeği", time: "13:00", items: [], note: "", day_of_week: day },
+          { id: Math.random().toString(36).substr(2, 9), name: "Akşam Yemeği", time: "19:00", items: [], note: "", day_of_week: day }
+        );
+      }
+      setMeals(defaultMeals);
+      setSelectedDay(1);
+    } else {
+      setMeals([
+        { id: Math.random().toString(36).substr(2, 9), name: "Kahvaltı", time: "08:00", items: [], note: "" },
+        { id: Math.random().toString(36).substr(2, 9), name: "Öğle Yemeği", time: "13:00", items: [], note: "" },
+        { id: Math.random().toString(36).substr(2, 9), name: "Akşam Yemeği", time: "19:00", items: [], note: "" }
+      ]);
     }
-
-    const timer = setTimeout(() => {
-      fetch(`${API_BASE}/api/foods?search=${foodSearch}`)
-        .then((res) => res.json())
-        .then((data) => {
-          setFoodResults(data.data || []);
-        });
-    }, 300);
-
-    return () => clearTimeout(timer);
-  }, [foodSearch]);
+  };
 
   const addMeal = () => {
     const newMeal: Meal = {
@@ -113,6 +221,7 @@ export default function MealPlanner() {
       time: "",
       items: [],
       note: "",
+      day_of_week: planType === 'weekly' ? selectedDay : undefined,
     };
     setMeals([...meals, newMeal]);
   };
@@ -125,7 +234,7 @@ export default function MealPlanner() {
     setMeals(meals.filter((m) => m.id !== id));
   };
 
-  const addFoodToMeal = (mealId: string, food: Food) => {
+  const addFoodToMeal = useCallback((mealId: string, food: Food) => {
     const defaultAmount = 100;
     const newItem: MealItem = {
       id: Math.random().toString(36).substr(2, 9),
@@ -138,18 +247,15 @@ export default function MealPlanner() {
       carbohydrates: (food.carbohydrates * defaultAmount) / 100,
     };
 
-    setMeals(
-      meals.map((m) => {
+    setMeals((prevMeals) =>
+      prevMeals.map((m) => {
         if (m.id === mealId) {
           return { ...m, items: [...m.items, newItem] };
         }
         return m;
       })
     );
-    setFoodSearch("");
-    setFoodResults([]);
-    setActiveMealId(null);
-  };
+  }, []);
 
   const updateItemAmount = (mealId: string, itemId: string, amount: number) => {
     setMeals(
@@ -218,10 +324,12 @@ export default function MealPlanner() {
     const payload = {
       client_id: selectedClient.user_id,
       title: planTitle,
+      plan_type: planType,
       meals: meals.map((m) => ({
         name: m.name,
         time: m.time,
         note: m.note,
+        day_of_week: m.day_of_week,
         items: m.items.map((i) => ({
           food_id: i.food_id,
           amount: i.amount,
@@ -356,13 +464,22 @@ export default function MealPlanner() {
                     <h2 className={isDark ? "mt-1 text-2xl font-bold text-white" : "mt-1 text-2xl font-bold text-[#0e2d27]"}>
                       {selectedClient.first_name} {selectedClient.last_name}
                     </h2>
-                    <div className="mt-4">
+                    <div className="mt-4 flex gap-3">
                       <input 
                         placeholder={lang === "tr" ? "Plan Başlığı (Örn: Haftalık Liste)" : "Plan Title (Ex: Weekly List)"}
                         value={planTitle}
                         onChange={(e) => setPlanTitle(e.target.value)}
                         className={isDark ? "w-full max-w-sm rounded-xl border border-white/10 bg-black/40 px-4 py-2 text-sm text-white outline-none focus:border-emerald-500" : "w-full max-w-sm rounded-xl border border-[#325d51]/10 bg-zinc-50 px-4 py-2 text-sm text-[#0e2d27] outline-none focus:border-emerald-500"}
                       />
+                      <select
+                        value={planType}
+                        onChange={(e) => handlePlanTypeChange(e.target.value)}
+                        className={isDark ? "rounded-xl border border-white/10 bg-black/40 px-4 py-2 text-sm text-white outline-none focus:border-emerald-500" : "rounded-xl border border-[#325d51]/10 bg-zinc-50 px-4 py-2 text-sm text-[#0e2d27] outline-none focus:border-emerald-500"}
+                      >
+                        <option value="daily">{lang === "tr" ? "Günlük" : "Daily"}</option>
+                        <option value="weekly">{lang === "tr" ? "Haftalık" : "Weekly"}</option>
+                        <option value="monthly">{lang === "tr" ? "Aylık" : "Monthly"}</option>
+                      </select>
                     </div>
                   </div>
                   <button
@@ -374,13 +491,37 @@ export default function MealPlanner() {
                   </button>
                 </div>
 
-                <div className="space-y-6">
-                  {meals.map((meal) => {
+                {['weekly', 'monthly'].includes(planType) && (
+                  <div className="mb-6 flex gap-2 overflow-x-auto pb-2 scrollbar-hide">
+                    {(planType === 'weekly' 
+                      ? ["Pazartesi", "Salı", "Çarşamba", "Perşembe", "Cuma", "Cumartesi", "Pazar"]
+                      : Array.from({ length: 30 }, (_, i) => lang === "tr" ? `${i + 1}. Gün` : `Day ${i + 1}`)
+                    ).map((day, idx) => {
+                      const dayNumber = idx + 1;
+                      const isSelected = selectedDay === dayNumber;
+                      return (
+                        <button
+                          key={dayNumber}
+                          onClick={() => setSelectedDay(dayNumber)}
+                          className={["whitespace-nowrap rounded-xl px-5 py-2.5 text-sm font-bold transition-all", isSelected ? "bg-emerald-500 text-white shadow-lg shadow-emerald-500/30" : isDark ? "bg-white/5 text-zinc-400 hover:bg-white/10 hover:text-white" : "bg-[#2f6154]/5 text-[#4d6b62] hover:bg-[#2f6154]/10 hover:text-[#0e2d27]"].join(" ")}
+                        >
+                          {day}
+                        </button>
+                      );
+                    })}
+                  </div>
+                )}
+
+                <div className="space-y-6 pb-48">
+                  {meals.filter(m => ['weekly', 'monthly'].includes(planType) ? m.day_of_week === selectedDay : true).map((meal) => {
                     const totals = calculateMealTotals(meal);
                     return (
                       <div
                         key={meal.id}
-                        className={isDark ? "relative rounded-[32px] border border-white/10 bg-white/5 p-8 backdrop-blur" : "relative rounded-[32px] border border-[#325d51]/20 bg-white p-8 shadow-sm"}
+                        className={[
+                          isDark ? "relative rounded-[32px] border border-white/10 bg-white/5 p-8 backdrop-blur transition-all" : "relative rounded-[32px] border border-[#325d51]/20 bg-white p-8 shadow-sm transition-all",
+                          focusedMealId === meal.id ? "z-[60] border-emerald-500/50 shadow-2xl shadow-emerald-500/10 scale-[1.01]" : "z-10"
+                        ].join(" ")}
                       >
                         <button
                           onClick={() => removeMeal(meal.id)}
@@ -469,53 +610,14 @@ export default function MealPlanner() {
                                 ))}
                              </div>
 
-                             {/* Search and Add */}
-                             <div className="relative">
-                                <div className="flex items-center gap-3">
-                                   <div className="relative flex-1">
-                                      <input 
-                                         placeholder={activeMealId === meal.id ? (lang === "tr" ? "Yiyecek ara..." : "Search foods...") : (lang === "tr" ? "Ekle..." : "Add item...")}
-                                         onFocus={() => {
-                                            if (activeMealId !== meal.id) {
-                                               setFoodSearch("");
-                                               setFoodResults([]);
-                                            }
-                                            setActiveMealId(meal.id);
-                                         }}
-                                         value={activeMealId === meal.id ? foodSearch : ""}
-                                         onChange={(e) => setFoodSearch(e.target.value)}
-                                         className={isDark ? "w-full rounded-2xl bg-black/40 border border-white/10 px-4 py-3 text-xs text-white outline-none focus:border-emerald-500" : "w-full rounded-2xl bg-zinc-50 border border-[#325d51]/10 px-4 py-3 text-xs text-[#0e2d27] outline-none focus:border-emerald-500"}
-                                      />
-                                      {activeMealId === meal.id && foodResults.length > 0 && (
-                                         <div className={isDark ? "absolute top-full left-0 right-0 mt-2 max-h-48 overflow-y-auto rounded-2xl border border-white/10 bg-zinc-900 shadow-2xl z-50 p-2" : "absolute top-full left-0 right-0 mt-2 max-h-48 overflow-y-auto rounded-2xl border border-[#325d51]/10 bg-white shadow-2xl z-50 p-2"}>
-                                            {foodResults.map((food) => (
-                                               <button
-                                                  key={food.id}
-                                                  onClick={() => addFoodToMeal(meal.id, food)}
-                                                  className={isDark ? "flex w-full flex-col p-3 text-left hover:bg-emerald-500/10 rounded-xl transition-all" : "flex w-full flex-col p-3 text-left hover:bg-emerald-500/5 rounded-xl transition-all"}
-                                               >
-                                                  <span className={isDark ? "text-xs font-bold text-white" : "text-xs font-bold text-[#0e2d27]"}>{food.name}</span>
-                                                  <span className="text-[10px] text-zinc-500">{food.calories}kcal | P:{food.protein}g | K:{food.carbohydrates}g</span>
-                                               </button>
-                                            ))}
-                                         </div>
-                                      )}
-                                      {activeMealId === meal.id && foodSearch && foodResults.length === 0 && (
-                                          <div className={isDark ? "absolute top-full left-0 right-0 mt-2 rounded-2xl border border-white/10 bg-zinc-900 p-4 text-center text-[10px] text-zinc-500" : "absolute top-full left-0 right-0 mt-2 rounded-2xl border border-[#325d51]/10 bg-white p-4 text-center text-[10px] text-zinc-500"}>
-                                             {lang === "tr" ? "Sonuç bulunamadı." : "No results found."}
-                                          </div>
-                                      )}
-                                   </div>
-                                    {activeMealId === meal.id && (
-                                       <button 
-                                          onClick={() => { setActiveMealId(null); setFoodSearch(""); }}
-                                          className="p-3 text-zinc-500 hover:text-rose-500"
-                                       >
-                                          ✕
-                                       </button>
-                                    )}
-                                </div>
-                             </div>
+                             {/* Search and Add Component */}
+                             <MealFoodSearch 
+                                mealId={meal.id} 
+                                isDark={isDark} 
+                                lang={lang} 
+                                onAddFood={addFoodToMeal} 
+                                onFocus={() => setFocusedMealId(meal.id)}
+                             />
 
                              <div>
                                 <label className={isDark ? "mt-2 block text-[10px] font-bold uppercase tracking-wider text-zinc-500" : "mt-2 block text-[10px] font-bold uppercase tracking-wider text-[#4d6b62]"}>

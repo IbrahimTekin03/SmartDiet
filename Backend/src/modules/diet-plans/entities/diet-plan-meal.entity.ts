@@ -21,6 +21,9 @@ export class DietPlanMeal {
   @JoinColumn({ name: 'plan_id' })
   plan: DietPlan;
 
+  @Column({ type: 'int', nullable: true })
+  day_of_week: number;
+
   @Column()
   name: string;
 

@@ -20,6 +20,7 @@ type Profile = {
   roles?: Array<{ name?: string }>;
   account_type?: "client" | "Diyetisyen";
   dietitian_verification_status?: "not_submitted" | "pending" | "approved" | "rejected";
+  clinic_id?: string | null;
   clinic_name?: string | null;
 };
 

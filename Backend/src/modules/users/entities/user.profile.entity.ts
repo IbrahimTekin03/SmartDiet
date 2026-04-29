@@ -68,6 +68,9 @@ export class UserProfile {
   @Column({ nullable: true })
   verification_review_note: string | null;
 
+  @Column({ nullable: true })
+  certificate_url: string | null;
+
   @Column({ type: 'timestamptz', nullable: true })
   verification_submitted_at: Date | null;
 

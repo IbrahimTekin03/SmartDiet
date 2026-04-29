@@ -42,6 +42,7 @@ const COPY = {
     fieldCity: "Şehir",
     fieldAddress: "Adres",
     fieldNote: "Ek Not (opsiyonel)",
+    fieldCertificate: "Sertifika/Diploma Yükle (PDF/Görsel, İsteğe bağlı ancak önerilir)",
     requiredError: "Lütfen tüm zorunlu alanları doldur.",
     submitSuccess: "Başvurun admin onayına gönderildi.",
     submitLoading: "Gönderiliyor...",
@@ -67,6 +68,7 @@ const COPY = {
     fieldCity: "City",
     fieldAddress: "Address",
     fieldNote: "Note (optional)",
+    fieldCertificate: "Upload Certificate/Diploma (PDF/Image, optional but recommended)",
     requiredError: "Fill in all required fields.",
     submitSuccess: "Application sent to admin.",
     submitLoading: "Submitting...",
@@ -112,6 +114,7 @@ export default function DietitianVerification() {
     clinic_address: "",
     verification_note: "",
   });
+  const [certificateFile, setCertificateFile] = useState<File | null>(null);
 
   const formatDateTime = useCallback((value?: string | null) => {
     if (!value) return "-";
@@ -205,16 +208,20 @@ export default function DietitianVerification() {
 
     setSubmitting(true);
     try {
+      const formData = new FormData();
+      formData.append("clinic_name", form.clinic_name);
+      formData.append("clinic_city", form.clinic_city);
+      formData.append("clinic_address", form.clinic_address);
+      if (form.verification_note) formData.append("verification_note", form.verification_note);
+      if (selectedClinicId) formData.append("clinic_id", selectedClinicId);
+      if (certificateFile) formData.append("certificate", certificateFile);
+
       const res = await fetch(`${API_BASE}/api/auth/dietitian/verification`, {
         method: "POST",
         headers: {
           Authorization: `Bearer ${token}`,
-          "Content-Type": "application/json",
         },
-        body: JSON.stringify({
-          ...form,
-          clinic_id: selectedClinicId || undefined,
-        }),
+        body: formData,
       });
       const data = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(data?.message || "verification_submit_error");
@@ -302,6 +309,22 @@ export default function DietitianVerification() {
             <Field isDark={isDark} label={t.fieldCity} value={form.clinic_city} onChange={(v) => setForm((p) => ({ ...p, clinic_city: v }))} />
             <Field isDark={isDark} label={t.fieldAddress} value={form.clinic_address} onChange={(v) => setForm((p) => ({ ...p, clinic_address: v }))} />
             <Field isDark={isDark} label={t.fieldNote} value={form.verification_note} onChange={(v) => setForm((p) => ({ ...p, verification_note: v }))} />
+            
+            <div className="mb-4">
+              <label className={isDark ? "mb-1 block text-xs text-zinc-300" : "mb-1 block text-xs text-[#4d6b62]"}>
+                {t.fieldCertificate}
+              </label>
+              <input
+                type="file"
+                accept=".pdf,image/png,image/jpeg,image/jpg"
+                onChange={(e) => setCertificateFile(e.target.files?.[0] || null)}
+                className={[
+                  "w-full rounded-xl border px-3 py-2 text-sm outline-none",
+                  isDark ? "border-white/10 bg-white/5 text-white file:text-emerald-200" : "border-[#2f6154]/20 bg-white text-[#123a32] file:text-emerald-700",
+                  "file:mr-4 file:rounded-lg file:border-0 file:bg-emerald-500/10 file:px-4 file:py-1 file:text-xs file:font-semibold hover:file:bg-emerald-500/20"
+                ].join(" ")}
+              />
+            </div>
 
             {error ? <div className="rounded-xl border border-rose-500/30 bg-rose-500/10 px-3 py-2 text-sm text-rose-100">{error}</div> : null}
             {message ? <div className="rounded-xl border border-emerald-500/30 bg-emerald-500/10 px-3 py-2 text-sm text-emerald-100">{message}</div> : null}
