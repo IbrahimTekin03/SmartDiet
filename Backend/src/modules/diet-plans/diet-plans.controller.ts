@@ -32,6 +32,13 @@ export class DietPlansController {
     return ResponseDto.success('Diyet planları getirildi', result);
   }
 
+  @Get('track')
+  @ApiOperation({ summary: 'Belirli bir tarihteki takip verilerini getir' })
+  async getTracking(@Request() req, @Query('planId') planId: string, @Query('date') date: string) {
+    const result = await this.dietPlansService.getTracking(req.user.id, planId, date);
+    return ResponseDto.success('Takip verileri getirildi', result);
+  }
+
   @Get(':id')
   @ApiOperation({ summary: 'Belirli bir diyet planını getir' })
   async findOne(@Request() req, @Param('id') id: string) {
@@ -64,11 +71,5 @@ export class DietPlansController {
     return ResponseDto.success('Toplu öğün takibi güncellendi', result);
   }
 
-  @Get('track')
-  @ApiOperation({ summary: 'Belirli bir tarihteki takip verilerini getir' })
-  async getTracking(@Request() req, @Query('planId') planId: string, @Query('date') date: string) {
-    const result = await this.dietPlansService.getTracking(req.user.id, planId, date);
-    return ResponseDto.success('Takip verileri getirildi', result);
-  }
 }
 
