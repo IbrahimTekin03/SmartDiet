@@ -51,6 +51,7 @@ export class AuthController {
     status: 200,
     description: 'Giriş başarılı',
     type: ResponseDto,
+
   })
   async login(@Request() req, @Body() loginDto: LoginDto) {
     if (!loginDto.email && !loginDto.phone_number) {

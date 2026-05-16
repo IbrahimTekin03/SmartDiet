@@ -517,9 +517,9 @@ export default function Login() {
       }
 
       const result = data?.data ?? data;
-      if (result?.otpRequired === false && result?.accessToken) {
-        const accessToken = result?.accessToken;
-        const refreshToken = result?.refreshToken;
+      if (result?.otpRequired === false && (result?.access_token || result?.accessToken)) {
+        const accessToken = result?.access_token || result?.accessToken;
+        const refreshToken = result?.refresh_token || result?.refreshToken;
         const user = result?.user;
 
         setAuthSession({
@@ -643,8 +643,8 @@ export default function Login() {
       }
 
       const result = data?.data ?? data;
-      const accessToken = result?.accessToken;
-      const refreshToken = result?.refreshToken;
+      const accessToken = result?.access_token || result?.accessToken;
+      const refreshToken = result?.refresh_token || result?.refreshToken;
       const user = result?.user;
 
       setAuthSession({

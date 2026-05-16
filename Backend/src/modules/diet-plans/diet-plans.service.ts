@@ -164,4 +164,16 @@ export class DietPlansService {
     
     return { success: true, updatedCount: toSave.length };
   }
+
+  async updateMealItemFood(mealItemId: string, foodId: string, amount: number) {
+    const item = await this.mealItemRepository.findOne({ where: { id: mealItemId } });
+    if (!item) throw new NotFoundException('Meal item not found');
+    
+    item.food_id = foodId;
+    if (amount !== undefined && amount !== null) {
+      item.amount = amount;
+    }
+    
+    return this.mealItemRepository.save(item);
+  }
 }

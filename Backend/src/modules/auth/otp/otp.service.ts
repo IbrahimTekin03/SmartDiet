@@ -1,4 +1,4 @@
-﻿import {
+import {
   Injectable,
   Inject,
   BadRequestException,
@@ -165,6 +165,10 @@ export class OtpService {
     purpose: OtpPurpose,
     context?: OtpRequestContext,
   ) {
+    if (this.configService.get('OTP_ENABLED') === 'false') {
+      return { otpRequired: false, trustedTtlSeconds: 999999 };
+    }
+
     if (purpose !== OtpPurpose.Login || !user?.id) {
       return { otpRequired: true, trustedTtlSeconds: 0 };
     }
@@ -424,8 +428,8 @@ export class OtpService {
     return {
       ok: true,
       user: loginResult.user,
-      accessToken: loginResult.accessToken,
-      refreshToken: loginResult.refreshToken,
+      access_token: loginResult.access_token,
+      refresh_token: loginResult.refresh_token,
       deviceId: undefined,
     };
   }

@@ -104,4 +104,10 @@ export class UsersService {
     await this.userRepository.softRemove(user);
   }
 
+  async findAllClients(): Promise<User[]> {
+    return this.userRepository.find({
+      relations: ['roles'],
+    });
+  }
+
 } 

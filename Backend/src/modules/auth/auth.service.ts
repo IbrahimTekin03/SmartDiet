@@ -309,8 +309,8 @@ export class AuthService {
 
 
     return {
-      accessToken,
-      refreshToken,
+      access_token: accessToken,
+      refresh_token: refreshToken,
       user: sessionUser,
     };
   }
@@ -550,8 +550,8 @@ export class AuthService {
     );
 
     return {
-      accessToken,
-      refreshToken: newRefreshToken,
+      access_token: accessToken,
+      refresh_token: newRefreshToken,
       user,
     };
   }
