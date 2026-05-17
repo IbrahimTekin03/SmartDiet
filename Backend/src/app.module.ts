@@ -41,7 +41,7 @@ const I18N_PATH = fs.existsSync(DIST_I18N_PATH) ? DIST_I18N_PATH : SRC_I18N_PATH
         host: configService.get('DB_HOST') || 'localhost',
         port: Number(configService.get('DB_PORT')) || 5432,
         username: configService.get('DB_USERNAME') || 'postgres',
-        password: configService.get('DB_PASSWORD') || '21482620',
+        password: configService.get('DB_PASSWORD'),
         database: (configService.get('DB_DATABASE') as string) || 'smartDiet',
         autoLoadEntities: true,
         synchronize: (configService.get('DB_SYNCHRONIZE') || 'true') === 'true',

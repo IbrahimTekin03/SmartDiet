@@ -13,6 +13,7 @@ import DietitianDashboard from "./pages/DietitianDashboard";
 import DietPlanView from "./pages/DietPlanView";
 import ProtectedRoute from "./components/ProtectedRoute";
 import SettingsDrawer from "./components/SettingsDrawer";
+import AIAssistantWidget from "./components/AIAssistantWidget";
 
 export default function App() {
   return (
@@ -93,6 +94,7 @@ export default function App() {
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
       <SettingsDrawer />
+      <AIAssistantWidget />
     </>
   );
 }

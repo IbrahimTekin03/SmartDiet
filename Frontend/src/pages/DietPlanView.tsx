@@ -27,6 +27,42 @@ export default function DietPlanView() {
     fetchPlan();
   }, [id]);
 
+  useEffect(() => {
+    if (plan && plan.plan_type === 'weekly') {
+      const createdDate = new Date(plan.createdAt);
+      const dayOfWeek = createdDate.getDay(); // 0 = Sunday, 6 = Saturday
+      
+      let baseMonday = new Date(createdDate);
+      const startMatch = plan.description?.match(/Başlangıç Tarihi:\s*(\d{4}-\d{2}-\d{2})/);
+      if (startMatch) {
+        const [sy, sm, sd] = startMatch[1].split('-').map(Number);
+        baseMonday = new Date(Date.UTC(sy, sm - 1, sd));
+      } else {
+        if (dayOfWeek === 0) { // Sunday -> next Monday
+          baseMonday.setDate(createdDate.getDate() + 1);
+        } else if (dayOfWeek === 6) { // Saturday -> next Monday
+          baseMonday.setDate(createdDate.getDate() + 2);
+        } else { // Monday to Friday -> current week's Monday
+          baseMonday.setDate(createdDate.getDate() - (dayOfWeek - 1));
+        }
+      }
+      
+      const today = new Date();
+      const planStart = new Date(baseMonday);
+      today.setHours(0, 0, 0, 0);
+      planStart.setHours(0, 0, 0, 0);
+      
+      if (today < planStart) {
+        setSelectedDate(planStart.toISOString().split('T')[0]);
+        setSelectedDay(1); // Pazartesi
+      } else {
+        setSelectedDate(today.toISOString().split('T')[0]);
+        const day = today.getDay();
+        setSelectedDay(day === 0 ? 7 : day);
+      }
+    }
+  }, [plan]);
+
   // Sync Day Tab -> Date
   const handleDayTabClick = (dayNumber: number) => {
     // Explicitly save current day before switching tabs, but no alert
@@ -416,7 +452,7 @@ export default function DietPlanView() {
           <div className="mb-8 flex flex-col gap-6 md:flex-row md:items-center md:justify-between">
             <div className="flex items-center gap-4">
               <button 
-                onClick={() => navigate('/client')}
+                onClick={() => navigate(-1)}
                 className={["flex items-center gap-2 text-sm font-bold transition-colors", isDark ? "text-zinc-400 hover:text-white" : "text-[#4d6b62] hover:text-[#0e2d27]"].join(" ")}
               >
                 <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" /></svg>

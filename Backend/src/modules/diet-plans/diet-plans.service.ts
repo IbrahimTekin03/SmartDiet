@@ -93,16 +93,23 @@ export class DietPlansService {
     });
   }
 
-  async findOne(id: string, clientId: string) {
+  async findOne(id: string, userId: string) {
     const plan = await this.dietPlanRepository.findOne({
-      where: { id, client_id: clientId },
+      where: [
+        { id, client_id: userId },
+        { id, dietitian_id: userId }
+      ],
       relations: ['meals', 'meals.items', 'meals.items.food'],
     });
     if (!plan) throw new NotFoundException('Diyet planı bulunamadı');
     return plan;
   }
 
-  async trackMealItem(clientId: string, planId: string, mealItemId: string, date: string, isConsumed: boolean) {
+  async trackMealItem(userId: string, planId: string, mealItemId: string, date: string, isConsumed: boolean) {
+    const plan = await this.dietPlanRepository.findOne({ where: { id: planId } });
+    if (!plan) throw new NotFoundException('Diyet planı bulunamadı');
+    const clientId = plan.client_id;
+
     let tracking = await this.trackingRepository.findOne({
       where: { client_id: clientId, plan_id: planId, meal_item_id: mealItemId, date },
     });
@@ -122,13 +129,21 @@ export class DietPlansService {
     return this.trackingRepository.save(tracking);
   }
 
-  async getTracking(clientId: string, planId: string, date: string) {
+  async getTracking(userId: string, planId: string, date: string) {
+    const plan = await this.dietPlanRepository.findOne({ where: { id: planId } });
+    if (!plan) throw new NotFoundException('Diyet planı bulunamadı');
+    const clientId = plan.client_id;
+
     return this.trackingRepository.find({
       where: { client_id: clientId, plan_id: planId, date },
     });
   }
 
-  async trackMealItemBatch(clientId: string, planId: string, date: string, items: { meal_item_id: string, is_consumed: boolean }[]) {
+  async trackMealItemBatch(userId: string, planId: string, date: string, items: { meal_item_id: string, is_consumed: boolean }[]) {
+    const plan = await this.dietPlanRepository.findOne({ where: { id: planId } });
+    if (!plan) throw new NotFoundException('Diyet planı bulunamadı');
+    const clientId = plan.client_id;
+
     // 1. Get existing records for this date
     const existing = await this.trackingRepository.find({
       where: { client_id: clientId, plan_id: planId, date },
