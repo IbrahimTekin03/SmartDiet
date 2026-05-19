@@ -4,6 +4,7 @@ import { BrowserRouter } from "react-router-dom";
 import App from "./App";
 import "./index.css";
 import { AppSettingsProvider } from "./context/AppSettingsContext";
+import { SocketProvider } from "./context/SocketContext";
 
 const savedTheme = localStorage.getItem("sd_theme");
 const initialTheme = savedTheme === "dark" ? "dark" : "light";
@@ -13,7 +14,9 @@ ReactDOM.createRoot(document.getElementById("root")!).render(
   <React.StrictMode>
     <BrowserRouter>
       <AppSettingsProvider>
-        <App />
+        <SocketProvider>
+          <App />
+        </SocketProvider>
       </AppSettingsProvider>
     </BrowserRouter>
   </React.StrictMode>

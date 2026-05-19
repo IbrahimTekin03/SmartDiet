@@ -1636,7 +1636,11 @@ export class AuthService {
   async getDashboardSummary(userId: string) {
     const activeClients = await this.safeCount('users', 'WHERE id <> $1 AND is_active = true', [userId]);
     const plans = await this.safeCount('diet_plans');
-    const messages = await this.safeCount('messages');
+    const messages = await this.safeCount(
+      'messages',
+      'WHERE room_id IN (SELECT id FROM chat_rooms WHERE dietitian_id = $1 OR client_id = $1) AND sender_id <> $1 AND is_read = false',
+      [userId]
+    );
 
     let adherence = 0;
     const trackingExists = await this.tableExists('meal_tracking');

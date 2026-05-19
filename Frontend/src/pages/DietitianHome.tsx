@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { DashboardPanel, DashboardSectionHeader, DashboardShell, DashboardStatCard, dashboardButtonClass } from "../components/DashboardShell";
 import { useAppSettings } from "../context/AppSettingsContext";
+import { useSocket } from "../context/SocketContext";
 import { clearAuthSession, useAuthSession } from "../lib/authSession";
 
 type Profile = {
@@ -145,6 +146,7 @@ export default function DietitianHome({ profile, isAdmin }: { profile: Profile; 
   const navigate = useNavigate();
   const { lang, isDark } = useAppSettings();
   const { accessToken } = useAuthSession();
+  const { unreadMessageCount } = useSocket();
   const t = COPY[lang];
   const [summary, setSummary] = useState<Summary>({
     activeClients: 0,
@@ -276,6 +278,14 @@ export default function DietitianHome({ profile, isAdmin }: { profile: Profile; 
               {t.admin}
             </Link>
           ) : null}
+          <Link to="/messages" className={[dashboardButtonClass(isDark), "relative flex items-center gap-1.5"].join(" ")}>
+            {lang === "tr" ? "Mesajlar" : "Messages"}
+            {unreadMessageCount > 0 && (
+              <span className="flex h-5 min-w-5 px-1.5 items-center justify-center rounded-full bg-rose-500 text-[10px] font-bold text-white shadow-lg shadow-rose-500/20">
+                {unreadMessageCount}
+              </span>
+            )}
+          </Link>
           <Link to="/profile" className={dashboardButtonClass(isDark)}>
             {t.profile}
           </Link>

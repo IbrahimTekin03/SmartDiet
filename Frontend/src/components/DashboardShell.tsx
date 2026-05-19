@@ -1,5 +1,4 @@
 import { type ReactNode, useEffect, useState, useRef } from "react";
-import { Link } from "react-router-dom";
 
 export function DashboardShell({
   isDark,

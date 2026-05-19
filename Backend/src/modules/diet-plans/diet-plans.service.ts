@@ -181,7 +181,9 @@ export class DietPlansService {
   }
 
   async updateMealItemFood(mealItemId: string, foodId: string, amount: number) {
-    const item = await this.mealItemRepository.findOne({ where: { id: mealItemId } });
+    const item = await this.mealItemRepository.findOne({ 
+      where: { id: mealItemId }
+    });
     if (!item) throw new NotFoundException('Meal item not found');
     
     item.food_id = foodId;
@@ -189,6 +191,16 @@ export class DietPlansService {
       item.amount = amount;
     }
     
-    return this.mealItemRepository.save(item);
+    const saved = await this.mealItemRepository.save(item);
+    return this.mealItemRepository.findOne({
+      where: { id: saved.id },
+      relations: ['food']
+    });
+  }
+
+  async deleteMealItem(mealItemId: string) {
+    const item = await this.mealItemRepository.findOne({ where: { id: mealItemId } });
+    if (!item) throw new NotFoundException('Meal item not found');
+    return this.mealItemRepository.remove(item);
   }
 }

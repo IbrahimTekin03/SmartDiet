@@ -4,9 +4,14 @@ import { Server } from 'socket.io';
 @Injectable()
 export class WebsocketService {
   private server: Server;
+  public readonly onlineUsers = new Set<string>();
 
   setServer(server: Server) {
     this.server = server;
+  }
+
+  isUserOnline(userId: string): boolean {
+    return this.onlineUsers.has(userId);
   }
 
   emitToAll(event: string, data: any) {

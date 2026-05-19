@@ -14,6 +14,7 @@ import DietPlanView from "./pages/DietPlanView";
 import ProtectedRoute from "./components/ProtectedRoute";
 import SettingsDrawer from "./components/SettingsDrawer";
 import AIAssistantWidget from "./components/AIAssistantWidget";
+import Messages from "./pages/Messages";
 
 export default function App() {
   return (
@@ -87,6 +88,14 @@ export default function App() {
           element={
             <ProtectedRoute allowedRoles={['diyetisyen']}>
               <DietitianVerification />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/messages"
+          element={
+            <ProtectedRoute>
+              <Messages />
             </ProtectedRoute>
           }
         />

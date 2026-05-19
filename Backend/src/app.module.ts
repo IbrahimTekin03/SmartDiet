@@ -18,6 +18,7 @@ import { FoodsModule } from './modules/foods/foods.module';
 import { DietPlansModule } from './modules/diet-plans/diet-plans.module';
 import { NotificationsModule } from './modules/notifications/notifications.module';
 import { AiAssistantModule } from './modules/ai-assistant/ai-assistant.module';
+import { MessagesModule } from './modules/messages/messages.module';
 import { APP_GUARD } from '@nestjs/core';
 import { ThrottlerGuard } from '@nestjs/throttler';
 
@@ -86,6 +87,7 @@ const I18N_PATH = fs.existsSync(DIST_I18N_PATH) ? DIST_I18N_PATH : SRC_I18N_PATH
     DietPlansModule,
     NotificationsModule,
     AiAssistantModule,
+    MessagesModule,
   ],
   controllers: [],
   providers: [

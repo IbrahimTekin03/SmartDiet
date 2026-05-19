@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Param, Post, Query, Request, UseGuards } from '@nestjs/common';
+import { Body, Controller, Delete, Get, Param, Post, Put, Query, Request, UseGuards } from '@nestjs/common';
 import { ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
 import { DietPlansService } from './diet-plans.service';
 import { CreateDietPlanDto } from './dto/create-diet-plan.dto';
@@ -69,6 +69,27 @@ export class DietPlansController {
       dto.items
     );
     return ResponseDto.success('Toplu öğün takibi güncellendi', result);
+  }
+
+  @Put('meal-item/:id')
+  @UseGuards(RolesGuard)
+  @Roles('Diyetisyen')
+  @ApiOperation({ summary: 'Diyet planındaki bir besini güncelle' })
+  async updateMealItem(
+    @Param('id') id: string,
+    @Body() body: { food_id: string; amount: number }
+  ) {
+    const result = await this.dietPlansService.updateMealItemFood(id, body.food_id, body.amount);
+    return ResponseDto.success('Öğün besini güncellendi', result);
+  }
+
+  @Delete('meal-item/:id')
+  @UseGuards(RolesGuard)
+  @Roles('Diyetisyen')
+  @ApiOperation({ summary: 'Diyet planındaki bir besini sil' })
+  async deleteMealItem(@Param('id') id: string) {
+    const result = await this.dietPlansService.deleteMealItem(id);
+    return ResponseDto.success('Öğün besini silindi', result);
   }
 
 }

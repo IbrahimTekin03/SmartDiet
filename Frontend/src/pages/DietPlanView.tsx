@@ -1,7 +1,8 @@
 import { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import { DashboardPanel, DashboardSectionHeader, DashboardShell } from "../components/DashboardShell";
+import { DashboardPanel, DashboardShell } from "../components/DashboardShell";
 import { useAppSettings } from "../context/AppSettingsContext";
+import { parseStoredUser, useAuthSession } from "../lib/authSession";
 import * as XLSX from "xlsx";
 
 const API_BASE = "http://localhost:3000";
@@ -11,6 +12,12 @@ export default function DietPlanView() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   
+  const { accessToken, userJson } = useAuthSession();
+  const currentUser = parseStoredUser<any>(userJson);
+  
+  const roleNames = (currentUser?.roles || []).map((r: any) => String(r?.name || "").toLowerCase());
+  const isDietitian = roleNames.includes("diyetisyen") || currentUser?.account_type?.toLowerCase() === "diyetisyen";
+
   const [plan, setPlan] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [selectedDate, setSelectedDate] = useState(() => new Date().toISOString().split('T')[0]);
@@ -22,6 +29,14 @@ export default function DietPlanView() {
   });
   const [saveStatus, setSaveStatus] = useState<"idle" | "saving" | "saved" | "error">("idle");
   const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
+
+  // Edit / Delete Meal Item states
+  const [editingItem, setEditingItem] = useState<any>(null);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [searchResults, setSearchResults] = useState<any[]>([]);
+  const [searching, setSearching] = useState(false);
+  const [selectedFood, setSelectedFood] = useState<any>(null);
+  const [editAmount, setEditAmount] = useState<number>(100);
 
   useEffect(() => {
     fetchPlan();
@@ -79,23 +94,6 @@ export default function DietPlanView() {
       const diff = dayNumber - currentDay;
       date.setUTCDate(date.getUTCDate() + diff);
     } else if (plan?.plan_type === 'monthly') {
-      // For monthly plans, we assume the plan is relative to "today" 
-      // or we just let the day number act as an offset if we don't have a start_date.
-      // A better approach is to just use the day number to offset from the CURRENT date.
-      const today = new Date();
-      const [ty, tm, td] = today.toISOString().split('T')[0].split('-').map(Number);
-      const baseDate = new Date(Date.UTC(ty, tm, td)); // This is actually tm-1 in Date constructor, but tm is already 1-indexed from string. Wait.
-      
-      // Let's be safer:
-      const safeToday = new Date();
-      const offsetDate = new Date(Date.UTC(safeToday.getFullYear(), safeToday.getMonth(), safeToday.getDate()));
-      // If we want Day 1 to be "today", and they click Day 5:
-      // We don't know which "Day" today is in their progress, so we'll just 
-      // keep it simple: Day 1 of the plan = a fixed base date or just 
-      // allow the user to pick the date and we just show the meals for that day.
-      
-      // RE-THINK: If it's a 30-day plan, and I'm on Day 5, I'm likely looking at "Today".
-      // If I click "Day 6" tab, I'm likely looking at "Tomorrow".
       const dayDiff = dayNumber - selectedDay;
       date.setUTCDate(date.getUTCDate() + dayDiff);
     }
@@ -265,9 +263,140 @@ export default function DietPlanView() {
     }
   };
 
+  // Search foods when searchQuery changes
+  useEffect(() => {
+    if (!searchQuery.trim()) {
+      setSearchResults([]);
+      return;
+    }
+
+    setSearching(true);
+    const timer = setTimeout(() => {
+      fetch(`${API_BASE}/api/foods?search=${encodeURIComponent(searchQuery)}`)
+        .then((res) => res.json())
+        .then((data) => {
+          setSearchResults(data.data || []);
+          setSearching(false);
+        })
+        .catch(() => {
+          setSearching(false);
+        });
+    }, 300);
+
+    return () => clearTimeout(timer);
+  }, [searchQuery]);
+
+  const handleOpenEditModal = (item: any) => {
+    setEditingItem(item);
+    setSelectedFood(item.food);
+    setEditAmount(Number(item.amount) || 100);
+    setSearchQuery("");
+    setSearchResults([]);
+  };
+
+  const handleUpdateItem = async () => {
+    if (!editingItem || !selectedFood || !accessToken) return;
+
+    try {
+      const res = await fetch(`${API_BASE}/api/diet-plans/meal-item/${editingItem.id}`, {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${accessToken}`
+        },
+        body: JSON.stringify({
+          food_id: selectedFood.id,
+          amount: editAmount
+        })
+      });
+
+      const data = await res.json();
+      if (res.ok && data.data) {
+        // Update local plan state
+        setPlan((prev: any) => {
+          if (!prev) return prev;
+          const updatedMeals = prev.meals.map((meal: any) => {
+            const updatedItems = meal.items.map((it: any) => {
+              if (it.id === editingItem.id) {
+                return {
+                  ...it,
+                  food_id: selectedFood.id,
+                  amount: editAmount,
+                  food: selectedFood
+                };
+              }
+              return it;
+            });
+            return { ...meal, items: updatedItems };
+          });
+          return { ...prev, meals: updatedMeals };
+        });
+
+        setToast({
+          message: lang === "tr" ? "Besin başarıyla güncellendi!" : "Food successfully updated!",
+          type: "success"
+        });
+        setTimeout(() => setToast(null), 3000);
+        setEditingItem(null);
+      } else {
+        throw new Error();
+      }
+    } catch (err) {
+      console.error(err);
+      setToast({
+        message: lang === "tr" ? "Besin güncellenirken bir hata oluştu." : "Error updating food.",
+        type: "error"
+      });
+      setTimeout(() => setToast(null), 3000);
+    }
+  };
+
+  const handleDeleteItem = async (itemId: string) => {
+    const confirmDelete = window.confirm(
+      lang === "tr" ? "Bu besini programdan silmek istediğinize emin misiniz?" : "Are you sure you want to delete this food from the plan?"
+    );
+    if (!confirmDelete || !accessToken) return;
+
+    try {
+      const res = await fetch(`${API_BASE}/api/diet-plans/meal-item/${itemId}`, {
+        method: "DELETE",
+        headers: {
+          Authorization: `Bearer ${accessToken}`
+        }
+      });
+
+      if (res.ok) {
+        // Update local plan state
+        setPlan((prev: any) => {
+          if (!prev) return prev;
+          const updatedMeals = prev.meals.map((meal: any) => {
+            const updatedItems = meal.items.filter((it: any) => it.id !== itemId);
+            return { ...meal, items: updatedItems };
+          });
+          return { ...prev, meals: updatedMeals };
+        });
+
+        setToast({
+          message: lang === "tr" ? "Besin başarıyla silindi!" : "Food successfully deleted!",
+          type: "success"
+        });
+        setTimeout(() => setToast(null), 3000);
+      } else {
+        throw new Error();
+      }
+    } catch (err) {
+      console.error(err);
+      setToast({
+        message: lang === "tr" ? "Besin silinirken bir hata oluştu." : "Error deleting food.",
+        type: "error"
+      });
+      setTimeout(() => setToast(null), 3000);
+    }
+  };
+
   if (loading) {
     return (
-      <DashboardShell>
+      <DashboardShell isDark={isDark} title={lang === "tr" ? "Yükleniyor..." : "Loading..."}>
         <div className="flex h-64 items-center justify-center">
           <div className="h-8 w-8 animate-spin rounded-full border-4 border-emerald-500 border-t-transparent" />
         </div>
@@ -277,7 +406,7 @@ export default function DietPlanView() {
 
   if (!plan) {
     return (
-      <DashboardShell>
+      <DashboardShell isDark={isDark} title={lang === "tr" ? "Hata" : "Error"}>
         <DashboardPanel isDark={isDark}>
           <div className="text-center py-10">Plan bulunamadı.</div>
         </DashboardPanel>
@@ -416,9 +545,6 @@ export default function DietPlanView() {
   };
 
   const planTypeLabel = plan.plan_type === 'daily' ? (lang === 'tr' ? 'Günlük' : 'Daily') : plan.plan_type === 'monthly' ? (lang === 'tr' ? 'Aylık' : 'Monthly') : (lang === 'tr' ? 'Haftalık' : 'Weekly');
-
-  const selectedDateObj = new Date(selectedDate);
-  const currentDayOfWeek = selectedDateObj.getDay() === 0 ? 7 : selectedDateObj.getDay();
 
   const displayedMeals = ['weekly', 'monthly'].includes(plan.plan_type)
     ? plan.meals?.filter((m: any) => m.day_of_week === selectedDay) 
@@ -596,18 +722,26 @@ export default function DietPlanView() {
               <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
                 {meal.items?.map((item: any) => {
                   const isConsumed = !!currentTracking[item.id];
+                  const isClient = !isDietitian;
                   
                   return (
-                    <button 
+                    <div 
                       key={item.id}
-                      onClick={() => toggleItem(item.id, isConsumed)}
-                      className={["group relative flex items-center gap-4 overflow-hidden rounded-[24px] border p-4 text-left transition-all", isDark ? "border-white/5 bg-white/5 hover:bg-white/10" : "border-[#2f6154]/10 bg-white shadow-sm hover:shadow-md", isConsumed ? (isDark ? "border-emerald-500/50 bg-emerald-500/10" : "border-emerald-500 bg-emerald-50") : ""].join(" ")}
+                      onClick={() => isClient && toggleItem(item.id, isConsumed)}
+                      className={[
+                        "group relative flex items-center gap-4 overflow-hidden rounded-[24px] border p-4 text-left transition-all",
+                        isClient ? "cursor-pointer" : "cursor-default",
+                        isDark ? "border-white/5 bg-white/5" : "border-[#2f6154]/10 bg-white shadow-sm hover:shadow-md",
+                        isConsumed ? (isDark ? "border-emerald-500/50 bg-emerald-500/10" : "border-emerald-500 bg-emerald-50") : ""
+                      ].join(" ")}
                     >
-                      <div className={["flex h-6 w-6 flex-shrink-0 items-center justify-center rounded-full border-2 transition-colors", isConsumed ? "border-emerald-500 bg-emerald-500 text-white" : (isDark ? "border-zinc-600 text-transparent" : "border-[#4d6b62]/30 text-transparent")].join(" ")}>
-                        <svg className="h-3.5 w-3.5" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" /></svg>
-                      </div>
+                      {isClient && (
+                        <div className={["flex h-6 w-6 flex-shrink-0 items-center justify-center rounded-full border-2 transition-colors", isConsumed ? "border-emerald-500 bg-emerald-500 text-white" : (isDark ? "border-zinc-600 text-transparent" : "border-[#4d6b62]/30 text-transparent")].join(" ")}>
+                          <svg className="h-3.5 w-3.5" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" /></svg>
+                        </div>
+                      )}
                       
-                      <div className="flex-1">
+                      <div className="flex-1 pr-12">
                         <h4 className={["text-sm font-bold transition-all", isConsumed ? (isDark ? "text-emerald-400 line-through opacity-70" : "text-emerald-700 line-through opacity-70") : (isDark ? "text-white" : "text-[#0e2d27]")].join(" ")}>
                           {item.food?.name}
                         </h4>
@@ -615,7 +749,39 @@ export default function DietPlanView() {
                           {getDisplayAmountAndUnit(item.amount, item.food?.unit)} • {Math.round((Number(item.food?.calories) || 0) * getRatio(Number(item.amount), item.food?.unit))} kcal
                         </div>
                       </div>
-                    </button>
+
+                      {isDietitian && (
+                        <div className={[
+                          "absolute right-3 top-1/2 -translate-y-1/2 flex items-center gap-1.5 opacity-0 group-hover:opacity-100 transition-opacity pl-6 py-2 rounded-r-[24px] z-20",
+                          isDark ? "bg-gradient-to-l from-zinc-900 via-zinc-900/90 to-transparent" : "bg-gradient-to-l from-white via-white/90 to-transparent"
+                        ].join(" ")}>
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleOpenEditModal(item);
+                            }}
+                            className="flex h-7 w-7 items-center justify-center rounded-lg bg-blue-500 text-white shadow-md shadow-blue-500/20 hover:bg-blue-400 hover:scale-105 active:scale-95 transition-all"
+                            title={lang === "tr" ? "Düzenle" : "Edit"}
+                          >
+                            <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
+                            </svg>
+                          </button>
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleDeleteItem(item.id);
+                            }}
+                            className="flex h-7 w-7 items-center justify-center rounded-lg bg-rose-500 text-white shadow-md shadow-rose-500/20 hover:bg-rose-400 hover:scale-105 active:scale-95 transition-all"
+                            title={lang === "tr" ? "Sil" : "Delete"}
+                          >
+                            <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                            </svg>
+                          </button>
+                        </div>
+                      )}
+                    </div>
                   );
                 })}
               </div>
@@ -627,7 +793,7 @@ export default function DietPlanView() {
         {displayedMeals && displayedMeals.length > 0 && (
           <div className="flex justify-end pt-4 pb-12">
             <button
-              onClick={handleSaveTracking}
+              onClick={() => handleSaveTracking(true)}
               disabled={isSaving}
               className={["flex items-center gap-2 rounded-xl px-8 py-4 text-sm font-bold text-white transition-all opacity-40 hover:opacity-100", isDark ? "bg-zinc-800" : "bg-zinc-200 text-zinc-600", isSaving ? "opacity-50 cursor-not-allowed" : ""].join(" ")}
             >
@@ -653,6 +819,141 @@ export default function DietPlanView() {
                 <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
               )}
               {toast.message}
+            </div>
+          </div>
+        )}
+
+        {/* Edit Food Modal */}
+        {editingItem && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-fadeIn">
+            <div 
+              className={[
+                "w-full max-w-lg rounded-3xl border p-6 shadow-2xl transition-all",
+                isDark ? "border-white/10 bg-zinc-900 text-white" : "border-zinc-150 bg-white text-[#0e2d27]"
+              ].join(" ")}
+            >
+              <div className="flex items-center justify-between border-b pb-4 mb-4 border-dashed border-emerald-500/20">
+                <h3 className="text-lg font-black tracking-tight">
+                  {lang === "tr" ? "Besini Düzenle" : "Edit Food Item"}
+                </h3>
+                <button 
+                  onClick={() => setEditingItem(null)}
+                  className={["text-sm font-bold transition-colors", isDark ? "text-zinc-400 hover:text-white" : "text-zinc-500 hover:text-zinc-800"].join(" ")}
+                >
+                  ✕
+                </button>
+              </div>
+
+              {/* Current Selection Summary */}
+              <div className={["rounded-2xl p-4 mb-4 border", isDark ? "bg-black/20 border-white/5" : "bg-zinc-50 border-[#325d51]/10"].join(" ")}>
+                <div className="text-[10px] font-bold uppercase tracking-wider text-zinc-400">
+                  {lang === "tr" ? "Seçili Besin" : "Selected Food"}
+                </div>
+                <div className="font-extrabold text-sm mt-1">
+                  {selectedFood ? selectedFood.name : (lang === "tr" ? "Besin Seçilmedi" : "No Food Selected")}
+                </div>
+                {selectedFood && (
+                  <div className="text-xs text-zinc-500 mt-0.5">
+                    100{selectedFood.unit || "g"} • {selectedFood.calories} kcal • P: {selectedFood.protein}g • C: {selectedFood.carbohydrates}g • F: {selectedFood.fat}g
+                  </div>
+                )}
+              </div>
+
+              {/* Food Search Section */}
+              <div className="mb-4">
+                <label className="block text-xs font-bold uppercase tracking-wider text-zinc-400 mb-2">
+                  {lang === "tr" ? "Farklı Bir Besin Ara" : "Search Different Food"}
+                </label>
+                <div className="relative">
+                  <input
+                    type="text"
+                    placeholder={lang === "tr" ? "Besin adı girin..." : "Type food name..."}
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    className={[
+                      "w-full rounded-2xl border px-4 py-3 text-xs outline-none transition-all",
+                      isDark 
+                        ? "border-white/10 bg-black/40 text-white focus:border-emerald-500" 
+                        : "border-[#325d51]/15 bg-white text-[#0e2d27] focus:border-emerald-500"
+                    ].join(" ")}
+                  />
+                  {searching && (
+                    <div className="absolute right-4 top-1/2 -translate-y-1/2 h-4 w-4 animate-spin rounded-full border-2 border-emerald-500 border-t-transparent" />
+                  )}
+                </div>
+
+                {/* Search Results Dropdown List */}
+                {searchResults.length > 0 && (
+                  <div className={[
+                    "mt-2 max-h-40 overflow-y-auto rounded-2xl border p-2 shadow-lg space-y-1 z-35",
+                    isDark ? "border-white/10 bg-zinc-950" : "border-[#325d51]/10 bg-white"
+                  ].join(" ")}>
+                    {searchResults.map((f) => (
+                      <button
+                        key={f.id}
+                        type="button"
+                        onClick={() => {
+                          setSelectedFood(f);
+                          setSearchQuery("");
+                          setSearchResults([]);
+                        }}
+                        className={[
+                          "w-full text-left p-2 rounded-xl text-xs transition-all hover:bg-emerald-500/10 hover:text-emerald-400",
+                          isDark ? "text-zinc-300 hover:text-white" : "text-zinc-600 hover:text-[#0e2d27]"
+                        ].join(" ")}
+                      >
+                        <span className="font-bold">{f.name}</span>
+                        <span className="opacity-60 ml-2">({f.calories} kcal / 100{f.unit || "g"})</span>
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              {/* Amount Input */}
+              <div className="mb-6">
+                <label className="block text-xs font-bold uppercase tracking-wider text-zinc-400 mb-2">
+                  {lang === "tr" ? "Miktar" : "Amount"} ({selectedFood ? selectedFood.unit || "g" : "g"})
+                </label>
+                <input
+                  type="number"
+                  value={editAmount}
+                  onChange={(e) => setEditAmount(Number(e.target.value) || 0)}
+                  className={[
+                    "w-full rounded-2xl border px-4 py-3 text-xs outline-none transition-all",
+                    isDark 
+                      ? "border-white/10 bg-black/40 text-white focus:border-emerald-500" 
+                      : "border-[#325d51]/15 bg-white text-[#0e2d27] focus:border-emerald-500"
+                  ].join(" ")}
+                />
+              </div>
+
+              {/* Action Buttons */}
+              <div className="flex gap-3 justify-end">
+                <button
+                  type="button"
+                  onClick={() => setEditingItem(null)}
+                  className={[
+                    "px-5 py-3 rounded-2xl text-xs font-bold transition-all border",
+                    isDark 
+                      ? "border-white/10 text-zinc-300 hover:bg-white/5" 
+                      : "border-[#325d51]/10 text-zinc-500 hover:bg-zinc-50"
+                  ].join(" ")}
+                >
+                  {lang === "tr" ? "İptal" : "Cancel"}
+                </button>
+                <button
+                  type="button"
+                  onClick={handleUpdateItem}
+                  disabled={!selectedFood}
+                  className={[
+                    "px-6 py-3 rounded-2xl text-xs font-bold text-white transition-all shadow-md",
+                    selectedFood ? "bg-emerald-500 hover:bg-emerald-400 shadow-emerald-500/10 hover:scale-[1.02]" : "bg-emerald-500/50 cursor-not-allowed"
+                  ].join(" ")}
+                >
+                  {lang === "tr" ? "Değişiklikleri Kaydet" : "Save Changes"}
+                </button>
+              </div>
             </div>
           </div>
         )}

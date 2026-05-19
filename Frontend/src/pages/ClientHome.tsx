@@ -3,6 +3,7 @@ import { Link, useNavigate } from "react-router-dom";
 import { DashboardPanel, DashboardSectionHeader, DashboardShell, DashboardStatCard, dashboardButtonClass } from "../components/DashboardShell";
 import { RoleWorkspaceBoard, type WorkspaceItem } from "../components/RoleWorkspaceBoard";
 import { useAppSettings } from "../context/AppSettingsContext";
+import { useSocket } from "../context/SocketContext";
 import { clearAuthSession, useAuthSession } from "../lib/authSession";
 
 type Profile = {
@@ -174,6 +175,7 @@ export default function ClientHome({ profile }: { profile: Profile }) {
   const navigate = useNavigate();
   const { lang, isDark } = useAppSettings();
   const { accessToken } = useAuthSession();
+  const { unreadMessageCount } = useSocket();
   const t = COPY[lang];
   const [summary, setSummary] = useState<Summary>({
     activeClients: 0,
@@ -364,6 +366,14 @@ export default function ClientHome({ profile }: { profile: Profile }) {
       subtitle={t.subtitle}
       actions={
         <>
+          <Link to="/messages" className={[dashboardButtonClass(isDark), "relative flex items-center gap-1.5"].join(" ")}>
+            {lang === "tr" ? "Mesajlar" : "Messages"}
+            {unreadMessageCount > 0 && (
+              <span className="flex h-5 min-w-5 px-1.5 items-center justify-center rounded-full bg-rose-500 text-[10px] font-bold text-white shadow-lg shadow-rose-500/20">
+                {unreadMessageCount}
+              </span>
+            )}
+          </Link>
           <Link to="/profile" className={dashboardButtonClass(isDark)}>
             {t.profile}
           </Link>
@@ -482,10 +492,10 @@ export default function ClientHome({ profile }: { profile: Profile }) {
       {dietPlans.length > 0 && (
         <section>
           <DashboardPanel isDark={isDark}>
-            <DashboardSectionHeader isDark={isDark} title={t.lang === "tr" ? "Aktif Diyet Programları" : "Active Diet Plans"} subtitle={t.lang === "tr" ? "Diyetisyeninizin sizin için hazırladığı programlar." : "Programs prepared by your dietitian."} />
+            <DashboardSectionHeader isDark={isDark} title={lang === "tr" ? "Aktif Diyet Programları" : "Active Diet Plans"} subtitle={lang === "tr" ? "Diyetisyeninizin sizin için hazırladığı programlar." : "Programs prepared by your dietitian."} />
             <div className="mt-6 grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
               {dietPlans.map((plan: any) => {
-                const planTypeLabel = plan.plan_type === 'daily' ? (t.lang === 'tr' ? 'Günlük' : 'Daily') : plan.plan_type === 'monthly' ? (t.lang === 'tr' ? 'Aylık' : 'Monthly') : (t.lang === 'tr' ? 'Haftalık' : 'Weekly');
+                const planTypeLabel = plan.plan_type === 'daily' ? (lang === 'tr' ? 'Günlük' : 'Daily') : plan.plan_type === 'monthly' ? (lang === 'tr' ? 'Aylık' : 'Monthly') : (lang === 'tr' ? 'Haftalık' : 'Weekly');
                 
                 return (
                   <Link key={plan.id} to={`/plan/${plan.id}`} className={["group relative flex flex-col justify-between overflow-hidden rounded-[32px] border p-6 transition-all hover:-translate-y-1", isDark ? "border-white/10 bg-white/5 hover:bg-white/[0.07] hover:border-emerald-500/30" : "border-[#2f6154]/15 bg-white shadow-sm hover:shadow-md hover:border-emerald-500/30"].join(" ")}>
@@ -495,7 +505,7 @@ export default function ClientHome({ profile }: { profile: Profile }) {
                           {planTypeLabel} Plan
                         </div>
                         <div className={isDark ? "text-xs text-zinc-500" : "text-xs text-[#4d6b62]"}>
-                          {new Date(plan.created_at || new Date()).toLocaleDateString(t.lang === "tr" ? "tr-TR" : "en-US")}
+                          {new Date(plan.created_at || new Date()).toLocaleDateString(lang === "tr" ? "tr-TR" : "en-US")}
                         </div>
                       </div>
                       <h3 className={["text-xl font-extrabold tracking-tight mb-2", isDark ? "text-white" : "text-[#0e2d27]"].join(" ")}>
@@ -514,7 +524,7 @@ export default function ClientHome({ profile }: { profile: Profile }) {
                           {plan.meals?.length || 0}
                         </div>
                         <div className={["flex h-8 pl-4 items-center rounded-full text-[10px] font-bold uppercase tracking-wider", isDark ? "text-zinc-400" : "text-[#4d6b62]"].join(" ")}>
-                          {t.lang === "tr" ? "Öğün" : "Meals"}
+                          {lang === "tr" ? "Öğün" : "Meals"}
                         </div>
                       </div>
                       <div className={["flex h-10 w-10 items-center justify-center rounded-2xl transition-colors", isDark ? "bg-white/5 text-emerald-400 group-hover:bg-emerald-500 group-hover:text-white" : "bg-emerald-50 text-emerald-600 group-hover:bg-emerald-500 group-hover:text-white"].join(" ")}>

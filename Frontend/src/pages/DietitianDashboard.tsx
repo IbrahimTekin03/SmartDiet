@@ -10,6 +10,7 @@ import {
   mutedTextClass,
 } from "../components/DashboardShell";
 import { useAppSettings } from "../context/AppSettingsContext";
+import { useSocket } from "../context/SocketContext";
 import { clearAuthSession } from "../lib/authSession";
 
 type ClientItem = {
@@ -63,6 +64,7 @@ const COPY = {
 export default function DietitianDashboard() {
   const navigate = useNavigate();
   const { lang, isDark } = useAppSettings();
+  const { unreadMessageCount } = useSocket();
   const t = COPY[lang];
 
   const [loading, setLoading] = useState(true);
@@ -152,6 +154,14 @@ export default function DietitianDashboard() {
       subtitle={t.subtitle}
       actions={
         <>
+          <Link to="/messages" className={[dashboardButtonClass(isDark), "relative flex items-center gap-1.5"].join(" ")}>
+            {lang === "tr" ? "Mesajlar" : "Messages"}
+            {unreadMessageCount > 0 && (
+              <span className="flex h-5 min-w-5 px-1.5 items-center justify-center rounded-full bg-rose-500 text-[10px] font-bold text-white shadow-lg shadow-rose-500/20">
+                {unreadMessageCount}
+              </span>
+            )}
+          </Link>
           <Link to="/profile" className={dashboardButtonClass(isDark)}>
             {t.viewProfile}
           </Link>
