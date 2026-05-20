@@ -4,7 +4,7 @@ import { useAppSettings } from "../context/AppSettingsContext";
 
 type Lang = "tr" | "en";
 
-const API_BASE = "http://localhost:3000";
+const API_BASE = "https://smart-diet06.vercel.app";
 const RESET_PASSWORD_URL = `${API_BASE}/api/auth/reset-password`;
 const PASSWORD_REGEX = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{8,}$/;
 

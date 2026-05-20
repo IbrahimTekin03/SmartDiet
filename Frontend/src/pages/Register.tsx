@@ -211,7 +211,7 @@ const COPY: Record<
 export default function Register() {
   const navigate = useNavigate();
 
-  const API_BASE = "http://localhost:3000";
+  const API_BASE = "https://smart-diet06.vercel.app";
   const REGISTER_URL = `${API_BASE}/api/auth/register`;
   const { lang, isDark } = useAppSettings();
   const t = COPY[lang];

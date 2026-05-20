@@ -174,13 +174,13 @@ export function NotificationBell({ isDark }: { isDark: boolean }) {
       const token = localStorage.getItem("access_token");
       if (!token) return;
       try {
-        const resCount = await fetch("http://localhost:3000/api/notifications/unread-count", {
+        const resCount = await fetch("https://smart-diet06.vercel.app/api/notifications/unread-count", {
           headers: { Authorization: `Bearer ${token}` }
         });
         const dataCount = await resCount.json();
         setUnreadCount(dataCount?.data?.count || 0);
 
-        const resAll = await fetch("http://localhost:3000/api/notifications", {
+        const resAll = await fetch("https://smart-diet06.vercel.app/api/notifications", {
           headers: { Authorization: `Bearer ${token}` }
         });
         const dataAll = await resAll.json();
@@ -207,7 +207,7 @@ export function NotificationBell({ isDark }: { isDark: boolean }) {
     const token = localStorage.getItem("access_token");
     if (!token) return;
     try {
-      await fetch(`http://localhost:3000/api/notifications/${id}/read`, {
+      await fetch(`https://smart-diet06.vercel.app/api/notifications/${id}/read`, {
         method: 'PATCH',
         headers: { Authorization: `Bearer ${token}` }
       });
@@ -220,7 +220,7 @@ export function NotificationBell({ isDark }: { isDark: boolean }) {
     const token = localStorage.getItem("access_token");
     if (!token) return;
     try {
-      await fetch(`http://localhost:3000/api/notifications/read-all`, {
+      await fetch(`https://smart-diet06.vercel.app/api/notifications/read-all`, {
         method: 'PATCH',
         headers: { Authorization: `Bearer ${token}` }
       });

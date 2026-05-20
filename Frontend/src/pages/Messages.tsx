@@ -5,7 +5,7 @@ import { useAppSettings } from "../context/AppSettingsContext";
 import { useSocket } from "../context/SocketContext";
 import { parseStoredUser, useAuthSession } from "../lib/authSession";
 
-const API_BASE = "http://localhost:3000";
+const API_BASE = "https://smart-diet06.vercel.app";
 
 type Contact = {
   user_id: string;

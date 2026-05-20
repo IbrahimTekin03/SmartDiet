@@ -39,7 +39,7 @@ type Meal = {
   day_of_week?: number;
 };
 
-const API_BASE = "http://localhost:3000";
+const API_BASE = "https://smart-diet06.vercel.app";
 
 const MealFoodSearch = React.memo(function MealFoodSearch({ mealId, isDark, lang, onAddFood, onFocus }: { mealId: string, isDark: boolean, lang: string, onAddFood: (mealId: string, food: Food) => void, onFocus?: () => void }) {
   const [foodSearch, setFoodSearch] = useState("");

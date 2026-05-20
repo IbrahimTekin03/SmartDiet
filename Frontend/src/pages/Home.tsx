@@ -159,8 +159,8 @@ const COPY: Record<Lang, HomeCopy> = {
 };
 
 export default function Home() {
-  const API_BASE = "http://localhost:3000";
-  const swaggerUrl = "http://localhost:3000/api/docs";
+  const API_BASE = "https://smart-diet06.vercel.app";
+  const swaggerUrl = "https://smart-diet06.vercel.app/api/docs";
   const initialStats: LandingStats = {
     totalDietitians: 0,
     approvedDietitians: 0,

@@ -2,7 +2,7 @@ import React, { createContext, useContext, useEffect, useState } from "react";
 import { io, Socket } from "socket.io-client";
 import { parseStoredUser, useAuthSession } from "../lib/authSession";
 
-const API_BASE = "http://localhost:3000";
+const API_BASE = "https://smart-diet06.vercel.app";
 
 type SocketContextType = {
   socket: Socket | null;

@@ -330,7 +330,7 @@ export default function Login() {
   const navigate = useNavigate();
   const { accessToken } = useAuthSession();
 
-  const API_BASE = "http://localhost:3000";
+  const API_BASE = "https://smart-diet06.vercel.app";
   const LOGIN_URL = `${API_BASE}/api/auth/login`;
   const FORGOT_PASSWORD_URL = `${API_BASE}/api/auth/forgot-password`;
   const REQUEST_OTP_URL = `${API_BASE}/api/auth/request-otp`;

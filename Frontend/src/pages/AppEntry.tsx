@@ -24,7 +24,7 @@ type Profile = {
   clinic_name?: string | null;
 };
 
-const API_BASE = "http://localhost:3000";
+const API_BASE = "https://smart-diet06.vercel.app";
 
 export default function AppEntry() {
   const { accessToken, userJson } = useAuthSession();

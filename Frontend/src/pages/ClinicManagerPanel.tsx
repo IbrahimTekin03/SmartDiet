@@ -50,7 +50,7 @@ type PagedResponse<T> = {
   totalPages: number;
 };
 
-const API_BASE = "http://localhost:3000";
+const API_BASE = "https://smart-diet06.vercel.app";
 
 const COPY = {
   tr: {

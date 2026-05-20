@@ -5,7 +5,7 @@ import { useAppSettings } from "../context/AppSettingsContext";
 import { parseStoredUser, useAuthSession } from "../lib/authSession";
 import * as XLSX from "xlsx";
 
-const API_BASE = "http://localhost:3000";
+const API_BASE = "https://smart-diet06.vercel.app";
 
 export default function DietPlanView() {
   const { isDark, lang } = useAppSettings();

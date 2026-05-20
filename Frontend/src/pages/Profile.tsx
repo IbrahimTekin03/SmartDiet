@@ -169,7 +169,7 @@ function mapProfileError(message: string, lang: Lang, t: (typeof COPY)[Lang], fa
 }
 
 export default function Profile() {
-  const API_BASE = "http://localhost:3000";
+  const API_BASE = "https://smart-diet06.vercel.app";
   const navigate = useNavigate();
   const fileRef = useRef<HTMLInputElement | null>(null);
   const { theme, lang, isDark, setTheme, setLang } = useAppSettings();

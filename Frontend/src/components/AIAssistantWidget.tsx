@@ -59,7 +59,7 @@ export default function AIAssistantWidget() {
     setLoading(true);
 
     try {
-      const res = await fetch("http://localhost:3000/api/ai-assistant/chat", {
+      const res = await fetch("https://smart-diet06.vercel.app/api/ai-assistant/chat", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
