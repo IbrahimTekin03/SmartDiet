@@ -11,7 +11,7 @@ import {
   IsDateString,
 } from 'class-validator';
 import { ValidateIf } from 'class-validator';
-import { Gender } from 'src/modules/users/enums/gender.enum';
+import { Gender } from '../../users/enums/gender.enum';
 import { AccountType } from 'src/modules/users/entities/user.profile.entity';
 
 export class RegisterDto {
