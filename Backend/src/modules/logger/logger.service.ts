@@ -10,6 +10,7 @@ export class LoggerService implements NestLoggerService {
   constructor(private readonly configService: ConfigService) {
     const env = this.configService.get('NODE_ENV', 'development');
     const isProduction = env === 'production';
+    const isVercel = process.env.VERCEL === '1';
 
     const transports = [
       new winston.transports.Console({
@@ -23,7 +24,7 @@ export class LoggerService implements NestLoggerService {
       }),
     ];
 
-    if (isProduction) {
+    if (isProduction && !isVercel) {
       transports.push(
         new (winston.transports.DailyRotateFile as any)({
           dirname: 'logs',
