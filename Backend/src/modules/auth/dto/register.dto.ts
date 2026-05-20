@@ -12,7 +12,7 @@ import {
 } from 'class-validator';
 import { ValidateIf } from 'class-validator';
 import { Gender } from '../../users/enums/gender.enum';
-import { AccountType } from 'src/modules/users/entities/user.profile.entity';
+import { AccountType } from '../../users/entities/user.profile.entity';
 
 export class RegisterDto {
   @ApiProperty({

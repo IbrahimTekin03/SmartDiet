@@ -1,3 +1,14 @@
+import * as path from 'path';
+import * as tsconfigPaths from 'tsconfig-paths';
+
+// Register path aliases at runtime for Vercel Serverless environment
+tsconfigPaths.register({
+  baseUrl: path.join(__dirname, '..'),
+  paths: {
+    '@/*': ['src/*'],
+  },
+});
+
 import { NestFactory } from '@nestjs/core';
 import { AppModule } from '../src/app.module';
 import { ExpressAdapter } from '@nestjs/platform-express';
