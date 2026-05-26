@@ -485,10 +485,19 @@ ${dbSchemaInfo}`;
            }
         }
 
+        let finalStartDate = input.start_date;
+        if (!finalStartDate) {
+          const d = new Date();
+          const offset = d.getTimezoneOffset();
+          const localTime = new Date(d.getTime() - (offset * 60 * 1000));
+          localTime.setDate(localTime.getDate() + 1);
+          finalStartDate = localTime.toISOString().split('T')[0];
+        }
+
         const plan = await this.dietPlansService.create(user.id, {
           client_id: input.client_id,
           title: input.title,
-          description: input.start_date ? `Başlangıç Tarihi: ${input.start_date}` : 'AI Tarafından Oluşturuldu',
+          description: `Başlangıç Tarihi: ${finalStartDate}`,
           plan_type: input.plan_type || 'weekly',
           meals: finalMeals
         });

@@ -203,4 +203,87 @@ export class DietPlansService {
     if (!item) throw new NotFoundException('Meal item not found');
     return this.mealItemRepository.remove(item);
   }
+
+  async calculateAdherence(planId: string, targetDateStr?: string): Promise<number> {
+    const plan = await this.dietPlanRepository.findOne({
+      where: { id: planId },
+      relations: ['meals', 'meals.items'],
+    });
+    if (!plan) return 0;
+
+    let startDateStr = '';
+    if (plan.description) {
+      const startMatch = plan.description.match(/Başlangıç Tarihi:\s*(\d{4}-\d{2}-\d{2})/);
+      if (startMatch) {
+        startDateStr = startMatch[1];
+      }
+    }
+    if (!startDateStr) {
+      const d = new Date(plan.createdAt);
+      d.setDate(d.getDate() + 1);
+      startDateStr = d.toISOString().split('T')[0];
+    }
+
+    let todayStr = targetDateStr;
+    if (!todayStr) {
+      const localDate = new Date();
+      const offset = localDate.getTimezoneOffset();
+      const localToday = new Date(localDate.getTime() - (offset * 60 * 1000));
+      todayStr = localToday.toISOString().split('T')[0];
+    }
+
+    const [sy, sm, sd] = startDateStr.split('-').map(Number);
+    const [ty, tm, td] = todayStr.split('-').map(Number);
+    const startUTC = Date.UTC(sy, sm - 1, sd);
+    const todayUTC = Date.UTC(ty, tm - 1, td);
+    const diffMs = todayUTC - startUTC;
+    const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24)) + 1;
+
+    let maxDays = 1;
+    if (plan.plan_type === 'weekly') maxDays = 7;
+    else if (plan.plan_type === 'monthly') maxDays = 30;
+
+    const limitDays = Math.min(Math.max(0, diffDays), maxDays);
+    if (limitDays <= 0) return 0;
+
+    const expectedItems: { date: string; meal_item_id: string }[] = [];
+    for (let dayNum = 1; dayNum <= limitDays; dayNum++) {
+      const dateObj = new Date(startUTC);
+      dateObj.setUTCDate(dateObj.getUTCDate() + (dayNum - 1));
+      const dateStr = dateObj.toISOString().split('T')[0];
+
+      let dayMeals = [];
+      if (plan.plan_type === 'weekly' || plan.plan_type === 'monthly') {
+        dayMeals = plan.meals.filter(m => m.day_of_week === dayNum);
+      } else {
+        dayMeals = plan.meals;
+      }
+
+      for (const meal of dayMeals) {
+        if (meal.items) {
+          for (const item of meal.items) {
+            expectedItems.push({ date: dateStr, meal_item_id: item.id });
+          }
+        }
+      }
+    }
+
+    if (expectedItems.length === 0) return 0;
+
+    const trackings = await this.trackingRepository.find({
+      where: { plan_id: plan.id, is_consumed: true },
+    });
+
+    const expectedKeys = new Set(expectedItems.map(item => `${item.date}_${item.meal_item_id}`));
+    let consumedCount = 0;
+    for (const t of trackings) {
+      const key = `${t.date}_${t.meal_item_id}`;
+      if (expectedKeys.has(key)) {
+        consumedCount++;
+      }
+    }
+
+    const percentage = (consumedCount / expectedItems.length) * 100;
+    return Math.floor(percentage);
+  }
 }

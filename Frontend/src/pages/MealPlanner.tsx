@@ -136,37 +136,27 @@ export default function MealPlanner() {
   const [planType, setPlanType] = useState("weekly");
   const [selectedDay, setSelectedDay] = useState(1);
   const [focusedMealId, setFocusedMealId] = useState<string | null>(null);
-  const [meals, setMeals] = useState<Meal[]>([
-    {
-      id: "1",
-      name: "Kahvaltı",
-      time: "08:00",
-      items: [],
-      note: "",
-      day_of_week: 1,
-    },
-    {
-      id: "2",
-      name: "Öğle Yemeği",
-      time: "13:00",
-      items: [],
-      note: "",
-      day_of_week: 1,
-    },
-    {
-      id: "3",
-      name: "Akşam Yemeği",
-      time: "19:00",
-      items: [],
-      note: "",
-      day_of_week: 1,
+  const [meals, setMeals] = useState<Meal[]>(() => {
+    const defaultMeals: Meal[] = [];
+    for (let day = 1; day <= 7; day++) {
+      defaultMeals.push(
+        { id: Math.random().toString(36).substr(2, 9), name: "Kahvaltı", time: "08:00", items: [], note: "", day_of_week: day },
+        { id: Math.random().toString(36).substr(2, 9), name: "Öğle Yemeği", time: "13:00", items: [], note: "", day_of_week: day },
+        { id: Math.random().toString(36).substr(2, 9), name: "Akşam Yemeği", time: "19:00", items: [], note: "", day_of_week: day }
+      );
     }
-  ]);
+    return defaultMeals;
+  });
   const [loading, setLoading] = useState(true);
   
   // Plan Title state
   const [planTitle, setPlanTitle] = useState("");
   const [isSaving, setIsSaving] = useState(false);
+  const [startDate, setStartDate] = useState(() => {
+    const d = new Date();
+    d.setDate(d.getDate() + 1);
+    return d.toISOString().split('T')[0];
+  });
 
   // We will handle search individually per meal to prevent state collisions.
 
@@ -325,6 +315,7 @@ export default function MealPlanner() {
       client_id: selectedClient.user_id,
       title: planTitle,
       plan_type: planType,
+      description: "Başlangıç Tarihi: " + startDate,
       meals: meals.map((m) => ({
         name: m.name,
         time: m.time,
@@ -463,22 +454,43 @@ export default function MealPlanner() {
                     <h2 className={isDark ? "mt-1 text-2xl font-bold text-white" : "mt-1 text-2xl font-bold text-[#0e2d27]"}>
                       {selectedClient.first_name} {selectedClient.last_name}
                     </h2>
-                    <div className="mt-4 flex gap-3">
-                      <input 
-                        placeholder={lang === "tr" ? "Plan Başlığı (Örn: Haftalık Liste)" : "Plan Title (Ex: Weekly List)"}
-                        value={planTitle}
-                        onChange={(e) => setPlanTitle(e.target.value)}
-                        className={isDark ? "w-full max-w-sm rounded-xl border border-white/10 bg-black/40 px-4 py-2 text-sm text-white outline-none focus:border-emerald-500" : "w-full max-w-sm rounded-xl border border-[#325d51]/10 bg-zinc-50 px-4 py-2 text-sm text-[#0e2d27] outline-none focus:border-emerald-500"}
-                      />
-                      <select
-                        value={planType}
-                        onChange={(e) => handlePlanTypeChange(e.target.value)}
-                        className={isDark ? "rounded-xl border border-white/10 bg-black/40 px-4 py-2 text-sm text-white outline-none focus:border-emerald-500" : "rounded-xl border border-[#325d51]/10 bg-zinc-50 px-4 py-2 text-sm text-[#0e2d27] outline-none focus:border-emerald-500"}
-                      >
-                        <option value="daily">{lang === "tr" ? "Günlük" : "Daily"}</option>
-                        <option value="weekly">{lang === "tr" ? "Haftalık" : "Weekly"}</option>
-                        <option value="monthly">{lang === "tr" ? "Aylık" : "Monthly"}</option>
-                      </select>
+                    <div className="mt-4 flex flex-wrap gap-4 items-end">
+                      <div className="flex flex-col gap-1.5 flex-1 min-w-[200px]">
+                        <span className={isDark ? "text-[10px] font-black text-zinc-500 uppercase tracking-widest" : "text-[10px] font-black text-[#5e776e] uppercase tracking-widest"}>
+                          {lang === "tr" ? "Plan Başlığı" : "Plan Title"}
+                        </span>
+                        <input 
+                          placeholder={lang === "tr" ? "Plan Başlığı (Örn: Haftalık Liste)" : "Plan Title (Ex: Weekly List)"}
+                          value={planTitle}
+                          onChange={(e) => setPlanTitle(e.target.value)}
+                          className={isDark ? "w-full rounded-xl border border-white/10 bg-black/40 px-4 py-2 text-sm text-white outline-none focus:border-emerald-500" : "w-full rounded-xl border border-[#325d51]/10 bg-zinc-50 px-4 py-2 text-sm text-[#0e2d27] outline-none focus:border-emerald-500"}
+                        />
+                      </div>
+                      <div className="flex flex-col gap-1.5">
+                        <span className={isDark ? "text-[10px] font-black text-zinc-500 uppercase tracking-widest" : "text-[10px] font-black text-[#5e776e] uppercase tracking-widest"}>
+                          {lang === "tr" ? "Plan Türü" : "Plan Type"}
+                        </span>
+                        <select
+                          value={planType}
+                          onChange={(e) => handlePlanTypeChange(e.target.value)}
+                          className={isDark ? "rounded-xl border border-white/10 bg-black/40 px-4 py-2 text-sm text-white outline-none focus:border-emerald-500" : "rounded-xl border border-[#325d51]/10 bg-zinc-50 px-4 py-2 text-sm text-[#0e2d27] outline-none focus:border-emerald-500"}
+                        >
+                          <option value="daily">{lang === "tr" ? "Günlük" : "Daily"}</option>
+                          <option value="weekly">{lang === "tr" ? "Haftalık" : "Weekly"}</option>
+                          <option value="monthly">{lang === "tr" ? "Aylık" : "Monthly"}</option>
+                        </select>
+                      </div>
+                      <div className="flex flex-col gap-1.5">
+                        <span className={isDark ? "text-[10px] font-black text-zinc-500 uppercase tracking-widest" : "text-[10px] font-black text-[#5e776e] uppercase tracking-widest"}>
+                          {lang === "tr" ? "Başlangıç Tarihi" : "Start Date"}
+                        </span>
+                        <input 
+                          type="date"
+                          value={startDate}
+                          onChange={(e) => setStartDate(e.target.value)}
+                          className={isDark ? "rounded-xl border border-white/10 bg-black/40 px-4 py-2 text-sm text-white outline-none focus:border-emerald-500" : "rounded-xl border border-[#325d51]/10 bg-zinc-50 px-4 py-2 text-sm text-[#0e2d27] outline-none focus:border-emerald-500"}
+                        />
+                      </div>
                     </div>
                   </div>
                   <button

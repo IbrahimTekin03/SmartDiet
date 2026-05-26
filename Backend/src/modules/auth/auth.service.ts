@@ -31,6 +31,8 @@ import { ChatRoom } from './entities/chat-room.entity';
 import { AssignClientDietitianDto } from './dto/assign-client-dietitian.dto';
 import { UserAssignedDietitian } from '../users/entities/user-assigned-dietitian.entity';
 import { NotificationsService } from '../notifications/notifications.service';
+import { DietPlan } from '../diet-plans/entities/diet-plan.entity';
+import { DietPlanTracking } from '../diet-plans/entities/diet-plan-tracking.entity';
 
 type ListDietitianApplicationsOptions = {
   status?: string;
@@ -1633,9 +1635,98 @@ export class AuthService {
     return Number(rows?.[0]?.count ?? 0);
   }
 
+  private async calculateAdherenceForPlan(planId: string): Promise<number> {
+    const plan = await this.userRepository.manager.findOne(DietPlan, {
+      where: { id: planId },
+      relations: ['meals', 'meals.items'],
+    });
+    if (!plan) return 0;
+
+    let startDateStr = '';
+    if (plan.description) {
+      const startMatch = plan.description.match(/Başlangıç Tarihi:\s*(\d{4}-\d{2}-\d{2})/);
+      if (startMatch) {
+        startDateStr = startMatch[1];
+      }
+    }
+    if (!startDateStr) {
+      const d = new Date(plan.createdAt);
+      d.setDate(d.getDate() + 1);
+      startDateStr = d.toISOString().split('T')[0];
+    }
+
+    const localDate = new Date();
+    const offset = localDate.getTimezoneOffset();
+    const localToday = new Date(localDate.getTime() - (offset * 60 * 1000));
+    const todayStr = localToday.toISOString().split('T')[0];
+
+    const [sy, sm, sd] = startDateStr.split('-').map(Number);
+    const [ty, tm, td] = todayStr.split('-').map(Number);
+    const startUTC = Date.UTC(sy, sm - 1, sd);
+    const todayUTC = Date.UTC(ty, tm - 1, td);
+    const diffMs = todayUTC - startUTC;
+    const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24)) + 1;
+
+    let maxDays = 1;
+    if (plan.plan_type === 'weekly') maxDays = 7;
+    else if (plan.plan_type === 'monthly') maxDays = 30;
+
+    const limitDays = Math.min(Math.max(0, diffDays), maxDays);
+    if (limitDays <= 0) return 0;
+
+    const expectedItems: { date: string; meal_item_id: string }[] = [];
+    for (let dayNum = 1; dayNum <= limitDays; dayNum++) {
+      const dateObj = new Date(startUTC);
+      dateObj.setUTCDate(dateObj.getUTCDate() + (dayNum - 1));
+      const dateStr = dateObj.toISOString().split('T')[0];
+
+      let dayMeals = [];
+      if (plan.plan_type === 'weekly' || plan.plan_type === 'monthly') {
+        dayMeals = plan.meals.filter(m => m.day_of_week === dayNum);
+      } else {
+        dayMeals = plan.meals;
+      }
+
+      for (const meal of dayMeals) {
+        if (meal.items) {
+          for (const item of meal.items) {
+            expectedItems.push({ date: dateStr, meal_item_id: item.id });
+          }
+        }
+      }
+    }
+
+    if (expectedItems.length === 0) return 0;
+
+    const trackings = await this.userRepository.manager.find(DietPlanTracking, {
+      where: { plan_id: plan.id, is_consumed: true },
+    });
+
+    const expectedKeys = new Set(expectedItems.map(item => `${item.date}_${item.meal_item_id}`));
+    let consumedCount = 0;
+    for (const t of trackings) {
+      const key = `${t.date}_${t.meal_item_id}`;
+      if (expectedKeys.has(key)) {
+        consumedCount++;
+      }
+    }
+
+    const percentage = (consumedCount / expectedItems.length) * 100;
+    return Math.floor(percentage);
+  }
+
   async getDashboardSummary(userId: string) {
-    const activeClients = await this.safeCount('users', 'WHERE id <> $1 AND is_active = true', [userId]);
-    const plans = await this.safeCount('diet_plans');
+    const profile = await this.userProfileRepository.findOne({ where: { user_id: userId } });
+    const isDietitian = profile?.account_type === AccountType.Dietitian;
+
+    const activeClients = isDietitian
+      ? await this.userAssignedDietitianRepository.count({ where: { dietitianId: userId } })
+      : await this.safeCount('users', 'WHERE id <> $1 AND is_active = true', [userId]);
+
+    const plans = isDietitian
+      ? await this.userRepository.manager.count(DietPlan, { where: { dietitian_id: userId } })
+      : await this.userRepository.manager.count(DietPlan, { where: { client_id: userId } });
+
     const messages = await this.safeCount(
       'messages',
       'WHERE room_id IN (SELECT id FROM chat_rooms WHERE dietitian_id = $1 OR client_id = $1) AND sender_id <> $1 AND is_read = false',
@@ -1643,17 +1734,45 @@ export class AuthService {
     );
 
     let adherence = 0;
-    const trackingExists = await this.tableExists('meal_tracking');
-    if (trackingExists) {
-      const rows = await this.userRepository.query(
-        `SELECT
-          COALESCE(SUM(CASE WHEN is_consumed = true THEN 1 ELSE 0 END),0)::float AS consumed,
-          COALESCE(COUNT(*),0)::float AS total
-         FROM meal_tracking`,
-      );
-      const consumed = Number(rows?.[0]?.consumed ?? 0);
-      const total = Number(rows?.[0]?.total ?? 0);
-      adherence = total > 0 ? Math.round((consumed / total) * 100) : 0;
+
+    if (isDietitian) {
+      // Calculate average adherence of active plans of all dietitian's clients
+      const assignments = await this.userAssignedDietitianRepository.find({
+        where: { dietitianId: userId },
+      });
+      const clientIds = assignments.map(a => a.clientId);
+      if (clientIds.length > 0) {
+        let totalAdherence = 0;
+        let countedPlans = 0;
+        for (const clientId of clientIds) {
+          const activePlan = await this.userRepository.manager.findOne(DietPlan, {
+            where: { client_id: clientId, is_active: true },
+            order: { createdAt: 'DESC' },
+          });
+          const planToUse = activePlan || await this.userRepository.manager.findOne(DietPlan, {
+            where: { client_id: clientId },
+            order: { createdAt: 'DESC' },
+          });
+          if (planToUse) {
+            totalAdherence += await this.calculateAdherenceForPlan(planToUse.id);
+            countedPlans++;
+          }
+        }
+        adherence = countedPlans > 0 ? Math.round(totalAdherence / countedPlans) : 0;
+      }
+    } else {
+      // Calculate adherence of the client's current plan
+      const activePlan = await this.userRepository.manager.findOne(DietPlan, {
+        where: { client_id: userId, is_active: true },
+        order: { createdAt: 'DESC' },
+      });
+      const planToUse = activePlan || await this.userRepository.manager.findOne(DietPlan, {
+        where: { client_id: userId },
+        order: { createdAt: 'DESC' },
+      });
+      if (planToUse) {
+        adherence = await this.calculateAdherenceForPlan(planToUse.id);
+      }
     }
 
     return {

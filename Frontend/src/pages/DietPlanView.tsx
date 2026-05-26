@@ -29,6 +29,7 @@ export default function DietPlanView() {
   });
   const [saveStatus, setSaveStatus] = useState<"idle" | "saving" | "saved" | "error">("idle");
   const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
+  const [adherence, setAdherence] = useState<number>(0);
 
   // Edit / Delete Meal Item states
   const [editingItem, setEditingItem] = useState<any>(null);
@@ -42,39 +43,68 @@ export default function DietPlanView() {
     fetchPlan();
   }, [id]);
 
-  useEffect(() => {
-    if (plan && plan.plan_type === 'weekly') {
-      const createdDate = new Date(plan.createdAt);
-      const dayOfWeek = createdDate.getDay(); // 0 = Sunday, 6 = Saturday
-      
-      let baseMonday = new Date(createdDate);
-      const startMatch = plan.description?.match(/Başlangıç Tarihi:\s*(\d{4}-\d{2}-\d{2})/);
+  // Helper to get start date of plan
+  const getPlanStartDate = () => {
+    if (plan && plan.description) {
+      const startMatch = plan.description.match(/Başlangıç Tarihi:\s*(\d{4}-\d{2}-\d{2})/);
       if (startMatch) {
-        const [sy, sm, sd] = startMatch[1].split('-').map(Number);
-        baseMonday = new Date(Date.UTC(sy, sm - 1, sd));
-      } else {
-        if (dayOfWeek === 0) { // Sunday -> next Monday
-          baseMonday.setDate(createdDate.getDate() + 1);
-        } else if (dayOfWeek === 6) { // Saturday -> next Monday
-          baseMonday.setDate(createdDate.getDate() + 2);
-        } else { // Monday to Friday -> current week's Monday
-          baseMonday.setDate(createdDate.getDate() - (dayOfWeek - 1));
-        }
+        return startMatch[1];
+      }
+    }
+    // Fallback: createdAt + 1 day
+    const createdDate = plan ? new Date(plan.createdAt) : new Date();
+    createdDate.setDate(createdDate.getDate() + 1);
+    return createdDate.toISOString().split('T')[0];
+  };
+
+  const getPlanDateForDay = (dayNum: number) => {
+    const startDateStr = getPlanStartDate();
+    const [sy, sm, sd] = startDateStr.split('-').map(Number);
+    const date = new Date(Date.UTC(sy, sm - 1, sd));
+    date.setUTCDate(date.getUTCDate() + (dayNum - 1));
+    return date.toISOString().split('T')[0];
+  };
+
+  const getPlanDayForDate = (dateStr: string) => {
+    const startDateStr = getPlanStartDate();
+    const [sy, sm, sd] = startDateStr.split('-').map(Number);
+    const [ty, tm, td] = dateStr.split('-').map(Number);
+    const startUTC = Date.UTC(sy, sm - 1, sd);
+    const targetUTC = Date.UTC(ty, tm - 1, td);
+    const diffMs = targetUTC - startUTC;
+    const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24)) + 1;
+    return diffDays;
+  };
+
+  const formatStringToDMY = (dateStr: string) => {
+    if (!dateStr) return '';
+    const [year, month, day] = dateStr.split('-');
+    return `${day}/${month}/${year}`;
+  };
+
+  useEffect(() => {
+    if (plan) {
+      const startDateStr = getPlanStartDate();
+      const todayStr = new Date().toISOString().split('T')[0];
+      
+      let initialDate = todayStr;
+      let initialDay = getPlanDayForDate(todayStr);
+      
+      let maxDays = 1;
+      if (plan.plan_type === 'weekly') maxDays = 7;
+      else if (plan.plan_type === 'monthly') maxDays = 30;
+      
+      if (initialDay < 1) {
+        initialDate = startDateStr;
+        initialDay = 1;
+      } else if (initialDay > maxDays) {
+        initialDate = getPlanDateForDay(1);
+        initialDay = 1;
       }
       
-      const today = new Date();
-      const planStart = new Date(baseMonday);
-      today.setHours(0, 0, 0, 0);
-      planStart.setHours(0, 0, 0, 0);
-      
-      if (today < planStart) {
-        setSelectedDate(planStart.toISOString().split('T')[0]);
-        setSelectedDay(1); // Pazartesi
-      } else {
-        setSelectedDate(today.toISOString().split('T')[0]);
-        const day = today.getDay();
-        setSelectedDay(day === 0 ? 7 : day);
-      }
+      setSelectedDate(initialDate);
+      setSelectedDay(initialDay);
+      fetchAdherence();
     }
   }, [plan]);
 
@@ -84,21 +114,8 @@ export default function DietPlanView() {
     handleSaveTracking(false);
     
     setSelectedDay(dayNumber);
-    
-    // We want each "Day" in the plan to have a unique date in the tracking system
-    const [year, month, day] = selectedDate.split('-').map(Number);
-    const date = new Date(Date.UTC(year, month - 1, day));
-    
-    if (plan?.plan_type === 'weekly') {
-      const currentDay = date.getUTCDay() === 0 ? 7 : date.getUTCDay();
-      const diff = dayNumber - currentDay;
-      date.setUTCDate(date.getUTCDate() + diff);
-    } else if (plan?.plan_type === 'monthly') {
-      const dayDiff = dayNumber - selectedDay;
-      date.setUTCDate(date.getUTCDate() + dayDiff);
-    }
-    
-    setSelectedDate(date.toISOString().split('T')[0]);
+    const targetDate = getPlanDateForDay(dayNumber);
+    setSelectedDate(targetDate);
   };
 
   // Sync Date -> Day Tab
@@ -107,12 +124,14 @@ export default function DietPlanView() {
     handleSaveTracking(false);
     
     setSelectedDate(dateStr);
-    if (plan?.plan_type === 'weekly') {
-      const [year, month, day] = dateStr.split('-').map(Number);
-      const date = new Date(Date.UTC(year, month - 1, day));
-      let dayOfWeek = date.getUTCDay();
-      if (dayOfWeek === 0) dayOfWeek = 7;
-      setSelectedDay(dayOfWeek);
+    
+    let maxDays = 1;
+    if (plan?.plan_type === 'weekly') maxDays = 7;
+    else if (plan?.plan_type === 'monthly') maxDays = 30;
+
+    const dayNum = getPlanDayForDate(dateStr);
+    if (dayNum >= 1 && dayNum <= maxDays) {
+      setSelectedDay(dayNum);
     }
   };
 
@@ -122,6 +141,7 @@ export default function DietPlanView() {
       // Ensure we fetch whenever plan, date OR selectedDay changes 
       // (important for monthly where date might not have changed yet or is shared)
       fetchTracking(controller.signal);
+      fetchAdherence(selectedDate);
     }
     return () => controller.abort();
   }, [plan, selectedDate, selectedDay]);
@@ -140,6 +160,22 @@ export default function DietPlanView() {
       console.error(err);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const fetchAdherence = async (dateParam?: string) => {
+    try {
+      const token = localStorage.getItem("access_token");
+      const activeDate = dateParam || selectedDate;
+      const res = await fetch(`${API_BASE}/api/diet-plans/${id}/adherence?date=${activeDate}`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      const data = await res.json();
+      if (data.data !== undefined) {
+        setAdherence(Number(data.data ?? 0));
+      }
+    } catch (err) {
+      console.error("Error fetching adherence:", err);
     }
   };
 
@@ -201,6 +237,7 @@ export default function DietPlanView() {
       if (!res.ok) throw new Error();
       setSaveStatus("saved");
       setTimeout(() => setSaveStatus("idle"), 2000);
+      fetchAdherence();
     } catch (err) {
       console.error(err);
       setSaveStatus("error");
@@ -249,6 +286,7 @@ export default function DietPlanView() {
         });
         setTimeout(() => setToast(null), 3000);
       }
+      fetchAdherence();
     } catch (err) {
       console.error(err);
       if (showNotification) {
@@ -642,6 +680,37 @@ export default function DietPlanView() {
           )}
 
           <div className="space-y-6">
+            {/* Compliance Adherence Panel */}
+            <div className={["rounded-[28px] p-6 border flex flex-col md:flex-row md:items-center justify-between gap-6", isDark ? "bg-black/30 border-white/5 text-white" : "bg-[#edf6ec]/80 border-[#2f6154]/10 text-[#0e2d27]"].join(" ")}>
+              <div className="flex items-center gap-4">
+                <div className={["flex h-12 w-12 items-center justify-center rounded-2xl text-xl font-black shadow-md", isDark ? "bg-emerald-500/20 text-emerald-400" : "bg-emerald-100 text-emerald-700"].join(" ")}>
+                  🎯
+                </div>
+                <div>
+                  <h3 className="text-lg font-extrabold tracking-tight">
+                    {lang === "tr" ? "Genel Diyet Uyumu" : "Overall Diet Compliance"}
+                  </h3>
+                  <p className={["text-xs font-semibold", isDark ? "text-zinc-400" : "text-[#4d6b62]"].join(" ")}>
+                    {lang === "tr" ? "Program başlangıcından bugüne kadar olan uyum oranınız." : "Your compliance rate from the start of the program until today."}
+                  </p>
+                </div>
+              </div>
+              <div className="flex items-center gap-4 shrink-0">
+                <div className="relative flex items-center justify-center">
+                  <span className="text-3xl font-black tracking-tight text-emerald-500">
+                    %{adherence}
+                  </span>
+                </div>
+                {/* Visual dynamic bar */}
+                <div className={["w-32 h-3 rounded-full overflow-hidden relative", isDark ? "bg-zinc-800" : "bg-zinc-200"].join(" ")}>
+                  <div 
+                    className="h-full bg-emerald-500 transition-all duration-500 rounded-full" 
+                    style={{ width: `${adherence}%` }}
+                  />
+                </div>
+              </div>
+            </div>
+
             {/* Macros Summary Panel */}
             <DashboardPanel isDark={isDark}>
           <div className="flex items-center gap-4 mb-4">
@@ -693,8 +762,8 @@ export default function DietPlanView() {
           <div className="flex flex-wrap items-end justify-between gap-3">
             <div>
               <h2 className="text-base font-black">{lang === "tr" ? "Öğün Listesi" : "Meal List"}</h2>
-              <p className={["mt-1 text-xs", isDark ? "text-zinc-500" : "text-[#806f57]"].join(" ")}>
-                {selectedDate}
+              <p className={["mt-1 text-xs font-bold", isDark ? "text-zinc-500" : "text-[#806f57]"].join(" ")}>
+                {formatStringToDMY(selectedDate)}
               </p>
             </div>
             <span className={["rounded-full border px-2.5 py-1 text-[10px] font-black uppercase", isDark ? "border-emerald-300/25 bg-emerald-500/12 text-emerald-100" : "border-[#c7dbc7] bg-[#edf6ec] text-[#285743]"].join(" ")}>

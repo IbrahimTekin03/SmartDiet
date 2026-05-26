@@ -46,6 +46,13 @@ export class DietPlansController {
     return ResponseDto.success('Diyet planı detayı getirildi', result);
   }
 
+  @Get(':id/adherence')
+  @ApiOperation({ summary: 'Diyet planının belirtilen tarihe kadarki uyum yüzdesini hesapla' })
+  async getAdherence(@Param('id') id: string, @Query('date') date?: string) {
+    const result = await this.dietPlansService.calculateAdherence(id, date);
+    return ResponseDto.success('Uyum yüzdesi hesaplandı', result);
+  }
+
   @Post('track')
   @ApiOperation({ summary: 'Yenilen öğünleri takip için kaydet' })
   async trackMealItem(@Request() req, @Body() dto: TrackMealItemDto) {
