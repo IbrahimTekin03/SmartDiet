@@ -7,7 +7,7 @@ import { AppSettingsProvider } from "./context/AppSettingsContext";
 import { SocketProvider } from "./context/SocketContext";
 
 const savedTheme = localStorage.getItem("sd_theme");
-const initialTheme = savedTheme === "dark" ? "dark" : "light";
+const initialTheme = savedTheme === "green" || savedTheme === "dark" ? "green" : "cream";
 document.documentElement.setAttribute("data-theme", initialTheme);
 
 ReactDOM.createRoot(document.getElementById("root")!).render(

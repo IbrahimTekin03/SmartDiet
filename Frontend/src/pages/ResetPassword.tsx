@@ -126,7 +126,7 @@ export default function ResetPassword() {
       </div>
 
       <main className="relative z-10 mx-auto grid min-h-screen max-w-6xl place-items-center px-4 py-10 sm:px-6">
-        <section className={isDark ? "w-full max-w-lg rounded-[28px] border border-white/10 bg-white/5 p-6 shadow-[0_40px_140px_rgba(0,0,0,0.65)] backdrop-blur sm:p-8" : "w-full max-w-lg rounded-[28px] border border-[#325d51]/20 bg-[#f3f7f4]/90 p-6 shadow-[0_40px_120px_rgba(8,22,20,0.12)] backdrop-blur sm:p-8"}>
+        <section className={isDark ? "w-full max-w-lg rounded-[28px] border border-white/10 bg-white/5 p-6 shadow-[0_40px_140px_rgba(0,0,0,0.65)] sm:p-8" : "w-full max-w-lg rounded-[28px] border border-[#325d51]/20 bg-[#f3f7f4]/90 p-6 shadow-[0_40px_120px_rgba(8,22,20,0.12)] sm:p-8"}>
           <div className="flex items-center justify-between gap-4">
             <Link to="/" className={isDark ? "text-xs font-semibold text-zinc-300 hover:text-white" : "text-xs font-semibold text-[#36544c] hover:text-[#123128]"}>
               {t.backHome}

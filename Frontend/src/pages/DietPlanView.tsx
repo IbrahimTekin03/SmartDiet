@@ -689,6 +689,20 @@ export default function DietPlanView() {
           </DashboardPanel>
         )}
 
+        {displayedMeals && displayedMeals.length > 0 && (
+          <div className="flex flex-wrap items-end justify-between gap-3">
+            <div>
+              <h2 className="text-base font-black">{lang === "tr" ? "Öğün Listesi" : "Meal List"}</h2>
+              <p className={["mt-1 text-xs", isDark ? "text-zinc-500" : "text-[#806f57]"].join(" ")}>
+                {selectedDate}
+              </p>
+            </div>
+            <span className={["rounded-full border px-2.5 py-1 text-[10px] font-black uppercase", isDark ? "border-emerald-300/25 bg-emerald-500/12 text-emerald-100" : "border-[#c7dbc7] bg-[#edf6ec] text-[#285743]"].join(" ")}>
+              {displayedMeals.length} {lang === "tr" ? "Öğün" : "Meals"}
+            </span>
+          </div>
+        )}
+
         {displayedMeals?.map((meal: any, index: number) => {
           const totalCals = meal.items?.reduce((acc: number, cur: any) => {
             const ratio = getRatio(Number(cur.amount), cur.food?.unit);
@@ -808,9 +822,9 @@ export default function DietPlanView() {
         )}
         {/* Toast Notification */}
         {toast && (
-          <div className="fixed bottom-8 left-1/2 z-50 -translate-x-1/2 transform animate-bounce">
+          <div className="fixed bottom-8 left-1/2 z-50 -translate-x-1/2 transform">
             <div className={[
-              "flex items-center gap-3 rounded-2xl px-6 py-4 font-bold text-white shadow-2xl backdrop-blur-md",
+              "flex items-center gap-3 rounded-2xl px-6 py-4 font-bold text-white shadow-2xl",
               toast.type === 'success' ? "bg-emerald-500/90" : "bg-rose-500/90"
             ].join(" ")}>
               {toast.type === 'success' ? (
@@ -825,7 +839,7 @@ export default function DietPlanView() {
 
         {/* Edit Food Modal */}
         {editingItem && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-fadeIn">
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 animate-fadeIn">
             <div 
               className={[
                 "w-full max-w-lg rounded-3xl border p-6 shadow-2xl transition-all",

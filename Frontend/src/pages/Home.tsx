@@ -349,7 +349,7 @@ export default function Home() {
               {menuOpen ? (
                 <div
                   className={[
-                    "absolute right-0 mt-2 w-[180px] overflow-hidden rounded-2xl border backdrop-blur",
+                    "absolute right-0 mt-2 w-[180px] overflow-hidden rounded-2xl border",
                     isDark ? "border-white/10 bg-[#0a0d0f]/90" : "border-[#2f6154]/25 bg-[#f7fbf9]/95",
                   ].join(" ")}
                 >
@@ -473,7 +473,7 @@ export default function Home() {
             <aside className="animate-inUp [animation-delay:120ms]">
               <div
                 className={[
-                  "relative mx-auto w-full max-w-[640px] rounded-[34px] p-5 sm:p-6 backdrop-blur",
+                  "relative mx-auto w-full max-w-[640px] rounded-[34px] p-5 sm:p-6",
                   isDark
                     ? "border border-white/10 bg-white/5 shadow-[0_55px_170px_rgba(0,0,0,0.70)]"
                     : "border border-[#3c6b5e]/36 bg-[#ecf4f0]/78 shadow-[0_0_0_1px_rgba(17,67,55,0.17)_inset,0_0_0_1px_rgba(246,250,248,0.92),0_55px_170px_rgba(6,24,20,0.18)]",
@@ -481,7 +481,7 @@ export default function Home() {
               >
                 <div
                   className={[
-                    "pointer-events-none absolute -inset-24 opacity-70 blur-[80px]",
+                    "pointer-events-none absolute -inset-24 opacity-35",
                     isDark
                       ? "[background:radial-gradient(circle_at_25%_20%,rgba(16,185,129,0.22),transparent_55%),radial-gradient(circle_at_80%_40%,rgba(20,184,166,0.12),transparent_55%)]"
                       : "[background:radial-gradient(circle_at_25%_20%,rgba(22,111,88,0.20),transparent_55%),radial-gradient(circle_at_80%_40%,rgba(19,104,118,0.15),transparent_55%)]",
@@ -542,7 +542,7 @@ export default function Home() {
                     <div className={["mt-2 h-2 w-full overflow-hidden rounded-full", isDark ? "bg-white/10" : "bg-[#d3e2da]"].join(" ")}>
                       <div
                         className={[
-                          "h-2 rounded-full animate-progress",
+                          "h-2 rounded-full",
                           isDark ? "bg-emerald-400" : "bg-gradient-to-r from-[#1a7f5b] to-[#167f72]",
                         ].join(" ")}
                         style={{ width: `${activeRate}%` }}
@@ -596,14 +596,11 @@ export default function Home() {
 
       <style>{`
         @keyframes inUp { 0% { opacity: 0; transform: translateY(14px);} 100% { opacity: 1; transform: translateY(0);} }
-        @keyframes progress { 0% { transform: translateX(-6%); filter: brightness(1);} 50% { transform: translateX(0%); filter: brightness(1.08);} 100% { transform: translateX(-6%); filter: brightness(1);} }
-        @keyframes floatSlow { 0% { transform: translate(0,0) scale(1);} 50% { transform: translate(18px, 14px) scale(1.03);} 100% { transform: translate(0,0) scale(1);} }
-        @keyframes floatSlow2 { 0% { transform: translate(0,0) scale(1);} 50% { transform: translate(-16px, -10px) scale(1.03);} 100% { transform: translate(0,0) scale(1);} }
 
         .animate-inUp { animation: inUp 520ms ease-out both; }
-        .animate-progress { animation: progress 2.8s ease-in-out infinite; }
-        .animate-floatSlow { animation: floatSlow 11s ease-in-out infinite; }
-        .animate-floatSlow2 { animation: floatSlow2 13s ease-in-out infinite; }
+        .animate-progress,
+        .animate-floatSlow,
+        .animate-floatSlow2 { animation: none; }
 
         @media (max-width: 860px) {
           .home-main-grid {
@@ -643,8 +640,6 @@ function DarkBackground() {
     <div className="absolute inset-0">
       <div className="absolute inset-0 opacity-[0.90] [background:radial-gradient(1200px_720px_at_72%_-10%,rgba(16,185,129,0.22),transparent_55%),radial-gradient(980px_640px_at_10%_105%,rgba(20,184,166,0.14),transparent_58%),linear-gradient(180deg,#050608,#07090b_45%,#050608)]" />
       <div className="absolute inset-0 opacity-[0.10] [background-image:radial-gradient(rgba(255,255,255,0.12)_1px,transparent_1px)] [background-size:18px_18px]" />
-      <div className="absolute -left-56 -top-56 h-[760px] w-[760px] rounded-full bg-emerald-500/16 blur-[130px] animate-floatSlow" />
-      <div className="absolute -bottom-72 -right-72 h-[860px] w-[860px] rounded-full bg-teal-400/12 blur-[150px] animate-floatSlow2" />
     </div>
   );
 }
@@ -655,8 +650,6 @@ function LightBackground() {
       <div className="absolute inset-0 opacity-[1] [background:radial-gradient(1180px_740px_at_10%_0%,rgba(22,128,101,0.23),transparent_58%),radial-gradient(980px_640px_at_92%_8%,rgba(20,120,133,0.18),transparent_56%),radial-gradient(980px_680px_at_52%_108%,rgba(34,117,91,0.14),transparent_62%),linear-gradient(180deg,#edf5f1,#e2ede8_56%,#dce8e2)]" />
       <div className="absolute inset-0 opacity-[0.12] [background-image:radial-gradient(rgba(8,37,31,0.11)_1px,transparent_1px)] [background-size:22px_22px]" />
       <div className="absolute inset-0 opacity-[0.34] [background:linear-gradient(90deg,rgba(248,252,250,0.35),transparent_32%,transparent_68%,rgba(248,252,250,0.30))]" />
-      <div className="absolute -left-56 -top-52 h-[760px] w-[760px] rounded-full bg-emerald-600/16 blur-[125px] animate-floatSlow" />
-      <div className="absolute -bottom-72 -right-72 h-[880px] w-[880px] rounded-full bg-teal-400/12 blur-[150px] animate-floatSlow2" />
     </div>
   );
 }
@@ -688,7 +681,7 @@ function MiniModule({ isDark, title, desc }: { isDark: boolean; title: string; d
   return (
     <div
       className={[
-        "rounded-2xl p-4 transition-all duration-300 hover:-translate-y-0.5",
+        "rounded-2xl p-4 transition hover:-translate-y-0.5",
         isDark ? "border border-white/10 bg-black/20" : "border border-[#325d51]/25 bg-[#f0f7f3]/88",
       ].join(" ")}
     >
@@ -697,7 +690,4 @@ function MiniModule({ isDark, title, desc }: { isDark: boolean; title: string; d
     </div>
   );
 }
-
-
-
 

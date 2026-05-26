@@ -1,4 +1,2 @@
-Diyetisyenin ai aile oluşturduğu diyet planını düzenleyebilmesi gerek.
-Danışanın ai tarafı düzenlenecek yeni işlevler güzel olabilir.
-admin tarafındaki ai yapılacak.
-arayüz sadeleşcek.
+Beslenme Notu kalkacak
+

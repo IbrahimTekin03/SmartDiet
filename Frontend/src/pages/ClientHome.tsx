@@ -1,7 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { DashboardPanel, DashboardSectionHeader, DashboardShell, DashboardStatCard, dashboardButtonClass } from "../components/DashboardShell";
-import { RoleWorkspaceBoard, type WorkspaceItem } from "../components/RoleWorkspaceBoard";
+import { DashboardMessagesLink, DashboardPanel, DashboardSectionHeader, DashboardShell, DashboardStatCard, dashboardButtonClass } from "../components/DashboardShell";
 import { useAppSettings } from "../context/AppSettingsContext";
 import { useSocket } from "../context/SocketContext";
 import { clearAuthSession, useAuthSession } from "../lib/authSession";
@@ -95,6 +94,12 @@ const COPY = {
     assignedClinic: "Klinik",
     assignedCity: "Şehir",
     assignedNote: "Bağlantı Notu",
+    assignedBadge: "Diyetisyen",
+    openMessages: "Mesaj",
+    planSection: "Diyetisyen Öğün Listesi",
+    planSectionSub: "Atanan planların ve öğün içeriklerin burada görünür.",
+    planOpen: "Öğünleri Gör",
+    noPlans: "Henüz atanmış bir öğün listesi yok.",
     w1: "Profilini ve hedeflerini tamamla",
     w1d: "Kişisel bilgilerini, iletişim alanlarını ve temel hedeflerini güncel tut.",
     w2: "Ölçümlerini kaydet",
@@ -105,6 +110,12 @@ const COPY = {
     w4d: "Sorularını toparla, günlük not alanını kullan ve profil ekranı üzerinden süreci destekle.",
     noMeasurements: "Henüz ölçüm kaydı bulunmuyor.",
     measurementErr: "Ölçüm verileri şu anda alınamıyor.",
+    clinicRequiredTitle: "Klinik seçimi gerekli",
+    clinicRequiredText: "Sistemi kullanmaya devam edebilmeniz ve bir diyetisyene atanabilmeniz için hizmet aldığınız kliniği seçin.",
+    clinicSelectPlaceholder: "Klinik seç",
+    saveClinic: "Kliniği Kaydet ve Devam Et",
+    savingClinic: "Kaydediliyor...",
+    skipClinic: "Deneysel: Şimdilik Geç",
     empty: "Belirtilmedi",
   },
   en: {
@@ -157,6 +168,12 @@ const COPY = {
     assignedClinic: "Clinic",
     assignedCity: "City",
     assignedNote: "Connection Note",
+    assignedBadge: "Dietitian",
+    openMessages: "Message",
+    planSection: "Dietitian Meal List",
+    planSectionSub: "Assigned plans and meal contents appear here.",
+    planOpen: "View Meals",
+    noPlans: "No meal list has been assigned yet.",
     w1: "Complete profile and goals",
     w1d: "Keep personal details, contact fields and basic goals up to date.",
     w2: "Record measurements",
@@ -167,6 +184,12 @@ const COPY = {
     w4d: "Collect questions, use daily notes and support your journey from the profile side.",
     noMeasurements: "No measurement records yet.",
     measurementErr: "Measurement data is unavailable right now.",
+    clinicRequiredTitle: "Clinic selection required",
+    clinicRequiredText: "Choose your clinic to continue using the system and be assigned to a dietitian.",
+    clinicSelectPlaceholder: "Select clinic",
+    saveClinic: "Save Clinic and Continue",
+    savingClinic: "Saving...",
+    skipClinic: "Experimental: Skip for now",
     empty: "Not provided",
   },
 } as const;
@@ -189,14 +212,14 @@ export default function ClientHome({ profile }: { profile: Profile }) {
   const [measurementError, setMeasurementError] = useState("");
   const [dietPlans, setDietPlans] = useState<any[]>([]);
   const [network, setNetwork] = useState<WorkspaceNetwork>({});
-  const notesStorageKey = useMemo(
-    () => `sd-client-notes:${profile.email || profile.phone_number || profile.display_name || "default"}`,
+  const clinicPromptSkipKey = useMemo(
+    () => `sd-skip-clinic-prompt:${profile.email || profile.phone_number || profile.display_name || "default"}`,
     [profile.display_name, profile.email, profile.phone_number],
   );
-  const [dailyNotes, setDailyNotes] = useState("");
   const [clinics, setClinics] = useState<any[]>([]);
   const [selectedClinic, setSelectedClinic] = useState("");
   const [savingClinic, setSavingClinic] = useState(false);
+  const [clinicPromptSkipped, setClinicPromptSkipped] = useState(false);
   
   useEffect(() => {
     if (!profile.clinic_id) {
@@ -324,35 +347,23 @@ export default function ClientHome({ profile }: { profile: Profile }) {
   }, [accessToken]);
 
   useEffect(() => {
-    setDailyNotes(localStorage.getItem(notesStorageKey) || "");
-  }, [notesStorageKey]);
-
-  useEffect(() => {
-    localStorage.setItem(notesStorageKey, dailyNotes);
-  }, [dailyNotes, notesStorageKey]);
+    setClinicPromptSkipped(localStorage.getItem(clinicPromptSkipKey) === "1");
+  }, [clinicPromptSkipKey]);
 
   const onLogout = () => {
     clearAuthSession();
     navigate("/login", { replace: true });
   };
 
+  const skipClinicPrompt = () => {
+    localStorage.setItem(clinicPromptSkipKey, "1");
+    setClinicPromptSkipped(true);
+  };
+
   const summaryCards = [
     { label: t.statPlans, value: summary.plans, tone: "from-emerald-400/20 to-teal-300/10" },
-    { label: t.statMessages, value: summary.messages, tone: "from-sky-400/20 to-cyan-300/10" },
-    { label: t.statAdherence, value: `${summary.adherence}%`, tone: "from-amber-400/20 to-orange-300/10" },
-    { label: t.statExperts, value: summary.activeClients, tone: "from-fuchsia-400/20 to-pink-300/10" },
-  ];
-
-  const quickActions = [
-    { title: t.quickProfile, text: t.quickProfileText, to: "/profile" },
-    { title: t.quickStart, text: t.quickStartText, to: "/" },
-    { title: t.quickSupport, text: t.quickSupportText, to: "/profile" },
-  ];
-  const workspaceItems: WorkspaceItem[] = [
-    { id: "profile", title: t.w1, description: t.w1d },
-    { id: "measurements", title: t.w2, description: t.w2d },
-    { id: "plan", title: t.w3, description: t.w3d },
-    { id: "support", title: t.w4, description: t.w4d },
+    { label: t.statAdherence, value: `${summary.adherence}%`, tone: "from-lime-400/20 to-emerald-300/10" },
+    { label: t.statExperts, value: summary.activeClients, tone: "from-teal-400/20 to-cyan-300/10" },
   ];
 
   const latestMeasurement = measurements.length ? measurements[measurements.length - 1] : null;
@@ -366,14 +377,7 @@ export default function ClientHome({ profile }: { profile: Profile }) {
       subtitle={t.subtitle}
       actions={
         <>
-          <Link to="/messages" className={[dashboardButtonClass(isDark), "relative flex items-center gap-1.5"].join(" ")}>
-            {lang === "tr" ? "Mesajlar" : "Messages"}
-            {unreadMessageCount > 0 && (
-              <span className="flex h-5 min-w-5 px-1.5 items-center justify-center rounded-full bg-rose-500 text-[10px] font-bold text-white shadow-lg shadow-rose-500/20">
-                {unreadMessageCount}
-              </span>
-            )}
-          </Link>
+          <DashboardMessagesLink isDark={isDark} unreadCount={unreadMessageCount} label={lang === "tr" ? "Mesajlar" : "Messages"} />
           <Link to="/profile" className={dashboardButtonClass(isDark)}>
             {t.profile}
           </Link>
@@ -386,181 +390,125 @@ export default function ClientHome({ profile }: { profile: Profile }) {
       <section>
         <DashboardSectionHeader isDark={isDark} title={t.overview} subtitle={t.overviewSub} />
         {summaryError ? <div className="mb-4 rounded-2xl border border-rose-500/20 bg-rose-500/10 px-4 py-3 text-sm text-rose-100">{summaryError}</div> : null}
-        <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+        <div className="grid gap-3 sm:grid-cols-3">
           {summaryCards.map((card) => (
             <DashboardStatCard key={card.label} isDark={isDark} title={card.label} value={loadingSummary ? "..." : String(card.value)} accent={card.tone} />
           ))}
         </div>
       </section>
 
-      <section className="grid gap-6 lg:grid-cols-[1.2fr_0.8fr]">
-        <DashboardPanel isDark={isDark}>
-          <DashboardSectionHeader isDark={isDark} title={t.quickTitle} subtitle={t.quickSub} />
-          <div className="grid gap-4">
-            {quickActions.map((action) => (
-              <Link
-                key={action.title}
-                to={action.to}
-                className={["group rounded-[22px] border p-4 transition", isDark ? "border-white/10 bg-black/20 hover:bg-white/5" : "border-[#2f6154]/15 bg-[#f7faf8] hover:bg-white"].join(" ")}
-              >
-                <div className="flex items-start justify-between gap-4">
-                  <div>
-                    <div className="text-sm font-extrabold">{action.title}</div>
-                    <div className={["mt-1 text-sm leading-6", isDark ? "text-zinc-300" : "text-[#4d6b62]"].join(" ")}>{action.text}</div>
-                  </div>
-                  <span className={["rounded-full px-3 py-1 text-[11px] font-bold", isDark ? "bg-emerald-500/10 text-emerald-200" : "bg-emerald-100 text-emerald-800"].join(" ")}>Go</span>
-                </div>
-              </Link>
-            ))}
-          </div>
-        </DashboardPanel>
-
-        <div className="grid gap-6">
-          <DashboardPanel isDark={isDark}>
-            <DashboardSectionHeader isDark={isDark} title={t.activityTitle} subtitle={t.activitySub} />
-            <div className="space-y-3">
-              {[t.activityA, t.activityB, t.activityC].map((item, index) => (
-                <div key={item} className="flex gap-3">
-                  <div className={["mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-xs font-extrabold", isDark ? "bg-emerald-500/15 text-emerald-200" : "bg-emerald-100 text-emerald-800"].join(" ")}>
-                    {index + 1}
-                  </div>
-                  <div className={["text-sm leading-6", isDark ? "text-zinc-300" : "text-[#36544c]"].join(" ")}>{item}</div>
-                </div>
-              ))}
-            </div>
-          </DashboardPanel>
-
-          <DashboardPanel isDark={isDark}>
-            <DashboardSectionHeader isDark={isDark} title={t.accountTitle} subtitle={t.accountSub} />
-            <div className="space-y-3">
-              <InfoRow isDark={isDark} label={t.mail} value={profile.email || t.empty} />
-              <InfoRow isDark={isDark} label={t.phone} value={profile.phone_number || t.empty} />
-              <InfoRow isDark={isDark} label={t.status} value={t.statusActive} />
-            </div>
-          </DashboardPanel>
-
-          <DashboardPanel isDark={isDark}>
-            <DashboardSectionHeader isDark={isDark} title={t.notesTitle} subtitle={t.notesSub} />
-            <textarea
-              value={dailyNotes}
-              onChange={(event) => setDailyNotes(event.target.value)}
-              placeholder={t.notesPlaceholder}
-              rows={5}
-              className={[
-                "w-full resize-none rounded-[22px] border px-4 py-3 text-sm outline-none transition",
-                isDark
-                  ? "border-white/10 bg-black/20 text-white placeholder:text-zinc-500 focus:border-emerald-400/40"
-                  : "border-[#2f6154]/15 bg-[#f7faf8] text-[#123a32] placeholder:text-[#70867f] focus:border-[#1f705a]/30",
-              ].join(" ")}
-            />
-          </DashboardPanel>
-        </div>
-      </section>
-
       <section>
-        <RoleWorkspaceBoard
-          isDark={isDark}
-          title={t.workspaceTitle}
-          subtitle={t.workspaceSub}
-          items={workspaceItems}
-          storageKey={`sd-client-workspace:${profile.email || profile.phone_number || displayName}`}
-        />
-      </section>
-
-      <section>
-        <DashboardPanel isDark={isDark}>
+        <DashboardPanel isDark={isDark} className="overflow-hidden">
           <DashboardSectionHeader isDark={isDark} title={t.assignedTitle} subtitle={t.assignedSub} />
           {network.assignedDietitian ? (
-            <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-              <InfoRow isDark={isDark} label={t.assignedTitle} value={network.assignedDietitian.name || t.empty} />
-              <InfoRow isDark={isDark} label={t.mail} value={network.assignedDietitian.email || t.empty} />
-              <InfoRow isDark={isDark} label={t.assignedClinic} value={network.assignedDietitian.clinic_name || t.empty} />
-              <InfoRow isDark={isDark} label={t.assignedCity} value={network.assignedDietitian.clinic_city || t.empty} />
+            <div className={["border p-4", isDark ? "rounded-2xl border-transparent bg-black/20 shadow-[inset_0_1px_0_rgba(16,185,129,0.08),0_16px_50px_rgba(0,0,0,0.20)]" : "rounded-2xl border-[#e4dbc9] bg-[#fffaf2]"].join(" ")}>
+              <div className={["mb-4 h-1.5 w-20 rounded-full", isDark ? "bg-gradient-to-r from-emerald-300/70 to-teal-300/20" : "bg-gradient-to-r from-[#2f6154]/70 to-[#a8d5bd]/30"].join(" ")} />
+              <div className="flex items-start justify-between gap-3">
+                <div className="flex min-w-0 items-center gap-3">
+                  <div className={["flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl text-base font-black", isDark ? "bg-emerald-500/15 text-emerald-200 ring-1 ring-emerald-300/20" : "bg-[#edf6ec] text-[#285743] ring-1 ring-[#dce8dc]"].join(" ")}>
+                    {(network.assignedDietitian.name || "D").slice(0, 2).toUpperCase()}
+                  </div>
+                  <div className="min-w-0">
+                    <div className="truncate text-lg font-black">{network.assignedDietitian.name || t.empty}</div>
+                    <div className={["mt-1 truncate text-xs", isDark ? "text-zinc-400" : "text-[#4d6b62]"].join(" ")}>
+                      {network.assignedDietitian.clinic_name || t.empty}
+                    </div>
+                  </div>
+                </div>
+                <span className={["shrink-0 rounded-full border px-2 py-1 text-[10px] font-black uppercase", isDark ? "border-emerald-300/20 bg-emerald-500/10 text-emerald-100" : "border-[#dce8dc] bg-[#edf6ec] text-[#285743]"].join(" ")}>
+                  {t.assignedBadge}
+                </span>
+              </div>
+
+              <div className={["mt-3 grid gap-2 border-t pt-3 sm:grid-cols-2", isDark ? "border-emerald-400/10" : "border-[#d8e5d8]"].join(" ")}>
+                <InfoRow isDark={isDark} label={t.mail} value={network.assignedDietitian.email || t.empty} />
+                <InfoRow isDark={isDark} label={t.assignedCity} value={network.assignedDietitian.clinic_city || t.empty} />
+              </div>
             </div>
           ) : (
-            <div className={isDark ? "text-sm text-zinc-400" : "text-sm text-[#4d6b62]"}>{t.assignedNone}</div>
+            <div className={isDark ? "rounded-2xl border border-dashed border-transparent bg-black/20 p-6 text-center text-sm text-zinc-400 shadow-[inset_0_1px_0_rgba(16,185,129,0.08)]" : "rounded-2xl border border-dashed border-[#e4dbc9] bg-[#fffaf2] p-6 text-center text-sm text-[#5e776e]"}>{t.assignedNone}</div>
           )}
-          {network.assignedDietitian?.notes ? (
-            <div className={["mt-4 rounded-[22px] border px-4 py-3 text-sm", isDark ? "border-white/10 bg-black/20 text-zinc-200" : "border-[#2f6154]/15 bg-[#f7faf8] text-[#24483f]"].join(" ")}>
-              <span className="font-extrabold">{t.assignedNote}: </span>
-              {network.assignedDietitian.notes}
-            </div>
-          ) : null}
         </DashboardPanel>
       </section>
 
-      {dietPlans.length > 0 && (
-        <section>
-          <DashboardPanel isDark={isDark}>
-            <DashboardSectionHeader isDark={isDark} title={lang === "tr" ? "Aktif Diyet Programları" : "Active Diet Plans"} subtitle={lang === "tr" ? "Diyetisyeninizin sizin için hazırladığı programlar." : "Programs prepared by your dietitian."} />
-            <div className="mt-6 grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+      <section>
+        <DashboardPanel isDark={isDark}>
+          <DashboardSectionHeader isDark={isDark} title={t.planSection} subtitle={t.planSectionSub} />
+          {dietPlans.length > 0 ? (
+            <div className="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
               {dietPlans.map((plan: any) => {
                 const planTypeLabel = plan.plan_type === 'daily' ? (lang === 'tr' ? 'Günlük' : 'Daily') : plan.plan_type === 'monthly' ? (lang === 'tr' ? 'Aylık' : 'Monthly') : (lang === 'tr' ? 'Haftalık' : 'Weekly');
                 
                 return (
-                  <Link key={plan.id} to={`/plan/${plan.id}`} className={["group relative flex flex-col justify-between overflow-hidden rounded-[32px] border p-6 transition-all hover:-translate-y-1", isDark ? "border-white/10 bg-white/5 hover:bg-white/[0.07] hover:border-emerald-500/30" : "border-[#2f6154]/15 bg-white shadow-sm hover:shadow-md hover:border-emerald-500/30"].join(" ")}>
+                  <Link key={plan.id} to={`/plan/${plan.id}`} className={["group flex flex-col justify-between border p-3 transition hover:-translate-y-0.5", isDark ? "rounded-2xl border-transparent bg-black/20 shadow-[inset_0_1px_0_rgba(16,185,129,0.08)] hover:border-transparent hover:bg-white/[0.07]" : "rounded-2xl border-[#e4dbc9] bg-[#fffaf2] hover:border-[#d4c9b5] hover:bg-white"].join(" ")}>
                     <div>
-                      <div className="flex items-center justify-between mb-4">
-                        <div className={["inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-[10px] font-bold uppercase tracking-wider", isDark ? "bg-emerald-500/15 text-emerald-300" : "bg-emerald-50 text-emerald-700"].join(" ")}>
+                      <div className="mb-3 flex items-center justify-between gap-3">
+                        <div className={["inline-flex items-center gap-1.5 rounded-full border px-2 py-1 text-[10px] font-black uppercase", isDark ? "border-emerald-300/20 bg-emerald-500/10 text-emerald-100" : "border-[#dce8dc] bg-[#edf6ec] text-[#285743]"].join(" ")}>
                           {planTypeLabel} Plan
                         </div>
-                        <div className={isDark ? "text-xs text-zinc-500" : "text-xs text-[#4d6b62]"}>
+                        <div className={isDark ? "text-[11px] text-zinc-500" : "text-[11px] text-[#7a7160]"}>
                           {new Date(plan.created_at || new Date()).toLocaleDateString(lang === "tr" ? "tr-TR" : "en-US")}
                         </div>
                       </div>
-                      <h3 className={["text-xl font-extrabold tracking-tight mb-2", isDark ? "text-white" : "text-[#0e2d27]"].join(" ")}>
+                      <h3 className={["mb-1 text-sm font-black tracking-tight", isDark ? "text-white" : "text-[#123a32]"].join(" ")}>
                         {plan.title}
                       </h3>
                       {plan.description && (
-                        <p className={["text-sm line-clamp-2", isDark ? "text-zinc-400" : "text-[#4d6b62]"].join(" ")}>
+                        <p className={["line-clamp-2 text-xs leading-5", isDark ? "text-zinc-400" : "text-[#4d6b62]"].join(" ")}>
                           {plan.description}
                         </p>
                       )}
                     </div>
                     
-                    <div className="mt-6 flex items-center justify-between border-t border-dashed pt-4 border-emerald-500/20">
+                    <div className={["mt-3 flex items-center justify-between border-t pt-2", isDark ? "border-emerald-400/10" : "border-[#d8e5d8]"].join(" ")}>
                       <div className="flex -space-x-2">
-                        <div className={["flex h-8 w-8 items-center justify-center rounded-full text-xs font-bold ring-2", isDark ? "bg-black text-emerald-400 ring-zinc-900" : "bg-emerald-100 text-emerald-700 ring-white"].join(" ")}>
+                        <div className={["flex h-8 w-8 items-center justify-center rounded-xl text-xs font-black", isDark ? "bg-emerald-500/15 text-emerald-200" : "bg-[#edf6ec] text-[#285743]"].join(" ")}>
                           {plan.meals?.length || 0}
                         </div>
-                        <div className={["flex h-8 pl-4 items-center rounded-full text-[10px] font-bold uppercase tracking-wider", isDark ? "text-zinc-400" : "text-[#4d6b62]"].join(" ")}>
+                        <div className={["flex h-8 pl-4 items-center rounded-full text-[10px] font-black uppercase", isDark ? "text-zinc-500" : "text-[#7a7160]"].join(" ")}>
                           {lang === "tr" ? "Öğün" : "Meals"}
                         </div>
                       </div>
-                      <div className={["flex h-10 w-10 items-center justify-center rounded-2xl transition-colors", isDark ? "bg-white/5 text-emerald-400 group-hover:bg-emerald-500 group-hover:text-white" : "bg-emerald-50 text-emerald-600 group-hover:bg-emerald-500 group-hover:text-white"].join(" ")}>
+                      <div className={["flex h-9 w-9 items-center justify-center transition", isDark ? "rounded-xl bg-emerald-400 text-zinc-950 group-hover:brightness-110" : "rounded-xl bg-[#2f6154] text-white group-hover:bg-[#244f44]"].join(" ")}>
                         <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" /></svg>
                       </div>
+                    </div>
+                    <div className={["mt-2 text-right text-[11px] font-black", isDark ? "text-emerald-300" : "text-[#285743]"].join(" ")}>
+                      {t.planOpen}
                     </div>
                   </Link>
                 );
               })}
             </div>
-          </DashboardPanel>
-        </section>
-      )}
+          ) : (
+            <div className={isDark ? "rounded-2xl border border-dashed border-transparent bg-black/20 p-6 text-center text-sm text-zinc-400 shadow-[inset_0_1px_0_rgba(16,185,129,0.08)]" : "rounded-2xl border border-dashed border-[#e4dbc9] bg-[#fffaf2] p-6 text-center text-sm text-[#5e776e]"}>
+              {t.noPlans}
+            </div>
+          )}
+        </DashboardPanel>
+      </section>
 
       <DashboardPanel isDark={isDark}>
         <DashboardSectionHeader
           isDark={isDark}
           title={t.measurements}
           subtitle={t.measurementsSub}
-          aside={<Link to="/profile" className={dashboardButtonClass(isDark)}>{t.profile}</Link>}
         />
 
         {measurementError ? <div className="mb-4 rounded-2xl border border-rose-500/20 bg-rose-500/10 px-4 py-3 text-sm text-rose-100">{measurementError}</div> : null}
 
-        <div className="grid gap-4 lg:grid-cols-[0.8fr_1.2fr]">
-          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-1">
+        <div className="grid gap-3 lg:grid-cols-[0.8fr_1.2fr]">
+          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-1">
             <MeasurementStat isDark={isDark} label={t.latestWeight} value={latestMeasurement?.weight != null ? `${latestMeasurement.weight} kg` : t.empty} />
             <MeasurementStat isDark={isDark} label={t.latestFat} value={latestMeasurement?.body_fat != null ? `%${latestMeasurement.body_fat}` : t.empty} />
           </div>
 
-          <div className={["rounded-[22px] border p-4", isDark ? "border-white/10 bg-black/20" : "border-[#2f6154]/15 bg-[#f7faf8]"].join(" ")}>
-            <div className="text-sm font-extrabold">{t.recentRecords}</div>
-            <div className="mt-4 space-y-3">
+          <div className={["border p-3", isDark ? "rounded-2xl border-transparent bg-black/20 shadow-[inset_0_1px_0_rgba(16,185,129,0.08)]" : "rounded-2xl border-[#e4dbc9] bg-[#fffaf2]"].join(" ")}>
+            <div className="text-sm font-black">{t.recentRecords}</div>
+            <div className="mt-3 space-y-2">
               {recentMeasurements.length ? (
                 recentMeasurements.map((item) => (
-                  <div key={item.id} className={["flex items-center justify-between gap-3 rounded-2xl border px-4 py-3 text-sm", isDark ? "border-white/10 bg-white/5" : "border-[#2f6154]/15 bg-white"].join(" ")}>
+                  <div key={item.id} className={["flex items-center justify-between gap-3 border px-3 py-2.5 text-xs", isDark ? "rounded-xl border-transparent bg-white/5" : "rounded-xl border-[#e4dbc9] bg-white"].join(" ")}>
                     <div>
                       <div className="font-semibold">{item.date}</div>
                       <div className={isDark ? "mt-1 text-xs text-zinc-400" : "mt-1 text-xs text-[#5e776e]"}>
@@ -578,21 +526,21 @@ export default function ClientHome({ profile }: { profile: Profile }) {
         </div>
       </DashboardPanel>
 
-      {!profile.clinic_id && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm">
-          <div className={["w-full max-w-md rounded-3xl p-6 shadow-2xl", isDark ? "bg-[#111] border border-white/10" : "bg-white"].join(" ")}>
-            <h2 className={["text-xl font-extrabold mb-2", isDark ? "text-white" : "text-gray-900"].join(" ")}>Klinik Seçimi Zorunlu</h2>
-            <p className={["text-sm mb-6", isDark ? "text-gray-400" : "text-gray-600"].join(" ")}>Sistemi kullanmaya devam edebilmeniz ve bir diyetisyene atanabilmeniz için lütfen hizmet aldığınız kliniği seçin.</p>
+      {!profile.clinic_id && !clinicPromptSkipped && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60">
+          <div className={["w-full max-w-md rounded-3xl border p-6 shadow-2xl", isDark ? "border-transparent bg-[#111]" : "border-[#e4dbc9] bg-[#fffaf2]"].join(" ")}>
+            <h2 className={["mb-2 text-xl font-extrabold", isDark ? "text-white" : "text-[#123a32]"].join(" ")}>{t.clinicRequiredTitle}</h2>
+            <p className={["mb-6 text-sm", isDark ? "text-gray-400" : "text-[#4d6b62]"].join(" ")}>{t.clinicRequiredText}</p>
             
             <select
               value={selectedClinic}
               onChange={(e) => setSelectedClinic(e.target.value)}
               className={[
                 "w-full rounded-2xl border px-4 py-3 mb-6 text-sm outline-none transition",
-                isDark ? "bg-white/5 border-white/10 text-white" : "bg-gray-50 border-gray-200 text-gray-900"
+                isDark ? "border-transparent bg-white/5 text-white" : "bg-gray-50 border-gray-200 text-gray-900"
               ].join(" ")}
             >
-              <option value="">{t.empty} / Klinik Seç</option>
+              <option value="">{t.clinicSelectPlaceholder}</option>
               {clinics.map((c) => (
                 <option key={c.id} value={c.id}>
                   {c.name} - {c.city}
@@ -605,7 +553,14 @@ export default function ClientHome({ profile }: { profile: Profile }) {
               disabled={!selectedClinic || savingClinic}
               className="w-full rounded-2xl bg-emerald-500 py-3 text-sm font-bold text-white transition hover:bg-emerald-600 disabled:opacity-50"
             >
-              {savingClinic ? "Kaydediliyor..." : "Kliniği Kaydet ve Devam Et"}
+              {savingClinic ? t.savingClinic : t.saveClinic}
+            </button>
+            <button
+              type="button"
+              onClick={skipClinicPrompt}
+              className={["mt-2 w-full rounded-xl border px-3 py-2 text-xs font-black transition", isDark ? "border-transparent bg-white/5 text-zinc-300 hover:bg-white/10" : "border-[#e4dbc9] bg-[#fffaf2] text-[#285743] hover:bg-white"].join(" ")}
+            >
+              {t.skipClinic}
             </button>
             <button
               onClick={onLogout}
@@ -622,18 +577,18 @@ export default function ClientHome({ profile }: { profile: Profile }) {
 
 function InfoRow({ isDark, label, value }: { isDark: boolean; label: string; value: string }) {
   return (
-    <div className={["flex items-center justify-between gap-3 rounded-2xl border px-4 py-3 text-sm", isDark ? "border-white/10 bg-black/20" : "border-[#2f6154]/15 bg-[#f7faf8]"].join(" ")}>
+    <div className={["flex items-center justify-between gap-3 border px-3 py-2.5 text-xs", isDark ? "rounded-xl border-transparent bg-black/20 shadow-[inset_0_1px_0_rgba(16,185,129,0.08)]" : "rounded-xl border-[#e4dbc9] bg-[#fffaf2]"].join(" ")}>
       <span className={isDark ? "text-zinc-400" : "text-[#5e776e]"}>{label}</span>
-      <span className="text-right font-semibold">{value}</span>
+      <span className="text-right font-black">{value}</span>
     </div>
   );
 }
 
 function MeasurementStat({ isDark, label, value }: { isDark: boolean; label: string; value: string }) {
   return (
-    <div className={["rounded-[22px] border p-4", isDark ? "border-white/10 bg-black/20" : "border-[#2f6154]/15 bg-[#f7faf8]"].join(" ")}>
-      <div className={isDark ? "text-xs font-bold uppercase tracking-[0.18em] text-zinc-400" : "text-xs font-bold uppercase tracking-[0.18em] text-[#5f7a72]"}>{label}</div>
-      <div className="mt-3 text-2xl font-extrabold">{value}</div>
+    <div className={["border p-3", isDark ? "rounded-xl border-transparent bg-black/20 shadow-[inset_0_1px_0_rgba(16,185,129,0.08)]" : "rounded-xl border-[#e4dbc9] bg-[#fffaf2]"].join(" ")}>
+      <div className={isDark ? "text-[10px] font-bold uppercase text-zinc-400" : "text-[10px] font-bold uppercase text-[#5e776e]"}>{label}</div>
+      <div className="mt-2 text-xl font-black">{value}</div>
     </div>
   );
 }

@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { DashboardShell } from "../components/DashboardShell";
 import { useAppSettings } from "../context/AppSettingsContext";
@@ -82,6 +82,8 @@ export default function Messages() {
   const { socket, isSocketConnected, refreshUnreadCount } = useSocket();
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const contactIds = useMemo(() => contacts.map((contact) => contact.user_id), [contacts]);
+  const contactIdsKey = contactIds.join("|");
 
   const [onlineStatuses, setOnlineStatuses] = useState<Record<string, "online" | "offline">>({});
   const [typingStatuses, setTypingStatuses] = useState<Record<string, boolean>>({});
@@ -136,15 +138,14 @@ export default function Messages() {
 
   // Request online statuses when socket connects or contacts load
   useEffect(() => {
-    if (socket && contacts.length > 0) {
-      const uids = contacts.map((c) => c.user_id);
-      socket.emit("check_online_statuses", { userIds: uids }, (res: any) => {
+    if (socket && contactIds.length > 0) {
+      socket.emit("check_online_statuses", { userIds: contactIds }, (res: any) => {
         if (res && res.status === "success" && res.statuses) {
           setOnlineStatuses(res.statuses);
         }
       });
     }
-  }, [socket, contacts]);
+  }, [socket, contactIdsKey]);
 
   // Handle incoming real-time messages & active status updates
   useEffect(() => {
@@ -229,7 +230,7 @@ export default function Messages() {
 
   // Auto scroll to bottom on new messages
   useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+    messagesEndRef.current?.scrollIntoView({ block: "end" });
   }, [messages]);
 
   // Send message
@@ -403,26 +404,26 @@ export default function Messages() {
 
   return (
     <DashboardShell isDark={isDark} title={t.title} subtitle={t.subtitle}>
-      <div className="flex h-[calc(100vh-12rem)] min-h-[480px] w-full overflow-hidden rounded-[32px] border border-white/5 bg-black/20 backdrop-blur-md">
+      <div className={["flex h-[calc(100vh-12rem)] min-h-[480px] w-full overflow-hidden border", isDark ? "rounded-2xl border-white/10 bg-white/5" : "rounded-lg border-[#dfd0b9] bg-[#fffaf0]"].join(" ")}>
         
         {/* Left Contacts Sidebar */}
-        <aside className={["w-80 flex flex-col border-r", isDark ? "border-white/5 bg-black/20" : "border-[#325d51]/10 bg-white/40"].join(" ")}>
-          <div className="p-6 border-b border-white/5 flex items-center justify-between">
-            <h3 className={["text-sm font-black uppercase tracking-widest", isDark ? "text-zinc-400" : "text-[#0e2d27]"].join(" ")}>
+        <aside className={["w-80 flex flex-col border-r", isDark ? "border-white/10 bg-black/20" : "border-[#dfd0b9] bg-[#fdf8ee]"].join(" ")}>
+          <div className={["flex items-center justify-between border-b p-4", isDark ? "border-white/10" : "border-[#dfd0b9]"].join(" ")}>
+            <h3 className={["text-xs font-black uppercase", isDark ? "text-zinc-400" : "text-[#806f57]"].join(" ")}>
               {contacts.length > 0 && contacts[0].clinic_name ? t.assignedDietitian : t.assignedClients}
             </h3>
             {isSocketConnected ? (
               <span className="flex h-2 w-2 rounded-full bg-emerald-500 shadow-md shadow-emerald-500/50" title="Connected" />
             ) : (
-              <span className="flex h-2 w-2 rounded-full bg-amber-500 animate-pulse" title={t.connecting} />
+              <span className="flex h-2 w-2 rounded-full bg-amber-500" title={t.connecting} />
             )}
           </div>
 
-          <div className="flex-1 overflow-y-auto p-4 space-y-2">
+          <div className="flex-1 space-y-2 overflow-y-auto p-3">
             {loadingContacts ? (
               <div className="space-y-3">
-                <div className="h-14 w-full animate-pulse rounded-2xl bg-white/5" />
-                <div className="h-14 w-full animate-pulse rounded-2xl bg-white/5" />
+                <div className={["h-14 w-full animate-pulse", isDark ? "rounded-xl bg-white/5" : "rounded-md bg-[#f1e4cf]"].join(" ")} />
+                <div className={["h-14 w-full animate-pulse", isDark ? "rounded-xl bg-white/5" : "rounded-md bg-[#f1e4cf]"].join(" ")} />
               </div>
             ) : contacts.length === 0 ? (
               <div className="p-6 text-center text-xs font-semibold text-zinc-500">
@@ -436,13 +437,13 @@ export default function Messages() {
                     key={contact.user_id}
                     onClick={() => setSelectedContact(contact)}
                     className={[
-                      "w-full flex items-center gap-4 p-4 rounded-2xl border text-left transition-all",
+                      "w-full flex items-center gap-3 border p-3 text-left transition",
                       isSelected
-                        ? (isDark ? "bg-emerald-500/10 border-emerald-500/30 text-white" : "bg-emerald-500/5 border-emerald-500/30 text-[#0e2d27]")
-                        : (isDark ? "bg-white/5 border-transparent text-zinc-400 hover:bg-white/10 hover:text-white" : "bg-white border-[#325d51]/5 text-[#4d6b62] hover:bg-zinc-50 hover:text-[#0e2d27]")
+                        ? (isDark ? "rounded-xl border-emerald-400/30 bg-emerald-500/10 text-white" : "rounded-md border-[#c7dbc7] bg-[#edf6ec] text-[#285743]")
+                        : (isDark ? "rounded-xl border-transparent bg-white/5 text-zinc-400 hover:bg-white/10 hover:text-white" : "rounded-md border-[#eadcc8] bg-white text-[#7b6d58] hover:border-[#cbb48d] hover:text-[#342b1d]")
                     ].join(" ")}
                   >
-                    <div className={["flex h-10 w-10 shrink-0 items-center justify-center rounded-xl font-bold text-sm", isSelected ? "bg-emerald-500 text-white" : (isDark ? "bg-zinc-800 text-zinc-400" : "bg-zinc-100 text-[#4d6b62]")].join(" ")}>
+                    <div className={["flex h-10 w-10 shrink-0 items-center justify-center rounded-xl text-sm font-black", isSelected ? (isDark ? "bg-emerald-400 text-zinc-950" : "bg-[#8a6a3f] text-white") : (isDark ? "bg-black/30 text-zinc-400" : "bg-[#f1e4cf] text-[#745737]")].join(" ")}>
                       {contact.name.substring(0, 2).toUpperCase()}
                     </div>
                     
@@ -450,7 +451,7 @@ export default function Messages() {
                       <h4 className={["text-xs font-bold truncate", isSelected ? (isDark ? "text-white" : "text-[#0e2d27]") : (isDark ? "text-zinc-300" : "text-[#0e2d27]")].join(" ")}>
                         {contact.name}
                       </h4>
-                      <p className="text-[10px] text-zinc-500 truncate mt-0.5">
+                      <p className={["mt-0.5 truncate text-[10px]", isDark ? "text-zinc-500" : "text-[#8a7a61]"].join(" ")}>
                         {contact.email}
                       </p>
                     </div>
@@ -472,17 +473,17 @@ export default function Messages() {
           {selectedContact ? (
             <>
               {/* Chat Header */}
-              <div className={["p-6 border-b flex items-center justify-between", isDark ? "border-white/5 bg-black/20" : "border-[#325d51]/10 bg-white/30"].join(" ")}>
-                <div className="flex items-center gap-4">
-                  <div className={["flex h-10 w-10 items-center justify-center rounded-xl font-bold text-white bg-emerald-500"].join(" ")}>
+              <div className={["flex items-center justify-between border-b p-4", isDark ? "border-white/10 bg-black/20" : "border-[#dfd0b9] bg-[#fffaf0]"].join(" ")}>
+                <div className="flex items-center gap-3">
+                  <div className={["flex h-10 w-10 items-center justify-center rounded-xl text-sm font-black", isDark ? "bg-emerald-500/15 text-emerald-200" : "bg-[#edf6ec] text-[#285743]"].join(" ")}>
                     {selectedContact.name.substring(0, 2).toUpperCase()}
                   </div>
                   <div>
-                    <h3 className={["text-sm font-extrabold tracking-tight", isDark ? "text-white" : "text-[#0e2d27]"].join(" ")}>
+                    <h3 className={["text-sm font-black tracking-tight", isDark ? "text-white" : "text-[#342b1d]"].join(" ")}>
                       {selectedContact.name}
                     </h3>
                     <p className={[
-                      "text-[10px] mt-0.5 font-bold transition-all",
+                      "mt-0.5 text-[10px] font-bold transition",
                       (typingStatuses[selectedContact.user_id] || onlineStatuses[selectedContact.user_id] === "online") ? "text-emerald-400" : "text-zinc-500"
                     ].join(" ")}>
                       {getSubStatusText(selectedContact.user_id)}
@@ -492,7 +493,7 @@ export default function Messages() {
               </div>
 
               {/* Chat Messages Log */}
-              <div className="flex-1 overflow-y-auto p-6 space-y-4">
+              <div className="flex-1 space-y-3 overflow-y-auto p-4">
                 {messages.map((msg) => {
                   const isOwn = msg.sender_id === currentUser?.id;
                   return (
@@ -502,17 +503,17 @@ export default function Messages() {
                     >
                       <div
                         className={[
-                          "max-w-[70%] rounded-2xl px-4 py-3 shadow-sm",
+                          "max-w-[70%] px-4 py-3 text-sm shadow-sm",
                           isOwn
-                            ? (isDark ? "bg-emerald-500 text-white rounded-tr-none" : "bg-emerald-600 text-white rounded-tr-none")
-                            : (isDark ? "bg-zinc-800 text-zinc-100 rounded-tl-none border border-white/5" : "bg-white text-[#0e2d27] rounded-tl-none border border-[#325d51]/10")
+                            ? (isDark ? "rounded-2xl rounded-tr-md bg-emerald-400 text-zinc-950" : "rounded-lg rounded-tr-sm bg-[#8a6a3f] text-white")
+                            : (isDark ? "rounded-2xl rounded-tl-md border border-white/10 bg-black/30 text-zinc-100" : "rounded-lg rounded-tl-sm border border-[#eadcc8] bg-white text-[#342b1d]")
                         ].join(" ")}
                       >
                         {msg.plan_id && msg.plan ? (
                           <div 
                             onClick={() => navigate(`/plan/${msg.plan_id}`)}
                             className={[
-                              "flex items-center gap-3 p-3.5 rounded-xl border cursor-pointer hover:brightness-105 transition-all text-left",
+                              "flex items-center gap-3 rounded-xl border p-3 text-left transition hover:brightness-105",
                               isOwn
                                 ? "bg-white/10 border-white/20 text-white"
                                 : (isDark ? "bg-zinc-700/50 border-white/10 text-white" : "bg-emerald-50 border-emerald-200 text-[#0e2d27]")
@@ -553,12 +554,12 @@ export default function Messages() {
               {/* Chat Input Field */}
               <form
                 onSubmit={handleSendMessage}
-                className={["p-4 border-t flex gap-3 items-center relative", isDark ? "border-white/5 bg-black/30" : "border-[#325d51]/10 bg-white/50"].join(" ")}
+                className={["relative flex items-center gap-3 border-t p-4", isDark ? "border-white/10 bg-black/30" : "border-[#dfd0b9] bg-[#fdf8ee]"].join(" ")}
               >
                 {showPlansDropdown && (
                   <div className={[
-                    "absolute bottom-full right-4 mb-2 w-80 rounded-2xl border p-4 shadow-2xl z-50 backdrop-blur-md overflow-hidden",
-                    isDark ? "border-white/10 bg-[#121212]/95" : "border-[#325d51]/15 bg-white/95"
+                    "absolute bottom-full right-4 z-50 mb-2 w-80 overflow-hidden border p-4 shadow-2xl",
+                    isDark ? "rounded-2xl border-white/10 bg-[#080b0a]/95" : "rounded-lg border-[#dfd0b9] bg-[#fffaf0]"
                   ].join(" ")}>
                     <div className="flex items-center justify-between mb-3">
                       <h4 className={["text-[10px] font-black uppercase tracking-wider", isDark ? "text-zinc-400" : "text-[#0e2d27]"].join(" ")}>
@@ -589,10 +590,10 @@ export default function Messages() {
                             type="button"
                             onClick={() => handleSendPlanCard(p.id, p.title)}
                             className={[
-                              "w-full text-left p-3 rounded-xl border text-xs transition-all flex items-center justify-between hover:scale-[1.01]",
+                              "flex w-full items-center justify-between border p-3 text-left text-xs transition",
                               isDark 
-                                ? "bg-white/5 border-transparent hover:bg-emerald-500/10 hover:border-emerald-500/30 text-zinc-300 hover:text-white"
-                                : "bg-zinc-50 border-gray-100 hover:bg-emerald-500/5 hover:border-emerald-500/20 text-[#4d6b62] hover:text-[#0e2d27]"
+                                ? "rounded-xl border-transparent bg-white/5 text-zinc-300 hover:border-emerald-400/25 hover:bg-emerald-500/10 hover:text-white"
+                                : "rounded-md border-[#eadcc8] bg-white text-[#7b6d58] hover:border-[#cbb48d] hover:text-[#342b1d]"
                             ].join(" ")}
                           >
                             <div className="min-w-0 flex-1 mr-2">
@@ -615,10 +616,10 @@ export default function Messages() {
                   type="button"
                   onClick={togglePlanDropdown}
                   className={[
-                    "flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl border transition-all hover:scale-[1.03]",
+                    "flex h-10 w-10 shrink-0 items-center justify-center border transition",
                     isDark 
-                      ? "border-white/10 bg-white/5 text-zinc-400 hover:bg-white/10 hover:text-white" 
-                      : "border-[#325d51]/15 bg-white text-[#4d6b62] hover:bg-zinc-50 hover:text-[#0e2d27]"
+                      ? "rounded-xl border-white/10 bg-white/5 text-zinc-400 hover:bg-white/10 hover:text-white" 
+                      : "rounded-md border-[#dfd0b9] bg-white text-[#806f57] hover:bg-[#fffaf0] hover:text-[#342b1d]"
                   ].join(" ")}
                   title={lang === "tr" ? "Diyet Programı Ekle" : "Attach Diet Plan"}
                 >
@@ -632,13 +633,13 @@ export default function Messages() {
                   placeholder={t.typePlaceholder}
                   value={newMessage}
                   onChange={handleInputChange}
-                  className={["flex-1 rounded-2xl border px-4 py-3 text-xs outline-none transition-all", isDark ? "border-white/10 bg-black/40 text-white focus:border-emerald-500" : "border-[#325d51]/15 bg-white text-[#0e2d27] focus:border-emerald-500"].join(" ")}
+                  className={["flex-1 border px-4 py-3 text-xs outline-none transition", isDark ? "rounded-xl border-white/10 bg-black/40 text-white focus:border-emerald-400" : "rounded-md border-[#dfd0b9] bg-white text-[#342b1d] focus:border-[#8a6a3f]/55"].join(" ")}
                 />
                 
                 <button
                   type="submit"
                   disabled={!newMessage.trim()}
-                  className={["flex h-10 w-24 shrink-0 items-center justify-center gap-2 rounded-2xl text-xs font-bold text-white transition-all shadow-md shadow-emerald-500/10", (!newMessage.trim()) ? "bg-emerald-500/50 cursor-not-allowed" : "bg-emerald-500 hover:bg-emerald-400 hover:scale-[1.02]"].join(" ")}
+                  className={["flex h-10 w-24 shrink-0 items-center justify-center gap-2 text-xs font-black transition", (!newMessage.trim()) ? (isDark ? "cursor-not-allowed rounded-xl bg-emerald-400/35 text-zinc-950/70" : "cursor-not-allowed rounded-md bg-[#b9a37f] text-white/80") : (isDark ? "rounded-xl bg-emerald-400 text-zinc-950 hover:brightness-110" : "rounded-md bg-[#8a6a3f] text-white hover:bg-[#765932]")].join(" ")}
                 >
                   <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />

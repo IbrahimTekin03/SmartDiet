@@ -16,6 +16,12 @@ type SessionUser = {
   avatar_url?: string | null;
   birth_date?: string | null;
   gender?: "male" | "female" | null;
+  account_type?: string | null;
+  role?: string | null;
+  clinic_name?: string | null;
+  clinic_city?: string | null;
+  dietitian_verification_status?: string | null;
+  created_at?: string | null;
   roles?: Array<{ name?: string }>;
 };
 
@@ -35,6 +41,17 @@ type Measurement = {
   body_fat?: number | null;
 };
 
+type WorkspaceNetwork = {
+  assignedDietitian?: {
+    user_id?: string;
+    name?: string | null;
+    email?: string | null;
+    clinic_name?: string | null;
+    clinic_city?: string | null;
+    notes?: string | null;
+  } | null;
+};
+
 const COPY = {
   tr: {
     title: "Profil",
@@ -43,8 +60,8 @@ const COPY = {
     logout: "Çıkış Yap",
     loadingProfile: "Profil yükleniyor...",
     appearance: "Tema",
-    themeDark: "Koyu",
-    themeLight: "Açık",
+    themeDark: "Yeşil",
+    themeLight: "Krem",
     uploadPhoto: "Profil Fotoğrafı",
     save: "Değişiklikleri Kaydet",
     saving: "Kaydediliyor...",
@@ -77,6 +94,21 @@ const COPY = {
     quickStats: "Profil Doluluk",
     contact: "İletişim",
     role: "Rol",
+    systemInfo: "Profesyonel Bilgiler",
+    systemInfoSub: "Bu hesapla ilgili gerekli platform bilgileri.",
+    connectionPanelTitle: "Diyetisyen Bağlantısı",
+    connectionPanelSub: "Atanmış diyetisyen ve bağlantı notu yalnızca danışan profilinde görünür.",
+    noAssignedDietitian: "Henüz atanmış diyetisyen bulunmuyor.",
+    accountType: "Hesap Tipi",
+    accountStatus: "Hesap Durumu",
+    activeAccount: "Aktif",
+    createdAt: "Oluşturulma",
+    verificationStatus: "Onay Durumu",
+    assignedDietitian: "Atanmış Diyetisyen",
+    assignedClinic: "Klinik",
+    connectionNote: "Bağlantı Notu",
+    noConnectionNote: "Bağlantı notu bulunmuyor.",
+    clientOnlyMeasurements: "Bu alan yalnızca danışan hesaplarında görünür.",
     profileDetails: "Profil Bilgileri",
     liveProfile: "Canlı Profil",
     notProvided: "Belirtilmedi",
@@ -97,8 +129,8 @@ const COPY = {
     logout: "Log Out",
     loadingProfile: "Loading profile...",
     appearance: "Theme",
-    themeDark: "Dark",
-    themeLight: "Light",
+    themeDark: "Green",
+    themeLight: "Cream",
     uploadPhoto: "Profile Photo",
     save: "Save Changes",
     saving: "Saving...",
@@ -131,6 +163,21 @@ const COPY = {
     quickStats: "Profile Completion",
     contact: "Contact",
     role: "Role",
+    systemInfo: "Professional Info",
+    systemInfoSub: "Only the platform details that matter for this account.",
+    connectionPanelTitle: "Dietitian Connection",
+    connectionPanelSub: "Assigned dietitian and connection note are shown only on client profiles.",
+    noAssignedDietitian: "No dietitian has been assigned yet.",
+    accountType: "Account Type",
+    accountStatus: "Account Status",
+    activeAccount: "Active",
+    createdAt: "Created At",
+    verificationStatus: "Verification",
+    assignedDietitian: "Assigned Dietitian",
+    assignedClinic: "Clinic",
+    connectionNote: "Connection Note",
+    noConnectionNote: "No connection note.",
+    clientOnlyMeasurements: "This area is visible only for client accounts.",
     profileDetails: "Profile Details",
     liveProfile: "Live Profile",
     notProvided: "Not provided",
@@ -172,7 +219,7 @@ export default function Profile() {
   const API_BASE = "http://localhost:3000";
   const navigate = useNavigate();
   const fileRef = useRef<HTMLInputElement | null>(null);
-  const { theme, lang, isDark, setTheme, setLang } = useAppSettings();
+  const { lang, isDark } = useAppSettings();
   const [user, setUser] = useState<SessionUser | null>(() => {
     try {
       const raw = localStorage.getItem("sd_user");
@@ -209,8 +256,21 @@ export default function Profile() {
   const [measurementMsg, setMeasurementMsg] = useState("");
   const [avatarMsg, setAvatarMsg] = useState("");
   const [avatarErr, setAvatarErr] = useState("");
+  const [workspaceNetwork, setWorkspaceNetwork] = useState<WorkspaceNetwork>({});
 
   const t = COPY[lang];
+  const roleNames = useMemo(
+    () => [
+      ...(user?.roles || []).map((r) => String(r?.name || "").trim().toLowerCase()).filter(Boolean),
+      String(user?.role || "").trim().toLowerCase(),
+      String(user?.account_type || "").trim().toLowerCase(),
+    ].filter(Boolean),
+    [user],
+  );
+  const isAdmin = roleNames.includes("admin");
+  const isDietitian = roleNames.includes("dietitian") || roleNames.includes("diyetisyen");
+  const isClinicManager = roleNames.includes("clinic_manager");
+  const isClient = Boolean(user) && !isAdmin && !isDietitian && !isClinicManager && (roleNames.includes("client") || roleNames.includes("user") || !roleNames.length);
 
   useEffect(() => {
     const token = localStorage.getItem("access_token");
@@ -271,8 +331,39 @@ export default function Profile() {
   };
 
   useEffect(() => {
+    if (!isClient) {
+      setMeasurements([]);
+      return;
+    }
     loadMeasurements(rangeDays);
-  }, [rangeDays]);
+  }, [rangeDays, isClient]);
+
+  useEffect(() => {
+    if (!isClient) {
+      setWorkspaceNetwork({});
+      return;
+    }
+
+    const token = localStorage.getItem("access_token");
+    if (!token) return;
+
+    let cancelled = false;
+    fetch(`${API_BASE}/api/auth/workspace/network`, {
+      headers: { Authorization: `Bearer ${token}` },
+    })
+      .then(async (res) => {
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok) throw new Error("network_failed");
+        if (!cancelled) setWorkspaceNetwork((data?.data ?? data) as WorkspaceNetwork);
+      })
+      .catch(() => {
+        if (!cancelled) setWorkspaceNetwork({});
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [isClient]);
 
   const fullName = useMemo(() => {
     if (!user) return "...";
@@ -281,10 +372,11 @@ export default function Profile() {
   }, [user]);
 
   const roleText = useMemo(() => {
-    const roles = (user?.roles || []).map((r) => String(r?.name || "").trim()).filter(Boolean);
-    if (!roles.length) return t.roleUser;
-    return roles.map((name) => mapRoleName(name, lang, t)).join(", ");
-  }, [lang, t, user]);
+    if (!roleNames.length) return t.roleUser;
+    if (isClient && !roleNames.includes("client")) return t.roleClient;
+    return Array.from(new Set(roleNames)).map((name) => mapRoleName(name, lang, t)).join(", ");
+  }, [isClient, lang, roleNames, t]);
+  const verificationText = user?.dietitian_verification_status || t.activeAccount;
   const contactEmail = form.email || t.notProvided;
   const contactPhone = form.phone_number || t.notProvided;
 
@@ -322,10 +414,10 @@ export default function Profile() {
   const trendWeight = latestWeight != null && firstWeight != null ? latestWeight - firstWeight : null;
 
   const completion = useMemo(() => {
-    const checks = [form.first_name, form.last_name, form.email, form.phone_number, form.birth_date];
+    const checks = isClient ? [form.first_name, form.last_name, form.email, form.phone_number, form.birth_date] : [form.first_name, form.last_name, form.email, form.phone_number];
     const done = checks.filter((x) => String(x || "").trim().length > 0).length;
     return Math.round((done / checks.length) * 100);
-  }, [form]);
+  }, [form, isClient]);
 
   const logout = () => {
     clearAuthSession();
@@ -388,13 +480,21 @@ export default function Profile() {
     setSaveErr("");
 
     try {
+      const profilePayload = isClient
+        ? form
+        : {
+            first_name: form.first_name,
+            last_name: form.last_name,
+            email: form.email,
+            phone_number: form.phone_number,
+          };
       const res = await fetch(`${API_BASE}/api/auth/profile/update`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
           Authorization: `Bearer ${token}`,
         },
-        body: JSON.stringify(form),
+        body: JSON.stringify(profilePayload),
       });
 
       const data = await res.json().catch(() => ({}));
@@ -462,49 +562,14 @@ export default function Profile() {
 
       <main className="relative z-10 mx-auto w-full max-w-6xl px-4 pb-12 pt-6 sm:px-6">
         {/* Top controls */}
-        <header className="mb-5 flex flex-wrap items-center justify-between gap-2">
-          <div className="flex items-center gap-2">
-            <ToolbarPill isDark={isDark}>
-                <button
-                  type="button"
-                  onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
-                  className={["rounded-full px-3 py-1 text-xs font-extrabold tracking-tight transition", isDark ? "hover:bg-emerald-900/35" : "hover:bg-white"].join(" ")}
-                >
-                {t.appearance}: {theme === "dark" ? t.themeDark : t.themeLight}
-              </button>
-            </ToolbarPill>
-
-            <ToolbarPill isDark={isDark}>
-              <button
-                type="button"
-                onClick={() => setLang("tr")}
-                className={[
-                  "rounded-full px-3 py-1 text-xs font-extrabold tracking-tight transition",
-                  lang === "tr" ? (isDark ? "bg-emerald-400/15 text-emerald-100 ring-1 ring-emerald-400/25" : "bg-[#dbece4]") : "",
-                ].join(" ")}
-              >
-                TR
-              </button>
-              <button
-                type="button"
-                onClick={() => setLang("en")}
-                className={[
-                  "rounded-full px-3 py-1 text-xs font-extrabold tracking-tight transition",
-                  lang === "en" ? (isDark ? "bg-emerald-400/15 text-emerald-100 ring-1 ring-emerald-400/25" : "bg-[#dbece4]") : "",
-                ].join(" ")}
-              >
-                EN
-              </button>
-            </ToolbarPill>
-          </div>
-
+        <header className="mb-5 flex justify-end">
           <div className="flex items-center gap-2">
             <Link
               to="/"
               className={[
                 "rounded-full px-4 py-2 text-xs font-extrabold tracking-tight transition",
                 isDark
-                  ? "border border-emerald-300/30 bg-emerald-950/25 hover:bg-emerald-900/25 shadow-[0_18px_70px_rgba(0,0,0,0.40)]"
+                  ? "border border-transparent bg-emerald-950/25 shadow-[0_18px_70px_rgba(0,0,0,0.40)] hover:bg-emerald-900/25"
                   : "border border-[#2f6154]/25 bg-[#f3f8f5] hover:bg-white",
               ].join(" ")}
             >
@@ -525,7 +590,7 @@ export default function Profile() {
         {/* Avatar top center */}
         <section
           className={[
-            "mb-6 rounded-[32px] px-4 py-8 backdrop-blur-xl sm:min-h-[420px] sm:px-7 sm:py-10",
+            "mb-6 rounded-[32px] px-4 py-8 sm:min-h-[420px] sm:px-7 sm:py-10",
             isDark ? "bg-black/22 shadow-[0_26px_110px_rgba(0,0,0,0.40)]" : "bg-white/70 shadow-[0_18px_70px_rgba(15,47,41,0.12)]",
           ].join(" ")}
         >
@@ -617,9 +682,10 @@ export default function Profile() {
             <div className="mt-6 grid gap-3 sm:grid-cols-3">
               <CompactInfoCard isDark={isDark} label={t.email} value={contactEmail} />
               <CompactInfoCard isDark={isDark} label={t.phone} value={contactPhone} />
-              <CompactInfoCard isDark={isDark} label={t.gender} value={form.gender === "female" ? t.female : t.male} />
+              <CompactInfoCard isDark={isDark} label={isClient ? t.gender : t.role} value={isClient ? (form.gender === "female" ? t.female : t.male) : roleText} />
             </div>
 
+            {isClient ? (
             <div className="mt-4 flex items-center justify-between">
               <div className={["text-sm font-semibold", isDark ? "text-zinc-300" : "text-[#4e6f65]"].join(" ")}>
                 {t.rangeLabel}: <span className={isDark ? "text-zinc-100" : "text-[#0f2f29]"}>{rangeDays}{lang === "tr" ? " gün" : "d"}</span>
@@ -628,6 +694,7 @@ export default function Profile() {
                 {t.metricsCard}
               </div>
             </div>
+            ) : null}
           </section>
 
           {/* Form */}
@@ -657,18 +724,22 @@ export default function Profile() {
               <InputField label={t.lastName} value={form.last_name} onChange={(v) => setForm((p) => ({ ...p, last_name: v }))} isDark={isDark} />
               <InputField label={t.email} value={form.email} onChange={(v) => setForm((p) => ({ ...p, email: v }))} isDark={isDark} />
               <InputField label={t.phone} value={form.phone_number} onChange={(v) => setForm((p) => ({ ...p, phone_number: v }))} isDark={isDark} />
-              <InputField label={t.birthDate} type="date" value={form.birth_date} onChange={(v) => setForm((p) => ({ ...p, birth_date: v }))} isDark={isDark} />
+              {isClient ? (
+                <>
+                  <InputField label={t.birthDate} type="date" value={form.birth_date} onChange={(v) => setForm((p) => ({ ...p, birth_date: v }))} isDark={isDark} />
 
-              <SelectField
-                label={t.gender}
-                value={form.gender}
-                onChange={(v) => setForm((p) => ({ ...p, gender: v as "male" | "female" }))}
-                isDark={isDark}
-                options={[
-                  { value: "male", label: t.male },
-                  { value: "female", label: t.female },
-                ]}
-              />
+                  <SelectField
+                    label={t.gender}
+                    value={form.gender}
+                    onChange={(v) => setForm((p) => ({ ...p, gender: v as "male" | "female" }))}
+                    isDark={isDark}
+                    options={[
+                      { value: "male", label: t.male },
+                      { value: "female", label: t.female },
+                    ]}
+                  />
+                </>
+              ) : null}
             </div>
 
             {saveErr ? (
@@ -684,7 +755,54 @@ export default function Profile() {
           </section>
         </section>
 
+        <section className={Panel(isDark, "mt-6 p-5 sm:p-7")}>
+          <div>
+            <h2 className={["text-xl font-black tracking-tight", isDark ? "text-white" : "text-[#0f2f29]"].join(" ")}>
+              {isClient ? t.connectionPanelTitle : t.systemInfo}
+            </h2>
+            <p className={["mt-1 text-sm", isDark ? "text-zinc-300" : "text-[#4e6f65]"].join(" ")}>
+              {isClient ? t.connectionPanelSub : t.systemInfoSub}
+            </p>
+          </div>
+
+          {isClient ? (
+            workspaceNetwork.assignedDietitian ? (
+              <>
+                <div className="mt-5 grid gap-3 sm:grid-cols-2">
+                  <CompactInfoCard isDark={isDark} label={t.assignedDietitian} value={workspaceNetwork.assignedDietitian.name || t.notProvided} />
+                  <CompactInfoCard isDark={isDark} label={t.assignedClinic} value={workspaceNetwork.assignedDietitian.clinic_name || t.notProvided} />
+                </div>
+                <div className={["mt-4 rounded-2xl border p-4", isDark ? "border-transparent bg-black/30 text-zinc-100 shadow-[inset_0_1px_0_rgba(16,185,129,0.08)]" : "border-[#e4dbc9] bg-[#fffaf2] text-[#123a32]"].join(" ")}>
+                  <div className={["text-[12px] font-extrabold", isDark ? "text-emerald-100" : "text-[#285743]"].join(" ")}>
+                    {t.connectionNote}
+                  </div>
+                  <p className={["mt-2 text-sm font-semibold leading-6", isDark ? "text-zinc-200" : "text-[#4d6b62]"].join(" ")}>
+                    {workspaceNetwork.assignedDietitian.notes || t.noConnectionNote}
+                  </p>
+                </div>
+              </>
+            ) : (
+              <div className={["mt-5 rounded-2xl border border-dashed p-5 text-sm font-semibold", isDark ? "border-transparent bg-black/25 text-zinc-300 shadow-[inset_0_1px_0_rgba(16,185,129,0.08)]" : "border-[#e4dbc9] bg-[#fffaf2] text-[#4d6b62]"].join(" ")}>
+                {t.noAssignedDietitian}
+              </div>
+            )
+          ) : (
+            <div className="mt-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+              <CompactInfoCard isDark={isDark} label={t.role} value={roleText} />
+              {isDietitian ? (
+                <>
+                  <CompactInfoCard isDark={isDark} label={t.assignedClinic} value={user?.clinic_name || t.notProvided} />
+                  <CompactInfoCard isDark={isDark} label={t.verificationStatus} value={verificationText} />
+                </>
+              ) : (
+                <CompactInfoCard isDark={isDark} label={t.accountStatus} value={t.activeAccount} />
+              )}
+            </div>
+          )}
+        </section>
+
         {/* Measurements */}
+        {isClient ? (
         <section className={Panel(isDark, "mt-6 p-5 sm:p-7")}>
           <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
             <div>
@@ -797,6 +915,7 @@ export default function Profile() {
             )}
           </div>
         </section>
+        ) : null}
       </main>
       <style>{`
         .neon-input-dark {
@@ -830,9 +949,9 @@ export default function Profile() {
 
 function Panel(isDark: boolean, extra = "") {
   return [
-    "rounded-[32px] border backdrop-blur-xl",
+    "rounded-[32px] border",
     isDark
-      ? "border-emerald-400/45 bg-black/35 shadow-[0_26px_110px_rgba(0,0,0,0.55)]"
+      ? "border-transparent bg-black/35 shadow-[inset_0_1px_0_rgba(16,185,129,0.10),0_26px_110px_rgba(0,0,0,0.55)]"
       : "border-[#2f6154]/20 bg-white/70 shadow-[0_18px_70px_rgba(15,47,41,0.12)]",
     extra,
   ].join(" ");
@@ -843,7 +962,7 @@ function CompactInfoCard({ isDark, label, value }: { isDark: boolean; label: str
     <div
       className={[
         "rounded-2xl p-4 transition",
-        isDark ? "bg-black/35 ring-1 ring-emerald-300/45 shadow-[0_0_16px_rgba(52,211,153,0.14)] hover:bg-emerald-950/20" : "bg-white ring-1 ring-[#2f6154]/14 hover:bg-[#f3f8f5]",
+        isDark ? "bg-black/35 shadow-[inset_0_1px_0_rgba(16,185,129,0.08),0_16px_48px_rgba(0,0,0,0.20)] hover:bg-emerald-950/20" : "bg-white ring-1 ring-[#2f6154]/14 hover:bg-[#f3f8f5]",
       ].join(" ")}
     >
       <div className={["text-[12px] font-extrabold tracking-tight", isDark ? "text-zinc-200" : "text-[#4e6f65]"].join(" ")}>
@@ -852,19 +971,6 @@ function CompactInfoCard({ isDark, label, value }: { isDark: boolean; label: str
       <div className={["mt-2 break-words text-base font-black", isDark ? "text-white" : "text-[#0f2f29]"].join(" ")}>
         {value}
       </div>
-    </div>
-  );
-}
-
-function ToolbarPill({ isDark, children }: { isDark: boolean; children: React.ReactNode }) {
-  return (
-    <div
-      className={[
-        "inline-flex items-center gap-1 rounded-full p-1 text-xs font-bold backdrop-blur-xl",
-        isDark ? "border border-emerald-300/30 bg-black/35 text-zinc-50" : "border border-[#2f6154]/20 bg-white/70 text-[#123a32]",
-      ].join(" ")}
-    >
-      {children}
     </div>
   );
 }
@@ -895,7 +1001,7 @@ function InputField({
         type={type}
         onChange={(e) => onChange(e.target.value)}
         className={[
-          "w-full rounded-xl border px-3 py-2.5 text-sm font-semibold outline-none transition backdrop-blur-xl",
+          "w-full rounded-xl border px-3 py-2.5 text-sm font-semibold outline-none transition",
           isDark
             ? "focus:border-emerald-300 focus:ring-2 focus:ring-emerald-300/30"
             : "border-[#2f6154]/22 bg-white text-[#123a32] focus:border-[#2f6154]/45 focus:ring-2 focus:ring-[#2f6154]/10",
@@ -930,7 +1036,7 @@ function SelectField({
         value={value}
         onChange={(e) => onChange(e.target.value)}
         className={[
-          "w-full rounded-xl border px-3 py-2.5 text-sm font-semibold outline-none transition backdrop-blur-xl",
+          "w-full rounded-xl border px-3 py-2.5 text-sm font-semibold outline-none transition",
           isDark
             ? "focus:border-emerald-300 focus:ring-2 focus:ring-emerald-300/30"
             : "border-[#2f6154]/22 bg-white text-[#123a32] focus:border-[#2f6154]/45 focus:ring-2 focus:ring-[#2f6154]/10",
@@ -966,7 +1072,7 @@ function MetricCard({
         : "from-emerald-950/40 via-emerald-400/18 to-emerald-950/40";
 
   return (
-    <div className={["rounded-3xl border p-4 backdrop-blur-xl", isDark ? "border-emerald-300/30 bg-black/35" : "border-[#2f6154]/18 bg-white"].join(" ")}>
+    <div className={["rounded-3xl border p-4", isDark ? "border-transparent bg-black/35 shadow-[inset_0_1px_0_rgba(16,185,129,0.08)]" : "border-[#2f6154]/18 bg-white"].join(" ")}>
       <div className={["text-sm font-extrabold", isDark ? "text-zinc-200" : "text-[#4e6f65]"].join(" ")}>{label}</div>
       <div className={["mt-1 text-2xl font-black tracking-tight", isDark ? "text-white" : "text-[#0f2f29]"].join(" ")}>{value}</div>
       <div className={`mt-4 h-1.5 rounded-full bg-gradient-to-r ${bar}`} />
@@ -1011,14 +1117,14 @@ function ChartCard({
 
   if (!weightPoints.length && !fatPoints.length) {
     return (
-      <div className={["rounded-3xl border p-5 text-sm", isDark ? "border-emerald-300/25 bg-black/20 text-zinc-400" : "border-[#2f6154]/18 bg-white text-[#5a776d]"].join(" ")}>
+      <div className={["rounded-3xl border p-5 text-sm", isDark ? "border-transparent bg-black/20 text-zinc-400 shadow-[inset_0_1px_0_rgba(16,185,129,0.08)]" : "border-[#2f6154]/18 bg-white text-[#5a776d]"].join(" ")}>
         {emptyLabel}
       </div>
     );
   }
 
   return (
-    <div className={["rounded-3xl border p-4", isDark ? "border-emerald-300/25 bg-black/20" : "border-[#2f6154]/18 bg-white"].join(" ")}>
+    <div className={["rounded-3xl border p-4", isDark ? "border-transparent bg-black/20 shadow-[inset_0_1px_0_rgba(16,185,129,0.08)]" : "border-[#2f6154]/18 bg-white"].join(" ")}>
       <div className="mb-3 flex flex-wrap items-center gap-4 text-xs font-extrabold">
         <span className="inline-flex items-center gap-2">
           <i className="h-2 w-2 rounded-full bg-emerald-400" />

@@ -371,12 +371,11 @@ export default function MealPlanner() {
               : "absolute inset-0 opacity-[0.99] [background:radial-gradient(1180px_740px_at_12%_0%,rgba(22,128,101,0.15),transparent_58%),linear-gradient(180deg,#e8f0eb,#dee8e2_56%,#dbe5df)]"
           }
         />
-        <div className={isDark ? "absolute -top-56 -left-56 h-[720px] w-[720px] rounded-full bg-emerald-500/10 blur-[120px]" : "absolute -top-56 -left-56 h-[720px] w-[720px] rounded-full bg-emerald-600/10 blur-[120px]"} />
       </div>
 
       <div className="relative z-10 flex h-screen flex-col">
         {/* Header */}
-        <header className="flex h-16 items-center justify-between border-b border-white/5 bg-white/5 px-6 backdrop-blur-md">
+        <header className="flex h-16 items-center justify-between border-b border-white/5 bg-white/5 px-6">
           <div className="flex items-center gap-4">
             <Link to="/" className="flex items-center gap-2">
               <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-emerald-500 font-bold text-white text-xs">SD</div>
@@ -519,7 +518,7 @@ export default function MealPlanner() {
                       <div
                         key={meal.id}
                         className={[
-                          isDark ? "relative rounded-[32px] border border-white/10 bg-white/5 p-8 backdrop-blur transition-all" : "relative rounded-[32px] border border-[#325d51]/20 bg-white p-8 shadow-sm transition-all",
+                          isDark ? "relative rounded-[32px] border border-white/10 bg-white/5 p-8 transition" : "relative rounded-[32px] border border-[#325d51]/20 bg-white p-8 shadow-sm transition",
                           focusedMealId === meal.id ? "z-[60] border-emerald-500/50 shadow-2xl shadow-emerald-500/10 scale-[1.01]" : "z-10"
                         ].join(" ")}
                       >

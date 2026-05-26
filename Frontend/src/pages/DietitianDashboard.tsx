@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import {
   DashboardLoadingScreen,
+  DashboardMessagesLink,
   DashboardPanel,
   DashboardSectionHeader,
   DashboardShell,
@@ -154,14 +155,7 @@ export default function DietitianDashboard() {
       subtitle={t.subtitle}
       actions={
         <>
-          <Link to="/messages" className={[dashboardButtonClass(isDark), "relative flex items-center gap-1.5"].join(" ")}>
-            {lang === "tr" ? "Mesajlar" : "Messages"}
-            {unreadMessageCount > 0 && (
-              <span className="flex h-5 min-w-5 px-1.5 items-center justify-center rounded-full bg-rose-500 text-[10px] font-bold text-white shadow-lg shadow-rose-500/20">
-                {unreadMessageCount}
-              </span>
-            )}
-          </Link>
+          <DashboardMessagesLink isDark={isDark} unreadCount={unreadMessageCount} label={lang === "tr" ? "Mesajlar" : "Messages"} />
           <Link to="/profile" className={dashboardButtonClass(isDark)}>
             {t.viewProfile}
           </Link>
@@ -171,7 +165,7 @@ export default function DietitianDashboard() {
         </>
       }
     >
-      <div className="grid gap-6 sm:grid-cols-2">
+      <div className="grid gap-3 sm:grid-cols-2">
         <DashboardStatCard
           isDark={isDark}
           title={t.totalClients}
@@ -186,7 +180,7 @@ export default function DietitianDashboard() {
         />
       </div>
 
-      <DashboardPanel isDark={isDark} className="mt-8">
+      <DashboardPanel isDark={isDark} className="mt-3">
         <DashboardSectionHeader
           isDark={isDark}
           title={t.clientsTitle}
@@ -194,45 +188,50 @@ export default function DietitianDashboard() {
         />
 
         {clients.length === 0 ? (
-          <div className="py-12 text-center">
+          <div className={isDark ? "rounded-2xl border border-dashed border-white/10 bg-black/20 p-8 text-center" : "rounded-lg border border-dashed border-[#dfd0b9] bg-[#fffaf0] p-8 text-center"}>
             <p className={mutedTextClass(isDark)}>{t.noClients}</p>
           </div>
         ) : (
-          <div className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          <div className="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
             {clients.map((client) => (
               <div
                 key={client.user_id}
                 className={[
-                  "group relative overflow-hidden rounded-[24px] border p-5 transition-all duration-300",
+                  "group border px-3 py-3 transition hover:-translate-y-0.5",
                   isDark
-                    ? "border-white/10 bg-white/5 hover:border-emerald-500/40 hover:bg-emerald-500/5"
-                    : "border-emerald-900/10 bg-white hover:border-emerald-500/30 hover:shadow-xl",
+                    ? "rounded-xl border-white/10 bg-black/20 hover:border-emerald-400/25 hover:bg-white/[0.07]"
+                    : "rounded-md border-[#e4d5bf] bg-[#fdf8ee] hover:border-[#cbb48d] hover:bg-white",
                 ].join(" ")}
               >
-                <div className="flex items-center gap-4 cursor-pointer group/avatar" onClick={() => openClientPlans(client)}>
-                  <div className="h-12 w-12 overflow-hidden rounded-full ring-2 ring-emerald-500/20 group-hover/avatar:ring-emerald-500/50 transition">
-                    {client.avatar_url ? (
-                      <img src={client.avatar_url} alt="" className="h-full w-full object-cover" />
-                    ) : (
-                      <div className="flex h-full w-full items-center justify-center bg-emerald-500/10 text-emerald-500 font-bold uppercase">
-                        {client.first_name[0]}{client.last_name[0]}
-                      </div>
-                    )}
-                  </div>
-                  <div>
-                    <h3 className="font-extrabold text-lg leading-tight">
-                      {client.first_name} {client.last_name}
-                    </h3>
-                    <div className={mutedTextClass(isDark)}>
-                      {calculateAge(client.birth_date)} {t.age} • {client.gender === "male" ? t.male : t.female}
+                <div className="flex items-start justify-between gap-3">
+                  <button type="button" className="flex min-w-0 flex-1 items-center gap-3 text-left" onClick={() => openClientPlans(client)}>
+                    <div className={["h-10 w-10 shrink-0 overflow-hidden rounded-xl", isDark ? "bg-emerald-500/15 text-emerald-200" : "bg-[#edf6ec] text-[#285743]"].join(" ")}>
+                      {client.avatar_url ? (
+                        <img src={client.avatar_url} alt="" className="h-full w-full object-cover" />
+                      ) : (
+                        <div className="flex h-full w-full items-center justify-center text-sm font-black uppercase">
+                          {client.first_name[0]}{client.last_name[0]}
+                        </div>
+                      )}
                     </div>
-                  </div>
+                    <div className="min-w-0">
+                      <h3 className="truncate text-sm font-black leading-tight">
+                        {client.first_name} {client.last_name}
+                      </h3>
+                      <div className={["mt-1 truncate text-xs", isDark ? "text-zinc-400" : "text-[#7b6d58]"].join(" ")}>
+                        {calculateAge(client.birth_date)} {t.age} • {client.gender === "male" ? t.male : t.female}
+                      </div>
+                    </div>
+                  </button>
+                  <span className={["shrink-0 rounded-full border px-2 py-1 text-[10px] font-black uppercase", isDark ? "border-emerald-300/25 bg-emerald-500/12 text-emerald-100" : "border-[#c7dbc7] bg-[#edf6ec] text-[#285743]"].join(" ")}>
+                    {lang === "tr" ? "Aktif" : "Active"}
+                  </span>
                 </div>
 
-                <div className="mt-6 flex gap-2">
+                <div className={["mt-3 flex items-center justify-end border-t pt-2", isDark ? "border-white/10" : "border-[#eadcc8]"].join(" ")}>
                   <button
                     onClick={() => navigate(`/meal-planner?clientId=${client.user_id}`)}
-                    className="flex-1 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-500 py-2.5 text-xs font-bold text-white transition hover:brightness-110 active:scale-95"
+                    className={["rounded-lg px-3 py-1.5 text-xs font-black transition", isDark ? "bg-emerald-400 text-zinc-950 hover:brightness-110" : "bg-[#8a6a3f] text-white hover:bg-[#765932]"].join(" ")}
                   >
                     {t.preparePlan}
                   </button>
@@ -244,71 +243,71 @@ export default function DietitianDashboard() {
       </DashboardPanel>
 
       {selectedClient && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm">
-          <div className={["w-full max-w-2xl overflow-hidden rounded-[32px] border shadow-2xl transition-all", isDark ? "border-white/10 bg-[#0d1114]" : "border-emerald-900/10 bg-[#f7fbf9]"].join(" ")}>
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 p-4">
+          <div className={["w-full max-w-2xl overflow-hidden border shadow-2xl transition-all", isDark ? "rounded-2xl border-white/10 bg-[#080b0a]/95" : "rounded-lg border-[#dfd0b9] bg-[#fffaf0]"].join(" ")}>
             
-            <div className={["flex items-center justify-between border-b px-6 py-5", isDark ? "border-white/10" : "border-emerald-900/10"].join(" ")}>
-              <div className="flex items-center gap-4">
-                <div className="flex h-12 w-12 items-center justify-center rounded-full bg-gradient-to-br from-emerald-400 to-teal-500 text-lg font-bold text-white shadow-lg">
+            <div className={["flex items-center justify-between border-b px-5 py-4", isDark ? "border-white/10" : "border-[#dfd0b9]"].join(" ")}>
+              <div className="flex min-w-0 items-center gap-3">
+                <div className={["flex h-11 w-11 shrink-0 items-center justify-center rounded-xl text-base font-black", isDark ? "bg-emerald-500/15 text-emerald-200" : "bg-[#edf6ec] text-[#285743]"].join(" ")}>
                   {selectedClient.first_name[0]}{selectedClient.last_name[0]}
                 </div>
-                <div>
-                  <h3 className={["text-xl font-extrabold", isDark ? "text-white" : "text-emerald-950"].join(" ")}>
+                <div className="min-w-0">
+                  <h3 className={["truncate text-base font-black", isDark ? "text-white" : "text-[#342b1d]"].join(" ")}>
                     {selectedClient.first_name} {selectedClient.last_name}
                   </h3>
-                  <p className={["text-sm", isDark ? "text-zinc-400" : "text-emerald-800/60"].join(" ")}>
+                  <p className={["text-xs", isDark ? "text-zinc-400" : "text-[#7b6d58]"].join(" ")}>
                     {lang === 'tr' ? 'Danışanın Diyet Planları' : 'Client Diet Plans'}
                   </p>
                 </div>
               </div>
-              <button onClick={() => setSelectedClient(null)} className={["rounded-full p-2 transition hover:bg-black/10", isDark ? "text-zinc-400 hover:text-white" : "text-emerald-800/60 hover:text-emerald-950"].join(" ")}>
-                <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <button onClick={() => setSelectedClient(null)} className={["rounded-lg p-2 transition", isDark ? "text-zinc-400 hover:bg-white/10 hover:text-white" : "text-[#806f57] hover:bg-[#f1e4cf] hover:text-[#342b1d]"].join(" ")}>
+                <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
                 </svg>
               </button>
             </div>
 
-            <div className="max-h-[60vh] overflow-y-auto p-6">
+            <div className="max-h-[60vh] overflow-y-auto p-5">
               {loadingPlans ? (
                 <div className="flex justify-center py-12">
                   <div className="h-8 w-8 animate-spin rounded-full border-4 border-emerald-500 border-t-transparent"></div>
                 </div>
               ) : clientPlans.length === 0 ? (
-                <div className="py-12 text-center">
-                  <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-emerald-500/10 text-emerald-500">
+                <div className="py-10 text-center">
+                  <div className={["mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-xl", isDark ? "bg-emerald-500/10 text-emerald-300" : "bg-[#f1e4cf] text-[#745737]"].join(" ")}>
                     <svg className="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
                     </svg>
                   </div>
-                  <p className={["text-lg font-bold", isDark ? "text-white" : "text-emerald-900"].join(" ")}>
+                  <p className="text-sm font-black">
                     {lang === 'tr' ? 'Henüz plan bulunmuyor' : 'No plans found'}
                   </p>
-                  <p className={["mt-2 text-sm", isDark ? "text-zinc-500" : "text-emerald-800/60"].join(" ")}>
+                  <p className={["mt-1 text-xs", isDark ? "text-zinc-500" : "text-[#8a7a61]"].join(" ")}>
                     {lang === 'tr' ? 'Bu danışana henüz bir diyet planı atanmamış.' : 'No diet plan has been assigned to this client yet.'}
                   </p>
                 </div>
               ) : (
-                <div className="space-y-4">
+                <div className="space-y-3">
                   {clientPlans.map((plan) => (
-                    <div key={plan.id} className={["flex items-center justify-between rounded-2xl border p-5 transition-all hover:shadow-md", isDark ? "border-white/10 bg-white/5 hover:border-emerald-500/30" : "border-emerald-900/10 bg-white hover:border-emerald-500/30"].join(" ")}>
-                      <div>
-                        <div className="flex items-center gap-3">
-                          <h4 className={["text-lg font-bold", isDark ? "text-white" : "text-emerald-950"].join(" ")}>{plan.title}</h4>
+                    <div key={plan.id} className={["flex flex-col gap-3 border p-3 transition sm:flex-row sm:items-center sm:justify-between", isDark ? "rounded-xl border-white/10 bg-black/20 hover:border-emerald-400/25" : "rounded-md border-[#e4d5bf] bg-[#fdf8ee] hover:border-[#cbb48d]"].join(" ")}>
+                      <div className="min-w-0">
+                        <div className="flex flex-wrap items-center gap-2">
+                          <h4 className={["truncate text-sm font-black", isDark ? "text-white" : "text-[#342b1d]"].join(" ")}>{plan.title}</h4>
                           {plan.is_active && (
-                            <span className="rounded-full bg-emerald-500/20 px-2.5 py-0.5 text-xs font-bold text-emerald-500">Aktif</span>
+                            <span className={["rounded-full border px-2 py-0.5 text-[10px] font-black uppercase", isDark ? "border-emerald-300/25 bg-emerald-500/12 text-emerald-100" : "border-[#c7dbc7] bg-[#edf6ec] text-[#285743]"].join(" ")}>Aktif</span>
                           )}
                         </div>
-                        <p className={["mt-1 text-sm font-medium uppercase tracking-wider", isDark ? "text-zinc-500" : "text-emerald-800/50"].join(" ")}>
+                        <p className={["mt-1 text-[11px] font-black uppercase", isDark ? "text-zinc-500" : "text-[#7b6d58]"].join(" ")}>
                           {plan.plan_type === 'daily' ? 'Günlük' : plan.plan_type === 'weekly' ? 'Haftalık' : 'Aylık'} Plan
                         </p>
-                        <p className={["mt-2 text-xs", isDark ? "text-zinc-600" : "text-emerald-800/40"].join(" ")}>
+                        <p className={["mt-1 text-[11px]", isDark ? "text-zinc-600" : "text-[#8a7a61]"].join(" ")}>
                           Oluşturulma: {new Date(plan.created_at).toLocaleDateString('tr-TR')}
                         </p>
                       </div>
                       
                       <button 
                         onClick={() => navigate(`/plan/${plan.id}`)}
-                        className="flex h-10 items-center justify-center rounded-xl bg-gradient-to-r from-emerald-500 to-teal-500 px-5 text-sm font-bold text-white shadow-lg transition hover:scale-105 active:scale-95"
+                        className={["flex h-9 shrink-0 items-center justify-center px-4 text-xs font-black transition", isDark ? "rounded-xl bg-emerald-400 text-zinc-950 hover:brightness-110" : "rounded-md bg-[#8a6a3f] text-white hover:bg-[#765932]"].join(" ")}
                       >
                         {lang === 'tr' ? 'Planı İncele' : 'View Plan'}
                       </button>
@@ -318,10 +317,10 @@ export default function DietitianDashboard() {
               )}
             </div>
             
-            <div className={["border-t px-6 py-4", isDark ? "border-white/10 bg-black/20" : "border-emerald-900/10 bg-emerald-50/50"].join(" ")}>
+            <div className={["border-t px-5 py-4", isDark ? "border-white/10 bg-black/20" : "border-[#dfd0b9] bg-[#fdf8ee]"].join(" ")}>
               <button 
                 onClick={() => navigate(`/meal-planner?clientId=${selectedClient.user_id}`)}
-                className="w-full rounded-xl bg-indigo-500 py-3 text-sm font-bold text-white shadow-lg transition hover:bg-indigo-600 active:scale-95"
+                className={["w-full py-2.5 text-sm font-black transition active:scale-[0.99]", isDark ? "rounded-xl bg-emerald-400 text-zinc-950 hover:brightness-110" : "rounded-md bg-[#8a6a3f] text-white hover:bg-[#765932]"].join(" ")}
               >
                 {lang === 'tr' ? '+ Yeni Plan Hazırla' : '+ Create New Plan'}
               </button>

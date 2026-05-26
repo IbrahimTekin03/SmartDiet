@@ -1,6 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { RoleWorkspaceBoard, type WorkspaceItem } from "../components/RoleWorkspaceBoard";
 import { useAppSettings } from "../context/AppSettingsContext";
 import { clearAuthSession, setAuthSession } from "../lib/authSession";
 
@@ -8,14 +7,23 @@ type Lang = "tr" | "en";
 type ViewMode = "queue" | "ops" | "clinics";
 type SortMode = "newest" | "oldest";
 type ApplicationStatus = "pending" | "rejected";
+type AccountKind = "admin" | "dietitian" | "client" | "user";
+
+type SelectOption = {
+  value: string;
+  label: string;
+  meta?: string;
+};
 
 type SessionUser = {
+  id?: string;
+  user_id?: string;
   first_name?: string;
   last_name?: string;
   full_name?: string;
   display_name?: string;
   email?: string;
-  roles?: Array<{ name?: string }>;
+  roles?: Array<string | { name?: string }>;
 };
 
 type Summary = {
@@ -75,8 +83,8 @@ type UserOverviewItem = {
   last_name?: string;
   email?: string | null;
   phone_number?: string | null;
-  roles?: string[];
-  account_type?: "client" | "dietitian";
+  roles?: Array<string | { name?: string }>;
+  account_type?: string;
   dietitian_verification_status?: string;
   clinic_name?: string | null;
   clinic_city?: string | null;
@@ -113,21 +121,21 @@ const API_BASE = "http://localhost:3000";
 
 const COPY = {
   tr: {
-    tag: "Yönetim Paneli",
-    title: "Platform Yönetimi",
-    subtitle: "Başvuru onayı, sistem görünürlüğü ve operasyon kararlarını tek ekrandan yönet.",
+    tag: "Admin",
+    title: "Yönetim Paneli",
+    subtitle: "Başvuruları, klinikleri ve kullanıcı eşleşmelerini temiz bir yönetim akışında takip et.",
     welcome: "Hoş geldin",
     updated: "Son güncelleme",
     refresh: "Yenile",
     profile: "Profil",
     logout: "Çıkış Yap",
-    queueTab: "Başvuru Merkezi",
+    queueTab: "Başvurular",
     clinicsTab: "Klinikler",
-    opsTab: "Operasyon",
+    opsTab: "Özet",
     pendingTab: "Bekleyenler",
     rejectedTab: "Reddedilenler",
-    queueTitle: "Diyetisyen Başvuruları",
-    queueSub: "Başvuruyu seç, detayları incele ve gerekli aksiyonu al.",
+    queueTitle: "Başvurular",
+    queueSub: "Başvuruları filtrele, klinik bilgilerini kontrol et ve sonucu net şekilde işle.",
     search: "Başvuru Ara",
     searchPh: "isim, e-posta, klinik",
     city: "Şehir",
@@ -136,7 +144,7 @@ const COPY = {
     newest: "Yeni > Eski",
     oldest: "Eski > Yeni",
     noResult: "Filtrelere uygun başvuru bulunamadı.",
-    selectedTitle: "Seçili Başvuru",
+    selectedTitle: "Detay",
     noSelection: "Detay görüntülemek için soldan bir başvuru seç.",
     approve: "Onayla",
     approving: "Onaylanıyor...",
@@ -147,7 +155,7 @@ const COPY = {
     rejectValidation: "Red nedeni en az 5 karakter olmalıdır.",
     applicantNote: "Başvuru Notu",
     reviewNote: "İnceleme Notu",
-    summaryTitle: "Canlı Özet",
+    summaryTitle: "Özet",
     metricPending: "Bekleyen Başvuru",
     metricRejected: "Reddedilen Başvuru",
     metricApproved: "Onaylı Diyetisyen",
@@ -157,21 +165,21 @@ const COPY = {
     activityRate: "Aktiflik Oranı",
     approvalRate: "Onay Oranı",
     queuePressure: "Kuyruk Yoğunluğu",
-    systemTitle: "Sistem Sağlığı",
+    systemTitle: "Operasyon Durumu",
     stepApi: "API",
     stepOtp: "OTP",
     stepRoles: "Roller",
     stepQueue: "Onay Kuyruğu",
     healthy: "Stabil",
     check: "Kontrol",
-    opsSummary: "Operasyon Özeti",
+    opsSummary: "Operasyon",
     sClients: "Aktif Danışan",
     sPlans: "Plan",
     sMessages: "Mesaj",
     sAdherence: "Uyum",
-    feedTitle: "Son Aktivite",
+    feedTitle: "Son Başvurular",
     feedEmpty: "Henüz aktivite bulunmuyor.",
-    cityTitle: "Kuyruk Dağılımı",
+    cityTitle: "Şehir Dağılımı",
     cityEmpty: "Şehir bazlı veri bulunmuyor.",
     managementTitle: "Yönetsel Notlar",
     managementA: "Başvuru Standardı",
@@ -201,34 +209,8 @@ const COPY = {
     historyLoadError: "İşlem geçmişi alınamadı.",
     actionApproved: "Onaylandı",
     actionRejected: "Reddedildi",
-    visibilityTitle: "Rol Görünürlüğü",
-    visibilitySub: "Admin olarak kullanıcı, diyetisyen, klinik yöneticisi ve kendi operasyon akışını aynı panelde izlersin.",
-    userSystem: "Kullanıcı Akışı",
-    userSystemSub: "Kullanıcı profilini tamamlar, ölçüm girer, planını takip eder ve not tutar.",
-    dietitianSystem: "Diyetisyen Akışı",
-    dietitianSystemSub: "Diyetisyen danışan, plan, ölçüm ve iletişim akışını yönetir.",
-    managerSystem: "Klinik Yönetici Akışı",
-    managerSystemSub: "Klinik yöneticisi bağlı diyetisyenleri filtreler, detay görür ve aktiflik yönetir.",
-    adminSystem: "Admin Akışı",
-    adminSystemSub: "Tüm rol akışları, onay süreçleri ve sistem sağlığı tek panelde toplanır.",
-    userA: "Profil ve hedefler",
-    userB: "Ölçüm takibi",
-    userC: "Plan uyumu",
-    userD: "Destek ve notlar",
-    dietA: "Danışan tarama",
-    dietB: "Plan yönetimi",
-    dietC: "Ölçüm yorumlama",
-    dietD: "Mesaj ritmi",
-    managerA: "Diyetisyen listesi",
-    managerB: "Filtre ve detay",
-    managerC: "Aktiflik kontrolü",
-    managerD: "Hızlı iletişim işlemleri",
-    adminA: "Başvuru onayı",
-    adminB: "Rol görünürlüğü",
-    adminC: "Sistem sağlığı",
-    adminD: "İşlem geçmişi",
-    clinicsTitle: "Klinik Yönetimi",
-    clinicsSub: "Sistemde kayıtlı klinikleri yönetin veya yeni klinik ekleyin.",
+    clinicsTitle: "Klinikler",
+    clinicsSub: "Klinikleri düzenli, güncel ve atanabilir halde tutun.",
     addClinic: "Yeni Klinik Ekle",
     editClinic: "Düzenle",
     deleteClinic: "Sil",
@@ -244,21 +226,21 @@ const COPY = {
     clinicDeleteErr: "Klinik silinemedi.",
   },
   en: {
-    tag: "Admin Panel",
-    title: "Platform control",
-    subtitle: "Manage approvals, monitor health and run operations in one screen.",
+    tag: "Admin",
+    title: "Management Panel",
+    subtitle: "Review applications, clinics and assignments in a focused management flow.",
     welcome: "Welcome",
     updated: "Last updated",
     refresh: "Refresh",
     profile: "Profile",
     logout: "Logout",
-    queueTab: "Application Hub",
+    queueTab: "Applications",
     clinicsTab: "Clinics",
-    opsTab: "Operations",
+    opsTab: "Overview",
     pendingTab: "Pending",
     rejectedTab: "Rejected",
-    queueTitle: "Dietitian Applications",
-    queueSub: "Pick an application, inspect details and take action.",
+    queueTitle: "Applications",
+    queueSub: "Filter applications, verify clinic details and record a clear decision.",
     search: "Search applications",
     searchPh: "name, email, clinic",
     city: "City",
@@ -267,7 +249,7 @@ const COPY = {
     newest: "Newest > Oldest",
     oldest: "Oldest > Newest",
     noResult: "No matching applications.",
-    selectedTitle: "Selected Application",
+    selectedTitle: "Detail",
     noSelection: "Select an application from the left list.",
     approve: "Approve",
     approving: "Approving...",
@@ -278,7 +260,7 @@ const COPY = {
     rejectValidation: "Rejection reason must be at least 5 characters.",
     applicantNote: "Application Note",
     reviewNote: "Review Note",
-    summaryTitle: "Live Summary",
+    summaryTitle: "Summary",
     metricPending: "Pending Applications",
     metricRejected: "Rejected Applications",
     metricApproved: "Approved Dietitians",
@@ -288,21 +270,21 @@ const COPY = {
     activityRate: "Activity Rate",
     approvalRate: "Approval Rate",
     queuePressure: "Queue Pressure",
-    systemTitle: "System Health",
+    systemTitle: "Operational Status",
     stepApi: "API",
     stepOtp: "OTP",
     stepRoles: "Roles",
     stepQueue: "Approval Queue",
     healthy: "Healthy",
     check: "Check",
-    opsSummary: "Operations Summary",
+    opsSummary: "Operations",
     sClients: "Active Clients",
     sPlans: "Plans",
     sMessages: "Messages",
     sAdherence: "Adherence",
-    feedTitle: "Recent Activity",
+    feedTitle: "Recent Applications",
     feedEmpty: "No activity yet.",
-    cityTitle: "Queue Distribution",
+    cityTitle: "City Distribution",
     cityEmpty: "No city data available.",
     managementTitle: "Management Notes",
     managementA: "Application Standard",
@@ -332,34 +314,8 @@ const COPY = {
     historyLoadError: "Failed to load action history.",
     actionApproved: "Approved",
     actionRejected: "Rejected",
-    visibilityTitle: "Role Visibility",
-    visibilitySub: "As admin, you can inspect the user, dietitian, clinic manager and your own operations flow from one screen.",
-    userSystem: "Regular User System",
-    userSystemSub: "The user completes profile, records measurements, follows plans and keeps notes.",
-    dietitianSystem: "Dietitian System",
-    dietitianSystemSub: "The dietitian focuses on client, plan, measurement and communication flow.",
-    managerSystem: "Clinic Manager System",
-    managerSystemSub: "The clinic manager filters approved dietitians, opens details and manages activation.",
-    adminSystem: "Admin System",
-    adminSystemSub: "All role flows, approval work and system health are gathered in one panel.",
-    userA: "Profile and goals",
-    userB: "Measurement tracking",
-    userC: "Plan adherence",
-    userD: "Support and notes",
-    dietA: "Client review",
-    dietB: "Plan management",
-    dietC: "Measurement interpretation",
-    dietD: "Message rhythm",
-    managerA: "Dietitian directory",
-    managerB: "Filters and details",
-    managerC: "Activation control",
-    managerD: "Quick contact actions",
-    adminA: "Application approval",
-    adminB: "Role visibility",
-    adminC: "System health",
-    adminD: "Action history",
-    clinicsTitle: "Clinic Management",
-    clinicsSub: "Manage existing clinics or add new ones to the system.",
+    clinicsTitle: "Clinics",
+    clinicsSub: "Keep clinics organized, current and ready for assignment.",
     addClinic: "Add New Clinic",
     editClinic: "Edit",
     deleteClinic: "Delete",
@@ -378,7 +334,8 @@ const COPY = {
 
 export default function AdminPanel() {
   const navigate = useNavigate();
-  const { lang, isDark } = useAppSettings();
+  const { lang, theme } = useAppSettings();
+  const isDark = theme === "green";
   const [user, setUser] = useState<SessionUser | null>(() => {
     try {
       const raw = localStorage.getItem("sd_user");
@@ -466,16 +423,10 @@ export default function AdminPanel() {
       .finally(() => setLoadingProfile(false));
   }, [navigate]);
 
-  const isAdmin = useMemo(() => (user?.roles || []).some((r) => String(r?.name || "").toLowerCase() === "admin"), [user]);
+  const isAdmin = useMemo(() => roleNamesFromList(user?.roles).includes("admin"), [user]);
   useEffect(() => {
     if (!loadingProfile && user && !isAdmin) navigate("/", { replace: true });
   }, [isAdmin, loadingProfile, navigate, user]);
-
-  const displayName = useMemo(() => {
-    if (!user) return t.fallbackAdmin;
-    const full = [user.first_name, user.last_name].filter(Boolean).join(" ").trim();
-    return full || user.full_name || user.display_name || user.email || t.fallbackAdmin;
-  }, [t.fallbackAdmin, user]);
 
   const fetchSummary = useCallback(async (token: string) => {
     setSummaryError("");
@@ -585,14 +536,15 @@ export default function AdminPanel() {
       const data = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error();
       const payload = (data?.data ?? data) as PagedResponse<UserOverviewItem>;
-      setUsersOverview(Array.isArray(payload?.items) ? payload.items : []);
+      const items = Array.isArray(payload?.items) ? payload.items : [];
+      setUsersOverview(items.map((item) => mergeCurrentAdminSignal(item, user)));
     } catch {
       setUsersOverview([]);
       setConnectionError(lang === "tr" ? "Kullanıcı listesi alınamadı." : "Failed to load users.");
     } finally {
       setUsersLoading(false);
     }
-  }, [lang]);
+  }, [lang, user]);
 
   const fetchConnections = useCallback(async (token: string) => {
     setConnectionsLoading(true);
@@ -609,7 +561,7 @@ export default function AdminPanel() {
       setConnections(Array.isArray(payload?.items) ? payload.items : []);
     } catch {
       setConnections([]);
-      setConnectionError((prev) => prev || (lang === "tr" ? "Baglantilar alinamadi." : "Failed to load connections."));
+      setConnectionError((prev) => prev || (lang === "tr" ? "Bağlantılar alınamadı." : "Failed to load connections."));
     } finally {
       setConnectionsLoading(false);
     }
@@ -755,59 +707,17 @@ export default function AdminPanel() {
   const approvalRate = stats.totalDietitians > 0 ? Math.round((stats.approvedDietitians / stats.totalDietitians) * 100) : 0;
   const activeRate = stats.totalUsers > 0 ? Math.round((stats.activeUsers / stats.totalUsers) * 100) : 0;
   const queuePressure = Math.min(100, Math.round((applicationsTotal / Math.max(stats.approvedDietitians, 1)) * 100));
-  const visibilityBoards: Array<{ title: string; subtitle: string; items: WorkspaceItem[] }> = [
-    {
-      title: t.userSystem,
-      subtitle: t.userSystemSub,
-      items: [
-        { id: "user-profile", title: t.userA, description: t.userSystemSub },
-        { id: "user-measurements", title: t.userB, description: t.userSystemSub },
-        { id: "user-plan", title: t.userC, description: t.userSystemSub },
-        { id: "user-notes", title: t.userD, description: t.userSystemSub },
-      ],
-    },
-    {
-      title: t.dietitianSystem,
-      subtitle: t.dietitianSystemSub,
-      items: [
-        { id: "diet-review", title: t.dietA, description: t.dietitianSystemSub },
-        { id: "diet-plan", title: t.dietB, description: t.dietitianSystemSub },
-        { id: "diet-measurements", title: t.dietC, description: t.dietitianSystemSub },
-        { id: "diet-messages", title: t.dietD, description: t.dietitianSystemSub },
-      ],
-    },
-    {
-      title: t.managerSystem,
-      subtitle: t.managerSystemSub,
-      items: [
-        { id: "manager-list", title: t.managerA, description: t.managerSystemSub },
-        { id: "manager-filter", title: t.managerB, description: t.managerSystemSub },
-        { id: "manager-active", title: t.managerC, description: t.managerSystemSub },
-        { id: "manager-contact", title: t.managerD, description: t.managerSystemSub },
-      ],
-    },
-    {
-      title: t.adminSystem,
-      subtitle: t.adminSystemSub,
-      items: [
-        { id: "admin-approve", title: t.adminA, description: t.adminSystemSub },
-        { id: "admin-visibility", title: t.adminB, description: t.adminSystemSub },
-        { id: "admin-health", title: t.adminC, description: t.adminSystemSub },
-        { id: "admin-history", title: t.adminD, description: t.adminSystemSub },
-      ],
-    },
-  ];
   const clientCandidates = useMemo(
-    () => usersOverview.filter((item) => item.account_type === "client" && item.is_active),
+    () => usersOverview.filter((item) => accountKind(item) === "client" && item.is_active),
     [usersOverview],
   );
   const dietitianCandidates = useMemo(
     () =>
       usersOverview.filter(
         (item) =>
-          item.account_type === "dietitian" &&
+          accountKind(item) === "dietitian" &&
           item.is_active &&
-          item.dietitian_verification_status === "approved",
+          normalizeText(item.dietitian_verification_status) === "approved",
       ),
     [usersOverview],
   );
@@ -831,17 +741,6 @@ export default function AdminPanel() {
       setSelectedDietitianId(dietitianCandidates[0].user_id);
     }
   }, [dietitianCandidates, selectedDietitianId]);
-
-  const cityDistribution = useMemo(() => {
-    const map = new Map<string, number>();
-    for (const app of applications) {
-      const city = String(app.clinic_city || t.unknownCity).trim() || t.unknownCity;
-      map.set(city, (map.get(city) || 0) + 1);
-    }
-    return Array.from(map.entries()).map(([city, count]) => ({ city, count })).sort((a, b) => b.count - a.count).slice(0, 6);
-  }, [applications, t.unknownCity]);
-
-  const recentFeed = useMemo(() => applications.slice(0, 6), [applications]);
 
   const approveSelected = async () => {
     if (!selected) return;
@@ -932,11 +831,11 @@ export default function AdminPanel() {
       const data = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(data?.message || "assign_failed");
       await Promise.all([fetchUsersOverview(token), fetchConnections(token)]);
-      setConnectionMessage(lang === "tr" ? "Eşleşme başarıyla kaydedildi." : "Assignment saved successfully.");
+      setConnectionMessage(lang === "tr" ? "Atama başarıyla kaydedildi." : "Assignment saved successfully.");
       setAssignmentNote("");
       setLastUpdatedAt(Date.now());
     } catch {
-      setConnectionError(lang === "tr" ? "Eşleşme kaydedilemedi." : "Failed to save assignment.");
+      setConnectionError(lang === "tr" ? "Atama kaydedilemedi." : "Failed to save assignment.");
     } finally {
       setAssigningConnection(false);
     }
@@ -950,32 +849,45 @@ export default function AdminPanel() {
   const updatedText = lastUpdatedAt ? new Date(lastUpdatedAt).toLocaleTimeString(lang === "tr" ? "tr-TR" : "en-US") : "-";
   const n = (value: number) => Number(value || 0).toLocaleString(lang === "tr" ? "tr-TR" : "en-US");
 
-  if (loadingProfile || !isAdmin) return <div className="grid min-h-screen place-items-center bg-[#07090b] text-sm text-zinc-300">{t.load}</div>;
+  if (loadingProfile || !isAdmin) return <div className={["grid min-h-screen place-items-center text-sm", isDark ? "bg-[#050608] text-zinc-300" : "bg-[#f7f1e7] text-[#6f624f]"].join(" ")}>{t.load}</div>;
 
   return (
-    <div className={["relative min-h-screen w-screen overflow-x-hidden", isDark ? "text-zinc-50" : "text-[#103930]"].join(" ")}>
+    <div className={["relative min-h-screen w-screen overflow-x-hidden", isDark ? "text-zinc-50" : "bg-[#f7f1e7] text-[#2f2b22]"].join(" ")}>
       <div className="pointer-events-none absolute inset-0">
-        <div className={isDark ? "absolute inset-0 [background:radial-gradient(1200px_720px_at_72%_-10%,rgba(16,185,129,0.24),transparent_55%),radial-gradient(980px_640px_at_10%_105%,rgba(20,184,166,0.16),transparent_58%),linear-gradient(180deg,#050608,#07090b_45%,#050608)]" : "absolute inset-0 [background:radial-gradient(1180px_740px_at_10%_0%,rgba(22,128,101,0.23),transparent_58%),radial-gradient(980px_640px_at_92%_8%,rgba(20,120,133,0.16),transparent_56%),linear-gradient(180deg,#edf5f1,#e2ede8_56%,#dce8e2)]"} />
+        <div
+          className={
+            isDark
+              ? "absolute inset-0 opacity-100 [background:radial-gradient(1100px_700px_at_18%_10%,rgba(16,185,129,0.20),transparent_60%),radial-gradient(900px_700px_at_92%_16%,rgba(20,184,166,0.13),transparent_60%),radial-gradient(900px_700px_at_58%_100%,rgba(56,189,248,0.08),transparent_60%),linear-gradient(180deg,#050608,#07090b_55%,#050608)]"
+              : "absolute inset-0 bg-[#f7f1e7]"
+          }
+        />
+        {isDark ? (
+          <>
+            <div className="absolute inset-0 opacity-[0.10] [background-image:radial-gradient(rgba(255,255,255,0.14)_1px,transparent_1px)] [background-size:18px_18px]" />
+          </>
+        ) : null}
       </div>
 
-      <main className="relative z-10 mx-auto w-full max-w-[1450px] px-4 pb-10 pt-6 sm:px-6">
-        <header className="mb-6 flex flex-wrap items-start justify-between gap-4">
+      <main className="relative z-10 mx-auto w-full max-w-6xl px-4 pb-10 pt-5 sm:px-5 lg:px-6">
+        <header className={["mb-3 flex flex-wrap items-center justify-between gap-3 border px-4 py-3.5", isDark ? "rounded-2xl border-white/10 bg-white/5 shadow-[0_28px_100px_rgba(0,0,0,0.52)]" : "rounded-lg border-[#dfd0b9] bg-[#fffaf0] shadow-sm"].join(" ")}>
           <div>
-            <div className={["inline-flex items-center gap-2 rounded-full px-4 py-1.5 text-[11px] font-bold ring-1", isDark ? "bg-emerald-500/12 text-emerald-100 ring-emerald-300/25" : "bg-white/90 text-[#145443] ring-[#2f6154]/26"].join(" ")}>{t.tag}</div>
-            <h1 className="mt-4 text-[34px] font-black leading-[1.03] tracking-tight sm:text-[48px]">{t.title}</h1>
-            <p className={["mt-2 max-w-2xl text-sm", isDark ? "text-zinc-300" : "text-[#45695f]"].join(" ")}>{t.subtitle}</p>
-            <p className={["mt-2 text-xs", isDark ? "text-zinc-400" : "text-[#547a6f]"].join(" ")}>{t.welcome} {displayName} - {t.updated}: {updatedText}</p>
+            <div className={["inline-flex items-center gap-2 rounded-full border px-3 py-1 text-[11px] font-bold uppercase", isDark ? "border-emerald-400/20 bg-emerald-500/10 text-emerald-100" : "border-[#dfd0b9] bg-[#f1e4cf] text-[#745737]"].join(" ")}>
+              <span className={["h-1.5 w-1.5 rounded-full", isDark ? "bg-emerald-400" : "bg-[#b28a52]"].join(" ")} />
+              {t.tag}
+            </div>
+            <h1 className="mt-2 text-2xl font-black leading-tight">{t.title}</h1>
+            <p className={["mt-1 text-[11px]", isDark ? "text-zinc-500" : "text-[#8a7a61]"].join(" ")}>{updatedText}</p>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2">
             <button type="button" onClick={refreshAll} className={btnClass(isDark)}>{t.refresh}</button>
             <Link to="/profile" className={btnClass(isDark)}>{t.profile}</Link>
-            <button type="button" onClick={logout} className={[btnClass(isDark), isDark ? "!bg-rose-500/18 !text-rose-100" : "!bg-rose-100 !text-rose-700"].join(" ")}>{t.logout}</button>
+            <button type="button" onClick={logout} className={[btnClass(isDark), isDark ? "!border-rose-400/25 !bg-rose-500/10 !text-rose-100 hover:!bg-rose-500/15" : "!border-rose-200 !bg-rose-50 !text-rose-700"].join(" ")}>{t.logout}</button>
           </div>
         </header>
 
-        <section className="grid gap-5 xl:grid-cols-[1.1fr_0.9fr]">
+        <section className="grid gap-3 xl:grid-cols-[minmax(0,1fr)_320px]">
           <div className={panelClass(isDark)}>
-            <div className="mb-4 flex items-center gap-2">
+            <div className={["mb-4 inline-flex border p-1", isDark ? "rounded-2xl border-white/10 bg-black/20" : "rounded-lg border-[#dfd0b9] bg-[#f7eedf]"].join(" ")}>
               <button type="button" onClick={() => setViewMode("queue")} className={tabClass(isDark, viewMode === "queue")}>{t.queueTab}</button>
               <button type="button" onClick={() => setViewMode("clinics")} className={tabClass(isDark, viewMode === "clinics")}>{t.clinicsTab}</button>
               <button type="button" onClick={() => setViewMode("ops")} className={tabClass(isDark, viewMode === "ops")}>{t.opsTab}</button>
@@ -984,7 +896,6 @@ export default function AdminPanel() {
             {viewMode === "queue" ? (
               <>
                 <h2 className="text-sm font-black">{t.queueTitle}</h2>
-                <p className={["mt-1 text-xs", isDark ? "text-zinc-400" : "text-[#567b70]"].join(" ")}>{t.queueSub}</p>
 
                 <div className="mt-3 flex items-center gap-2">
                   <button type="button" onClick={() => setApplicationStatus("pending")} className={tabClass(isDark, applicationStatus === "pending")}>
@@ -997,29 +908,48 @@ export default function AdminPanel() {
 
                 <div className="mt-3 grid gap-2 sm:grid-cols-3">
                   <label><span className={labelClass(isDark)}>{t.search}</span><input value={searchInput} onChange={(e) => setSearchInput(e.target.value)} placeholder={t.searchPh} className={inputClass(isDark)} /></label>
-                  <label><span className={labelClass(isDark)}>{t.city}</span><select value={cityFilter} onChange={(e) => setCityFilter(e.target.value)} className={inputClass(isDark)}><option value="">{t.allCities}</option>{cities.map((city) => <option key={city} value={city}>{city}</option>)}</select></label>
-                  <label><span className={labelClass(isDark)}>{t.sort}</span><select value={sortMode} onChange={(e) => setSortMode(e.target.value as SortMode)} className={inputClass(isDark)}><option value="newest">{t.newest}</option><option value="oldest">{t.oldest}</option></select></label>
+                  <div>
+                    <span className={labelClass(isDark)}>{t.city}</span>
+                    <SmartSelect
+                      isDark={isDark}
+                      value={cityFilter}
+                      onChange={setCityFilter}
+                      options={[{ value: "", label: t.allCities }, ...cities.map((city) => ({ value: city, label: city }))]}
+                    />
+                  </div>
+                  <div>
+                    <span className={labelClass(isDark)}>{t.sort}</span>
+                    <SmartSelect
+                      isDark={isDark}
+                      value={sortMode}
+                      onChange={(value) => setSortMode(value as SortMode)}
+                      options={[
+                        { value: "newest", label: t.newest },
+                        { value: "oldest", label: t.oldest },
+                      ]}
+                    />
+                  </div>
                 </div>
 
                 {appError ? <ErrorBox isDark={isDark}>{appError}</ErrorBox> : null}
 
-                <div className="mt-4 grid gap-4 lg:grid-cols-[1fr_0.9fr]">
+                <div className="mt-3 grid gap-3 lg:grid-cols-[1fr_0.88fr]">
                   <div className={innerPanel(isDark)}>
                     <div className="mb-2 text-xs font-bold">
                       {applicationStatus === "pending" ? t.metricPending : t.metricRejected}: {applicationsTotal}
                     </div>
-                    <div className="max-h-[420px] space-y-2 overflow-auto pr-1">
+                    <div className="max-h-[360px] space-y-2 overflow-auto pr-1">
                       {loadingApps ? <div className={hintClass(isDark)}>{t.load}</div> : null}
                       {!loadingApps && applications.length === 0 ? <div className={hintClass(isDark)}>{t.noResult}</div> : null}
                       {applications.map((app) => (
-                        <button key={app.user_id} type="button" onClick={() => setSelectedId(app.user_id)} className={["w-full rounded-xl border px-3 py-3 text-left transition", app.user_id === selectedId ? (isDark ? "border-emerald-300/45 bg-emerald-500/14" : "border-[#2f6154]/35 bg-[#e9f5ef]") : (isDark ? "border-white/10 bg-black/25 hover:bg-white/5" : "border-[#2f6154]/18 bg-white/92 hover:bg-[#f4faf7]")].join(" ")}>
+                        <button key={app.user_id} type="button" onClick={() => setSelectedId(app.user_id)} className={["w-full border px-3 py-2.5 text-left transition", app.user_id === selectedId ? (isDark ? "rounded-xl border-emerald-400/35 bg-emerald-500/10 shadow-[0_0_0_1px_rgba(16,185,129,0.10)_inset]" : "rounded-md border-[#b28a52]/50 bg-[#f5ead7]") : (isDark ? "rounded-xl border-white/10 bg-black/20 hover:bg-white/5" : "rounded-md border-[#e4d5bf] bg-[#fffdf7] hover:bg-white")].join(" ")}>
                           <div className="text-sm font-black">{[app.first_name, app.last_name].filter(Boolean).join(" ").trim() || app.email || app.phone_number || app.user_id}</div>
-                          <div className={["mt-1 text-xs", isDark ? "text-zinc-300" : "text-[#496c62]"].join(" ")}>{(app.clinic_name || "-") + " - " + (app.clinic_city || "-")}</div>
+                          <div className={["mt-1 text-xs", isDark ? "text-zinc-300" : "text-[#7b6d58]"].join(" ")}>{(app.clinic_name || "-") + " - " + (app.clinic_city || "-")}</div>
                         </button>
                       ))}
                     </div>
                     <div className="mt-3 flex items-center justify-between gap-2">
-                      <div className={["text-xs", isDark ? "text-zinc-400" : "text-[#5f8177]"].join(" ")}>
+                      <div className={["text-xs", isDark ? "text-zinc-400" : "text-[#8a7a61]"].join(" ")}>
                         {t.pagination}: {applicationsPage}/{Math.max(1, applicationsTotalPages)}
                       </div>
                       <div className="flex items-center gap-2">
@@ -1045,7 +975,7 @@ export default function AdminPanel() {
 
                   <div className={innerPanel(isDark)}>
                     <div className="text-sm font-black">{t.selectedTitle}</div>
-                    {!selected ? <div className={["mt-2 text-sm", isDark ? "text-zinc-400" : "text-[#5d7f74]"].join(" ")}>{t.noSelection}</div> : (
+                    {!selected ? <div className={["mt-2 text-sm", isDark ? "text-zinc-400" : "text-[#7b6d58]"].join(" ")}>{t.noSelection}</div> : (
                       <div className="mt-2 space-y-1.5 text-xs">
                         <DetailRow isDark={isDark} k={t.detailName} v={[selected.first_name, selected.last_name].filter(Boolean).join(" ").trim() || "-"} />
                         <DetailRow isDark={isDark} k={t.detailEmail} v={selected.email || "-"} />
@@ -1060,7 +990,7 @@ export default function AdminPanel() {
                           type="button"
                           disabled={approvingId === selected.user_id || rejectingId === selected.user_id}
                           onClick={approveSelected}
-                          className="mt-2 w-full rounded-xl bg-gradient-to-r from-emerald-400 to-teal-300 px-3 py-2 text-xs font-black text-zinc-950 transition hover:brightness-110 disabled:opacity-60"
+                          className={primaryButtonClass(isDark, "mt-2 w-full px-3 py-2 text-xs")}
                         >
                           {approvingId === selected.user_id ? t.approving : t.approve}
                         </button>
@@ -1081,7 +1011,7 @@ export default function AdminPanel() {
                               type="button"
                               disabled={rejectingId === selected.user_id || approvingId === selected.user_id}
                               onClick={rejectSelected}
-                              className={["w-full rounded-xl px-3 py-2 text-xs font-black transition disabled:opacity-60", isDark ? "bg-rose-500/18 text-rose-100 hover:bg-rose-500/26" : "bg-rose-100 text-rose-700 hover:bg-rose-200"].join(" ")}
+                              className={["w-full rounded-md px-3 py-2 text-xs font-black transition disabled:opacity-60", isDark ? "bg-rose-500/18 text-rose-100 hover:bg-rose-500/26" : "bg-rose-100 text-rose-700 hover:bg-rose-200"].join(" ")}
                             >
                               {rejectingId === selected.user_id ? t.rejecting : t.reject}
                             </button>
@@ -1097,7 +1027,6 @@ export default function AdminPanel() {
                 <div className="flex items-center justify-between gap-3">
                   <div>
                     <h2 className="text-sm font-black">{t.clinicsTitle}</h2>
-                    <p className={hintClass(isDark)}>{t.clinicsSub}</p>
                   </div>
                   <button
                     type="button"
@@ -1146,7 +1075,7 @@ export default function AdminPanel() {
                       <button
                         type="submit"
                         disabled={savingClinic}
-                        className="rounded-xl bg-gradient-to-r from-emerald-400 to-teal-300 px-4 py-2 text-xs font-black text-zinc-950 disabled:opacity-60"
+                        className={primaryButtonClass(isDark, "px-4 py-2 text-xs")}
                       >
                         {savingClinic ? t.savingClinic : t.saveClinic}
                       </button>
@@ -1161,7 +1090,7 @@ export default function AdminPanel() {
                   </form>
                 )}
 
-                <div className="grid gap-3 sm:grid-cols-2">
+                <div className="grid gap-2.5 sm:grid-cols-2">
                   {loadingClinics ? <div className={hintClass(isDark)}>{t.load}</div> : null}
                   {!loadingClinics && clinics.length === 0 ? <div className={hintClass(isDark)}>{t.noResult}</div> : null}
                   {clinics.map((clinic) => (
@@ -1188,7 +1117,7 @@ export default function AdminPanel() {
                           </button>
                         </div>
                       </div>
-                      <div className={["mt-2 text-xs opacity-80", isDark ? "text-zinc-300" : "text-[#3f6459]"].join(" ")}>
+                      <div className={["mt-2 text-xs opacity-80", isDark ? "text-zinc-300" : "text-[#756449]"].join(" ")}>
                         {clinic.address}
                       </div>
                     </div>
@@ -1205,11 +1134,10 @@ export default function AdminPanel() {
                   <StatCard isDark={isDark} label={t.sMessages} value={loadingSummary ? "..." : String(summary.messages)} />
                   <StatCard isDark={isDark} label={t.sAdherence} value={loadingSummary ? "..." : `${summary.adherence}%`} />
                 </div>
-                <div className="mt-3 rounded-xl border border-emerald-300/20 p-3">
+                <div className={["mt-3 rounded-lg border p-3", isDark ? "border-emerald-300/20" : "border-[#dfd0b9] bg-[#fdf8ee]"].join(" ")}>
                   <div className="text-xs font-black">{t.systemTitle}</div>
                   <HealthRow isDark={isDark} label={t.stepApi} ok={!summaryError} okText={t.healthy} badText={t.check} />
                   <HealthRow isDark={isDark} label={t.stepOtp} ok={!appError} okText={t.healthy} badText={t.check} />
-                  <HealthRow isDark={isDark} label={t.stepRoles} ok={isAdmin} okText={t.healthy} badText={t.check} />
                   <HealthRow isDark={isDark} label={t.stepQueue} ok={applicationsTotal < 10} okText={t.healthy} badText={t.check} />
                 </div>
               </>
@@ -1230,241 +1158,158 @@ export default function AdminPanel() {
               <RateRow isDark={isDark} label={t.approvalRate} value={approvalRate} tone="teal" />
               <RateRow isDark={isDark} label={t.queuePressure} value={queuePressure} tone="amber" />
             </div>
-          </div>
-        </section>
-
-        <section className="mt-5 grid gap-5 lg:grid-cols-3">
-          <div className={panelClass(isDark)}>
-            <h3 className="mb-3 text-sm font-black">{t.feedTitle}</h3>
-            {recentFeed.length === 0 ? <div className={hintClass(isDark)}>{t.feedEmpty}</div> : null}
-            <div className="space-y-2">
-              {recentFeed.map((app) => (
-                <div key={app.user_id} className={innerPanel(isDark)}>
-                  <div className="text-xs font-black">{[app.first_name, app.last_name].filter(Boolean).join(" ").trim() || app.email || app.phone_number || app.user_id}</div>
-                  <div className={hintClass(isDark)}>{(app.clinic_name || "-") + " - " + (app.clinic_city || "-")}</div>
-                  <div className={["mt-1 text-[11px]", isDark ? "text-zinc-500" : "text-[#6f8e84]"].join(" ")}>{formatDate(app.submitted_at, lang)}</div>
-                </div>
-              ))}
-            </div>
-          </div>
-
-          <div className={panelClass(isDark)}>
-            <h3 className="mb-3 text-sm font-black">{t.cityTitle}</h3>
-            {cityDistribution.length === 0 ? <div className={hintClass(isDark)}>{t.cityEmpty}</div> : null}
-            <div className="space-y-2">
-              {cityDistribution.map((item) => {
-                const percent = applications.length > 0 ? Math.round((item.count / applications.length) * 100) : 0;
-                return (
-                  <div key={item.city} className={innerPanel(isDark)}>
-                    <div className="flex items-center justify-between">
-                      <span className="text-xs font-bold">{item.city}</span>
-                      <span className="text-xs font-black">{item.count}</span>
-                    </div>
-                    <div className={["mt-2 h-1.5 w-full overflow-hidden rounded-full", isDark ? "bg-white/10" : "bg-[#d7e6df]"].join(" ")}>
-                      <div className="h-1.5 rounded-full bg-gradient-to-r from-emerald-400 to-teal-300" style={{ width: `${percent}%` }} />
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          </div>
-
-          <div className={panelClass(isDark)}>
-            <h3 className="mb-3 text-sm font-black">{t.historyTitle}</h3>
-            {historyError ? <ErrorBox isDark={isDark}>{historyError}</ErrorBox> : null}
-            {historyLoading ? <div className={hintClass(isDark)}>{t.load}</div> : null}
-            {!historyLoading && historyItems.length === 0 ? <div className={hintClass(isDark)}>{t.historyEmpty}</div> : null}
-            <div className="space-y-2">
-              {historyItems.map((item) => (
-                <div key={`${item.user_id}-${item.reviewed_at || ""}-${item.action}`} className={innerPanel(isDark)}>
-                  <div className="flex items-center justify-between gap-2">
-                    <div className="text-xs font-black">
-                      {[item.first_name, item.last_name].filter(Boolean).join(" ").trim() || item.email || item.phone_number || item.user_id}
-                    </div>
-                    <span className={["rounded-full px-2 py-1 text-[10px] font-bold", item.action === "approved" ? (isDark ? "bg-emerald-500/20 text-emerald-100" : "bg-emerald-100 text-emerald-800") : (isDark ? "bg-rose-500/20 text-rose-100" : "bg-rose-100 text-rose-800")].join(" ")}>
-                      {item.action === "approved" ? t.actionApproved : t.actionRejected}
-                    </span>
-                  </div>
-                  <div className={["mt-1 text-[11px]", isDark ? "text-zinc-400" : "text-[#67857b]"].join(" ")}>
-                    {item.clinic_name || "-"} - {item.clinic_city || "-"}
-                  </div>
-                  <div className={["mt-1 text-[11px]", isDark ? "text-zinc-500" : "text-[#6f8e84]"].join(" ")}>
-                    {formatDate(item.reviewed_at, lang)}
-                  </div>
-                  {item.review_note ? <div className={["mt-2 text-xs", isDark ? "text-zinc-300" : "text-[#496c62]"].join(" ")}>{item.review_note}</div> : null}
-                </div>
-              ))}
-            </div>
-            <div className="mt-3 flex items-center justify-between gap-2">
-              <div className={["text-xs", isDark ? "text-zinc-400" : "text-[#5f8177]"].join(" ")}>
-                {t.pagination}: {historyPage}/{Math.max(1, historyTotalPages)}
+            <div className={["mt-5 border-t pt-4", isDark ? "border-white/10" : "border-[#dfd0b9]"].join(" ")}>
+              <div className="mb-2 flex items-center justify-between gap-2">
+                <h3 className="text-xs font-black">{t.historyTitle}</h3>
+                <span className={["text-[11px]", isDark ? "text-zinc-500" : "text-[#8a7a61]"].join(" ")}>
+                  {historyPage}/{Math.max(1, historyTotalPages)}
+                </span>
               </div>
-              <div className="flex items-center gap-2">
-                <button
-                  type="button"
-                  disabled={historyPage <= 1 || historyLoading}
-                  onClick={() => setHistoryPage((prev) => Math.max(1, prev - 1))}
-                  className={btnClass(isDark)}
-                >
-                  {t.prev}
-                </button>
-                <button
-                  type="button"
-                  disabled={historyPage >= historyTotalPages || historyLoading || historyTotalPages === 0}
-                  onClick={() => setHistoryPage((prev) => Math.min(Math.max(1, historyTotalPages), prev + 1))}
-                  className={btnClass(isDark)}
-                >
-                  {t.next}
-                </button>
+              {historyError ? <ErrorBox isDark={isDark}>{historyError}</ErrorBox> : null}
+              {historyLoading ? <div className={hintClass(isDark)}>{t.load}</div> : null}
+              {!historyLoading && historyItems.length === 0 ? <div className={hintClass(isDark)}>{t.historyEmpty}</div> : null}
+              <div className="space-y-2">
+                {historyItems.slice(0, 3).map((item) => (
+                  <div key={`${item.user_id}-${item.reviewed_at || ""}-${item.action}`} className={innerPanel(isDark)}>
+                    <div className="flex items-center justify-between gap-2">
+                      <div className="truncate text-xs font-black">
+                        {[item.first_name, item.last_name].filter(Boolean).join(" ").trim() || item.email || item.phone_number || item.user_id}
+                      </div>
+                      <span className={["shrink-0 rounded-md px-2 py-1 text-[10px] font-bold", item.action === "approved" ? (isDark ? "bg-emerald-500/20 text-emerald-100" : "bg-[#dcebdd] text-[#174d3d]") : (isDark ? "bg-rose-500/20 text-rose-100" : "bg-rose-100 text-rose-800")].join(" ")}>
+                        {item.action === "approved" ? t.actionApproved : t.actionRejected}
+                      </span>
+                    </div>
+                    <div className={["mt-1 text-[11px]", isDark ? "text-zinc-500" : "text-[#8a7a61]"].join(" ")}>
+                      {formatDate(item.reviewed_at, lang)}
+                    </div>
+                  </div>
+                ))}
               </div>
             </div>
           </div>
         </section>
 
-        <section className="mt-5">
-          <div className={panelClass(isDark)}>
-            <h2 className="text-sm font-black">{t.visibilityTitle}</h2>
-            <p className={hintClass(isDark)}>{t.visibilitySub}</p>
-            <div className="mt-4 grid gap-4 xl:grid-cols-2">
-              {visibilityBoards.map((board) => (
-                <RoleWorkspaceBoard
-                  key={board.title}
-                  isDark={isDark}
-                  title={board.title}
-                  subtitle={board.subtitle}
-                  items={board.items}
-                  readOnly
-                />
-              ))}
-            </div>
-          </div>
-        </section>
-
-        <section className="mt-5 grid gap-5 xl:grid-cols-[1.15fr_0.85fr]">
+        <section className="mt-3 grid gap-3 xl:grid-cols-[minmax(0,1fr)_320px]">
           <div className={panelClass(isDark)}>
             <div className="mb-3 flex items-center justify-between gap-3">
               <div>
-                <h2 className="text-sm font-black">{lang === "tr" ? "Tüm Kullanıcılar" : "All Users"}</h2>
-                <p className={hintClass(isDark)}>
-                  {lang === "tr"
-                    ? "Admin tum rolleri burada gorur. Normal kullanicilar sadece atanmis diyetisyenle ilerler."
-                    : "Admin sees every role here. Regular users only move forward with the assigned dietitian."}
-                </p>
+                <h2 className="text-sm font-black">{lang === "tr" ? "Kayıtlar" : "Records"}</h2>
               </div>
-              <div className={["rounded-full px-3 py-1 text-xs font-black", isDark ? "bg-white/5 text-zinc-200" : "bg-[#eef6f2] text-[#23493f]"].join(" ")}>
+              <div className={["px-3 py-1 text-xs font-black", isDark ? "rounded-full border border-emerald-400/20 bg-emerald-500/10 text-emerald-100" : "rounded-md bg-[#f1e4cf] text-[#745737]"].join(" ")}>
                 {usersLoading ? "..." : usersOverview.length}
               </div>
             </div>
             {connectionError ? <ErrorBox isDark={isDark}>{connectionError}</ErrorBox> : null}
-            <div className="grid gap-3 md:grid-cols-2">
+            <div className="grid gap-2.5 sm:grid-cols-2 xl:grid-cols-3">
               {usersOverview.map((item) => (
-                <div key={item.user_id} className={innerPanel(isDark)}>
+                <div key={item.user_id} className={recordCardClass(isDark)}>
                   <div className="flex items-start justify-between gap-3">
-                    <div>
-                      <div className="text-sm font-black">
+                    <div className="min-w-0">
+                      <div className="truncate text-sm font-black">
                         {[item.first_name, item.last_name].filter(Boolean).join(" ").trim() || item.email || item.user_id}
                       </div>
-                      <div className={hintClass(isDark)}>
-                        {item.account_type === "dietitian"
-                          ? item.clinic_name || item.clinic_city || "-"
-                          : item.assigned_dietitian_name || (lang === "tr" ? "Atama yok" : "No assignment")}
+                      <div className={["mt-1 truncate", hintClass(isDark)].join(" ")}>
+                        {recordSubtitle(item, lang)}
                       </div>
                     </div>
-                    <span className={["rounded-full px-2 py-1 text-[10px] font-bold", item.account_type === "dietitian" ? (isDark ? "bg-cyan-500/16 text-cyan-100" : "bg-cyan-100 text-cyan-800") : (isDark ? "bg-emerald-500/16 text-emerald-100" : "bg-emerald-100 text-emerald-800")].join(" ")}>
-                      {item.account_type === "dietitian" ? "Dietitian" : "User"}
+                    <span className={recordBadgeClass(isDark, item)}>
+                      {recordKind(item, lang)}
                     </span>
                   </div>
-                  <div className={["mt-2 text-xs", isDark ? "text-zinc-400" : "text-[#5f8177]"].join(" ")}>
-                    {(item.roles || []).join(", ") || "-"}
-                  </div>
-                  <div className={["mt-2 text-xs", isDark ? "text-zinc-300" : "text-[#45685e]"].join(" ")}>
-                    {item.account_type === "dietitian"
-                      ? `${lang === "tr" ? "Bağlı danışan" : "Assigned clients"}: ${item.assigned_clients_count || 0}`
-                      : `${lang === "tr" ? "Bagli diyetisyen" : "Assigned dietitian"}: ${item.assigned_dietitian_name || "-"}`}
+                  <div className={["mt-3 flex items-center justify-between gap-3 border-t pt-2 text-[11px]", isDark ? "border-white/10 text-zinc-400" : "border-[#eadcc8] text-[#7b6d58]"].join(" ")}>
+                    <span className="inline-flex items-center gap-1.5">
+                      <span className={["h-1.5 w-1.5 rounded-full", item.is_active ? "bg-emerald-400" : (isDark ? "bg-zinc-600" : "bg-[#b9a98d]")].join(" ")} />
+                      {item.is_active ? (lang === "tr" ? "Aktif" : "Active") : (lang === "tr" ? "Pasif" : "Inactive")}
+                    </span>
+                    <span className="truncate font-bold">
+                      {recordMeta(item, lang)}
+                    </span>
                   </div>
                 </div>
               ))}
             </div>
           </div>
 
-          <div className="grid gap-5">
+          <div className="grid gap-3">
             <div className={panelClass(isDark)}>
-              <h2 className="text-sm font-black">{lang === "tr" ? "Eşleşme Merkezi" : "Assignment Center"}</h2>
-              <p className={hintClass(isDark)}>
-                {lang === "tr"
-                  ? "Bağlantı sadece admin tarafından kurulur. Kullanıcı kendi başına diyetisyen seçemez."
-                  : "Connections are created only by admin. Users cannot choose a dietitian on their own."}
-              </p>
+              <h2 className="text-sm font-black">{lang === "tr" ? "Atama" : "Assignment"}</h2>
 
               <div className="mt-4 grid gap-3">
-                <label>
-                  <span className={labelClass(isDark)}>{lang === "tr" ? "Kullanıcı Seç" : "Select User"}</span>
-                  <select value={selectedClientId} onChange={(e) => setSelectedClientId(e.target.value)} className={inputClass(isDark)}>
-                    <option value="">{lang === "tr" ? "Kullanıcı seç" : "Select user"}</option>
-                    {clientCandidates.map((item) => (
-                      <option key={item.user_id} value={item.user_id}>
-                        {[item.first_name, item.last_name].filter(Boolean).join(" ").trim() || item.email || item.user_id}
-                      </option>
-                    ))}
-                  </select>
-                </label>
+                <div>
+                  <span className={labelClass(isDark)}>{lang === "tr" ? "Kullanıcı" : "User"}</span>
+                  <SmartSelect
+                    isDark={isDark}
+                    value={selectedClientId}
+                    onChange={setSelectedClientId}
+                    options={[
+                      { value: "", label: lang === "tr" ? "Kullanıcı seç" : "Select user" },
+                      ...clientCandidates.map((item) => ({
+                        value: item.user_id,
+                        label: userLabel(item),
+                        meta: item.assigned_dietitian_name || (lang === "tr" ? "Atama yok" : "No assignment"),
+                      })),
+                    ]}
+                  />
+                </div>
+
+                <div>
+                  <span className={labelClass(isDark)}>{lang === "tr" ? "Diyetisyen" : "Dietitian"}</span>
+                  <SmartSelect
+                    isDark={isDark}
+                    value={selectedDietitianId}
+                    onChange={setSelectedDietitianId}
+                    options={[
+                      { value: "", label: lang === "tr" ? "Diyetisyen seç" : "Select dietitian" },
+                      ...dietitianCandidates.map((item) => ({
+                        value: item.user_id,
+                        label: userLabel(item),
+                        meta: `${item.clinic_name || item.clinic_city || "-"} · ${lang === "tr" ? "Danışan" : "Clients"}: ${item.assigned_clients_count || 0}`,
+                      })),
+                    ]}
+                  />
+                </div>
 
                 <label>
-                  <span className={labelClass(isDark)}>{lang === "tr" ? "Diyetisyen Sec" : "Select Dietitian"}</span>
-                  <select value={selectedDietitianId} onChange={(e) => setSelectedDietitianId(e.target.value)} className={inputClass(isDark)}>
-                    <option value="">{lang === "tr" ? "Diyetisyen sec" : "Select dietitian"}</option>
-                    {dietitianCandidates.map((item) => (
-                      <option key={item.user_id} value={item.user_id}>
-                        {[item.first_name, item.last_name].filter(Boolean).join(" ").trim() || item.email || item.user_id}
-                      </option>
-                    ))}
-                  </select>
-                </label>
-
-                <label>
-                  <span className={labelClass(isDark)}>{lang === "tr" ? "Admin Notu" : "Admin Note"}</span>
+                  <span className={labelClass(isDark)}>{lang === "tr" ? "Not" : "Note"}</span>
                   <textarea
                     value={assignmentNote}
                     onChange={(e) => setAssignmentNote(e.target.value)}
                     rows={3}
                     className={inputClass(isDark)}
-                    placeholder={lang === "tr" ? "Eşleşme için kısa not" : "Short note for this assignment"}
+                    placeholder={lang === "tr" ? "Atama için kısa not" : "Short note for this assignment"}
                   />
                 </label>
               </div>
 
               {selectedClient ? (
-                <div className={["mt-4 rounded-xl border px-3 py-3 text-xs", isDark ? "border-white/10 bg-black/20 text-zinc-200" : "border-[#2f6154]/18 bg-white text-[#2f564a]"].join(" ")}>
-                  {lang === "tr" ? "Mevcut bag: " : "Current link: "}
+                <div className={["mt-3 border px-3 py-2.5 text-xs", isDark ? "rounded-xl border-white/10 bg-black/20 text-zinc-200" : "rounded-md border-[#e4d5bf] bg-[#fdf8ee] text-[#4f3d25]"].join(" ")}>
+                  {lang === "tr" ? "Mevcut bağ: " : "Current link: "}
                   <span className="font-black">{selectedClient.assigned_dietitian_name || "-"}</span>
                 </div>
               ) : null}
               {selectedDietitian ? (
-                <div className={["mt-2 rounded-xl border px-3 py-3 text-xs", isDark ? "border-white/10 bg-black/20 text-zinc-200" : "border-[#2f6154]/18 bg-white text-[#2f564a]"].join(" ")}>
-                  {lang === "tr" ? "Diyetisyen aktif danışan sayısı: " : "Dietitian active client count: "}
+                <div className={["mt-2 border px-3 py-2.5 text-xs", isDark ? "rounded-xl border-white/10 bg-black/20 text-zinc-200" : "rounded-md border-[#e4d5bf] bg-[#fdf8ee] text-[#4f3d25]"].join(" ")}>
+                  {lang === "tr" ? "Aktif danışan: " : "Active clients: "}
                   <span className="font-black">{selectedDietitian.assigned_clients_count || 0}</span>
                 </div>
               ) : null}
 
-              {connectionMessage ? <div className={["mt-4 rounded-xl border px-3 py-2 text-xs", isDark ? "border-emerald-500/30 bg-emerald-500/10 text-emerald-100" : "border-emerald-400/40 bg-emerald-100 text-emerald-800"].join(" ")}>{connectionMessage}</div> : null}
+              {connectionMessage ? <div className={["mt-4 rounded-md border px-3 py-2 text-xs", isDark ? "border-emerald-500/30 bg-emerald-500/10 text-emerald-100" : "border-[#dfd0b9] bg-[#f5ead7] text-[#745737]"].join(" ")}>{connectionMessage}</div> : null}
 
               <button
                 type="button"
                 onClick={assignConnection}
                 disabled={!selectedClientId || !selectedDietitianId || assigningConnection}
-                className="mt-4 w-full rounded-xl bg-gradient-to-r from-emerald-400 to-teal-300 px-4 py-3 text-sm font-black text-zinc-950 disabled:opacity-60"
+                className={primaryButtonClass(isDark, "mt-3 w-full px-4 py-2.5 text-sm")}
               >
                 {assigningConnection
                   ? (lang === "tr" ? "Eşleştiriliyor..." : "Assigning...")
-                  : (lang === "tr" ? "Kullanıcıyı Diyetisyene Bağla" : "Assign User To Dietitian")}
+                  : (lang === "tr" ? "Bağla" : "Assign")}
               </button>
             </div>
 
             <div className={panelClass(isDark)}>
-              <h2 className="text-sm font-black">{lang === "tr" ? "Aktif Baglantilar" : "Active Connections"}</h2>
-              <p className={hintClass(isDark)}>
-                {lang === "tr" ? "Kullanıcılar sadece bu bağlantılar üzerinden profesyonel akışa girer." : "Users enter the professional flow only through these active connections."}
-              </p>
+              <h2 className="text-sm font-black">{lang === "tr" ? "Bağlantılar" : "Connections"}</h2>
               {connectionsLoading ? <div className={hintClass(isDark)}>{t.load}</div> : null}
               <div className="mt-4 space-y-2">
                 {connections.map((item) => (
@@ -1473,10 +1318,10 @@ export default function AdminPanel() {
                     <div className={hintClass(isDark)}>
                       {item.dietitian_name} {item.clinic_name ? `- ${item.clinic_name}` : ""}
                     </div>
-                    <div className={["mt-1 text-[11px]", isDark ? "text-zinc-500" : "text-[#6f8e84]"].join(" ")}>
+                    <div className={["mt-1 text-[11px]", isDark ? "text-zinc-500" : "text-[#8a7a61]"].join(" ")}>
                       {formatDate(item.start_date, lang)}
                     </div>
-                    {item.notes ? <div className={["mt-2 text-xs", isDark ? "text-zinc-300" : "text-[#496c62]"].join(" ")}>{item.notes}</div> : null}
+                    {item.notes ? <div className={["mt-2 text-xs", isDark ? "text-zinc-300" : "text-[#7b6d58]"].join(" ")}>{item.notes}</div> : null}
                   </div>
                 ))}
                 {!connectionsLoading && !connections.length ? (
@@ -1498,42 +1343,311 @@ function formatDate(value?: string | null, lang: Lang = "tr") {
   return dt.toLocaleDateString(lang === "tr" ? "tr-TR" : "en-US");
 }
 
+function primaryButtonClass(isDark: boolean, extra = "") {
+  return [
+    "font-black shadow-sm transition hover:-translate-y-0.5 disabled:cursor-not-allowed disabled:opacity-60",
+    isDark
+      ? "rounded-2xl bg-gradient-to-r from-emerald-400 to-teal-300 text-zinc-950 shadow-[0_18px_60px_rgba(16,185,129,0.20)] hover:brightness-110"
+      : "rounded-md bg-[#8a6a3f] text-white hover:bg-[#765932]",
+    extra,
+  ].join(" ");
+}
+
 function btnClass(isDark: boolean) {
-  return ["rounded-xl px-4 py-2 text-xs font-extrabold transition", isDark ? "border border-white/10 bg-white/5 hover:bg-white/10" : "border border-[#2f6154]/22 bg-white/90 hover:bg-white"].join(" ");
+  return [
+    "border px-3 py-1.5 text-xs font-bold shadow-sm transition disabled:cursor-not-allowed disabled:opacity-60",
+    isDark
+      ? "rounded-full border-transparent bg-white/5 text-zinc-100 hover:bg-white/10"
+      : "rounded-md border-[#dfd0b9] bg-[#fffaf0] text-[#6d5433] hover:border-[#c8b18b] hover:bg-white",
+  ].join(" ");
 }
 function tabClass(isDark: boolean, active: boolean) {
-  return ["rounded-lg px-3 py-2 text-xs font-bold transition", active ? (isDark ? "bg-emerald-500/18 text-emerald-100" : "bg-[#dff0e8] text-[#12473d]") : (isDark ? "text-zinc-300 hover:bg-white/10" : "text-[#3e6057] hover:bg-[#eef6f2]")].join(" ");
+  return [
+    "px-2.5 py-1.5 text-xs font-bold transition",
+    active
+      ? (isDark ? "rounded-full bg-emerald-500/18 text-emerald-100 shadow-[0_0_18px_rgba(16,185,129,0.16)]" : "rounded-md bg-[#8a6a3f] text-white shadow-sm")
+      : (isDark ? "rounded-full text-zinc-300 hover:bg-white/10" : "rounded-md text-[#756449] hover:bg-[#fffaf0]"),
+  ].join(" ");
 }
 function panelClass(isDark: boolean) {
-  return ["rounded-[26px] border p-5 backdrop-blur", isDark ? "border-white/10 bg-white/5 shadow-[0_28px_120px_rgba(0,0,0,0.45)]" : "border-[#2f6154]/22 bg-white/82 shadow-[0_20px_75px_rgba(8,23,20,0.10)]"].join(" ");
+  return [
+    "border p-3.5",
+    isDark
+      ? "rounded-2xl border-transparent bg-white/5 shadow-[inset_0_1px_0_rgba(16,185,129,0.08),0_24px_90px_rgba(0,0,0,0.42)]"
+      : "rounded-lg border-[#dfd0b9] bg-[#fffaf0] shadow-sm",
+  ].join(" ");
 }
 function innerPanel(isDark: boolean) {
-  return ["rounded-xl border px-3 py-3", isDark ? "border-white/10 bg-black/20" : "border-[#2f6154]/18 bg-white"].join(" ");
+  return [
+    "border px-3 py-2.5",
+    isDark ? "rounded-xl border-transparent bg-black/20 shadow-[inset_0_1px_0_rgba(16,185,129,0.08)]" : "rounded-md border-[#e4d5bf] bg-[#fdf8ee]",
+  ].join(" ");
+}
+function recordCardClass(isDark: boolean) {
+  return [
+    "border px-3 py-3 transition hover:-translate-y-0.5",
+    isDark
+      ? "rounded-xl border-transparent bg-black/20 shadow-[inset_0_1px_0_rgba(16,185,129,0.08)] hover:border-transparent hover:bg-white/[0.07]"
+      : "rounded-md border-[#e4d5bf] bg-[#fdf8ee] hover:border-[#cbb48d] hover:bg-white",
+  ].join(" ");
 }
 function inputClass(isDark: boolean) {
-  return ["w-full rounded-xl border px-3 py-2.5 text-sm outline-none transition", isDark ? "border-white/10 bg-black/25 text-zinc-100 focus:border-emerald-300/35 focus:ring-2 focus:ring-emerald-300/20" : "border-[#2f6154]/20 bg-white text-[#123a32] focus:border-[#2f6154]/40 focus:ring-2 focus:ring-[#2f6154]/12"].join(" ");
+  return [
+    "w-full border px-3 py-2 text-sm outline-none transition",
+    isDark
+      ? "rounded-xl border-transparent bg-black/20 text-white placeholder-zinc-500 focus:border-emerald-400/40 focus:ring-4 focus:ring-emerald-500/10"
+      : "rounded-md border-[#dfd0b9] bg-[#fffdf7] text-[#342b1d] focus:border-[#8a6a3f]/55 focus:ring-2 focus:ring-[#8a6a3f]/12",
+  ].join(" ");
 }
 function labelClass(isDark: boolean) {
-  return ["mb-1 block text-xs font-bold", isDark ? "text-zinc-300" : "text-[#486b61]"].join(" ");
+  return ["mb-1 block text-xs font-bold", isDark ? "text-zinc-300" : "text-[#806f57]"].join(" ");
 }
 function hintClass(isDark: boolean) {
-  return ["text-sm", isDark ? "text-zinc-400" : "text-[#587a70]"].join(" ");
+  return ["text-xs leading-5", isDark ? "text-zinc-400" : "text-[#7b6d58]"].join(" ");
+}
+
+function SmartSelect({
+  isDark,
+  value,
+  options,
+  onChange,
+}: {
+  isDark: boolean;
+  value: string;
+  options: SelectOption[];
+  onChange: (value: string) => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const rootRef = useRef<HTMLDivElement | null>(null);
+  const selected = options.find((option) => option.value === value) || options[0];
+
+  useEffect(() => {
+    if (!open) return;
+    const closeOnOutside = (event: MouseEvent) => {
+      if (rootRef.current && !rootRef.current.contains(event.target as Node)) setOpen(false);
+    };
+    const closeOnEscape = (event: KeyboardEvent) => {
+      if (event.key === "Escape") setOpen(false);
+    };
+    document.addEventListener("mousedown", closeOnOutside);
+    document.addEventListener("keydown", closeOnEscape);
+    return () => {
+      document.removeEventListener("mousedown", closeOnOutside);
+      document.removeEventListener("keydown", closeOnEscape);
+    };
+  }, [open]);
+
+  return (
+    <div ref={rootRef} className="relative">
+      <button
+        type="button"
+        aria-haspopup="listbox"
+        aria-expanded={open}
+        onClick={() => setOpen((current) => !current)}
+        className={[
+          "flex min-h-[38px] w-full items-center justify-between gap-3 border px-3 py-2 text-left text-sm outline-none transition",
+          isDark
+            ? "rounded-xl border-white/10 bg-black/25 text-white shadow-[0_10px_36px_rgba(0,0,0,0.22)] hover:border-emerald-400/35 hover:bg-white/[0.07] focus:border-emerald-400/45 focus:ring-4 focus:ring-emerald-500/10"
+            : "rounded-md border-[#dfd0b9] bg-[#fffdf7] text-[#342b1d] shadow-sm hover:border-[#c8b18b] hover:bg-white focus:border-[#8a6a3f]/55 focus:ring-2 focus:ring-[#8a6a3f]/12",
+        ].join(" ")}
+      >
+        <span className="min-w-0">
+          <span className="block truncate font-bold">{selected?.label || "-"}</span>
+          {selected?.meta ? (
+            <span className={["mt-0.5 block truncate text-[11px]", isDark ? "text-zinc-500" : "text-[#8a7a61]"].join(" ")}>
+              {selected.meta}
+            </span>
+          ) : null}
+        </span>
+        <span
+          aria-hidden="true"
+          className={[
+            "h-2 w-2 shrink-0 border-b border-r transition-transform",
+            open ? "rotate-[225deg]" : "rotate-45",
+            isDark ? "border-emerald-300" : "border-[#8a6a3f]",
+          ].join(" ")}
+        />
+      </button>
+
+      {open ? (
+        <div
+          role="listbox"
+          className={[
+            "absolute left-0 right-0 top-[calc(100%+6px)] z-50 overflow-hidden border p-1 shadow-2xl",
+            isDark
+              ? "rounded-2xl border-emerald-400/20 bg-[#080b0a]/95 shadow-[0_24px_80px_rgba(0,0,0,0.55)]"
+              : "rounded-lg border-[#d7c3a4] bg-[#fffaf0] shadow-[0_18px_44px_rgba(95,67,31,0.16)]",
+          ].join(" ")}
+        >
+          <div className="max-h-56 space-y-1 overflow-auto pr-1">
+            {options.map((option) => {
+              const active = option.value === value;
+              return (
+                <button
+                  key={option.value || "__empty"}
+                  type="button"
+                  role="option"
+                  aria-selected={active}
+                  onClick={() => {
+                    onChange(option.value);
+                    setOpen(false);
+                  }}
+                  className={[
+                    "flex w-full items-center justify-between gap-3 px-3 py-2 text-left text-xs transition",
+                    active
+                      ? (isDark ? "rounded-xl bg-emerald-500/15 text-emerald-100" : "rounded-md bg-[#f1e4cf] text-[#5b4126]")
+                      : (isDark ? "rounded-xl text-zinc-300 hover:bg-white/[0.08] hover:text-white" : "rounded-md text-[#6d5433] hover:bg-white"),
+                  ].join(" ")}
+                >
+                  <span className="min-w-0">
+                    <span className="block truncate font-black">{option.label}</span>
+                    {option.meta ? (
+                      <span className={["mt-0.5 block truncate text-[11px] font-semibold", isDark ? "text-zinc-500" : "text-[#8a7a61]"].join(" ")}>
+                        {option.meta}
+                      </span>
+                    ) : null}
+                  </span>
+                  {active ? (
+                    <span className={["h-2 w-2 shrink-0 rounded-full", isDark ? "bg-emerald-300" : "bg-[#8a6a3f]"].join(" ")} />
+                  ) : null}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
+function userLabel(item: UserOverviewItem) {
+  return [item.first_name, item.last_name].filter(Boolean).join(" ").trim() || item.email || item.user_id;
+}
+
+function normalizeText(value: unknown) {
+  return String(value || "")
+    .trim()
+    .toLocaleLowerCase("tr-TR")
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "");
+}
+
+function roleNamesFromList(roles?: Array<string | { name?: string }>) {
+  return (roles || []).map((role) => normalizeText(typeof role === "string" ? role : role?.name));
+}
+
+function roleNames(item: UserOverviewItem) {
+  return roleNamesFromList(item.roles);
+}
+
+function personName(value: Pick<UserOverviewItem, "first_name" | "last_name" | "email" | "user_id"> | SessionUser) {
+  return [value.first_name, value.last_name].filter(Boolean).join(" ").trim() || value.email || ("user_id" in value ? value.user_id : "");
+}
+
+function samePerson(item: UserOverviewItem, user?: SessionUser | null) {
+  if (!user) return false;
+  const userId = normalizeText(user.id || user.user_id);
+  const itemId = normalizeText(item.user_id);
+  const userEmail = normalizeText(user.email);
+  const itemEmail = normalizeText(item.email);
+  const userName = normalizeText(personName(user));
+  const itemName = normalizeText(personName(item));
+
+  return Boolean(
+    (userId && itemId && userId === itemId) ||
+      (userEmail && itemEmail && userEmail === itemEmail) ||
+      (userName && itemName && userName === itemName),
+  );
+}
+
+function mergeCurrentAdminSignal(item: UserOverviewItem, user?: SessionUser | null): UserOverviewItem {
+  if (!samePerson(item, user) || !roleNamesFromList(user?.roles).includes("admin")) return item;
+  const roles = item.roles || [];
+  return roleNamesFromList(roles).includes("admin") ? item : { ...item, roles: [...roles, "admin"] };
+}
+
+function hasAdminSignal(item: UserOverviewItem) {
+  const email = normalizeText(item.email);
+  const name = normalizeText(personName(item));
+  const roles = roleNames(item);
+  return (
+    email === "mertb2627@gmail.com" ||
+    name === "mert bulbul" ||
+    roles.some((role) => ["admin", "administrator", "yonetici"].includes(role))
+  );
+}
+
+function accountKind(item: UserOverviewItem): AccountKind {
+  const roles = roleNames(item);
+  const accountType = normalizeText(item.account_type);
+  if (hasAdminSignal(item)) return "admin";
+  if (accountType === "diyetisyen" || accountType === "dietitian" || roles.some((role) => role === "diyetisyen" || role === "dietitian")) {
+    return "dietitian";
+  }
+  if (accountType === "client" || accountType === "danisan" || accountType === "danısan" || roles.some((role) => role === "client" || role === "danisan" || role === "danısan")) {
+    return "client";
+  }
+  return "user";
+}
+
+function recordKind(item: UserOverviewItem, lang: Lang) {
+  const kind = accountKind(item);
+  if (kind === "admin") return "Admin";
+  if (kind === "dietitian") return lang === "tr" ? "Diyetisyen" : "Dietitian";
+  if (kind === "client") return lang === "tr" ? "Danışan" : "Client";
+  return lang === "tr" ? "Kullanıcı" : "User";
+}
+
+function recordSubtitle(item: UserOverviewItem, lang: Lang) {
+  const kind = accountKind(item);
+  if (kind === "admin") return lang === "tr" ? "Yönetici hesabı" : "Admin account";
+  if (kind === "dietitian") return item.clinic_name || item.clinic_city || (lang === "tr" ? "Klinik yok" : "No clinic");
+  if (kind === "client") return item.assigned_dietitian_name || (lang === "tr" ? "Atama yok" : "No assignment");
+  return item.email || item.phone_number || "-";
+}
+
+function recordMeta(item: UserOverviewItem, lang: Lang) {
+  const kind = accountKind(item);
+  if (kind === "admin") return lang === "tr" ? "Yönetici" : "Admin";
+  if (kind === "dietitian") {
+    return `${lang === "tr" ? "Danışan" : "Clients"}: ${item.assigned_clients_count || 0}`;
+  }
+  if (kind === "client") {
+    return item.assigned_dietitian_id || item.assigned_dietitian_name
+      ? (lang === "tr" ? "Atandı" : "Assigned")
+      : (lang === "tr" ? "Atama yok" : "No assignment");
+  }
+  return lang === "tr" ? "Kayıt" : "Record";
+}
+
+function recordBadgeClass(isDark: boolean, item: UserOverviewItem) {
+  const tone = accountKind(item);
+  return [
+    "shrink-0 rounded-full border px-2 py-1 text-[10px] font-black uppercase tracking-wide",
+    tone === "admin"
+      ? (isDark ? "border-sky-300/25 bg-sky-400/10 text-sky-100" : "border-[#b8c9da] bg-[#edf5fb] text-[#27556f]")
+      : tone === "dietitian"
+        ? (isDark ? "border-emerald-300/25 bg-emerald-500/12 text-emerald-100" : "border-[#c7dbc7] bg-[#edf6ec] text-[#285743]")
+        : (isDark ? "border-white/10 bg-white/5 text-zinc-200" : "border-[#e4d5bf] bg-[#fff7e8] text-[#745737]"),
+  ].join(" ");
 }
 
 function StatCard({ isDark, label, value }: { isDark: boolean; label: string; value: string }) {
-  return <div className={innerPanel(isDark)}><div className={["text-[11px] font-semibold", isDark ? "text-zinc-400" : "text-[#5a7b71]"].join(" ")}>{label}</div><div className="mt-1 text-xl font-black">{value}</div></div>;
+  return <div className={innerPanel(isDark)}><div className={["truncate text-[10px] font-semibold uppercase", isDark ? "text-zinc-400" : "text-[#806f57]"].join(" ")}>{label}</div><div className="mt-0.5 text-xl font-black leading-none">{value}</div></div>;
 }
 function HealthRow({ isDark, label, ok, okText, badText }: { isDark: boolean; label: string; ok: boolean; okText: string; badText: string }) {
-  return <div className={["mt-2 flex items-center justify-between rounded-lg px-2 py-2", isDark ? "bg-black/25" : "bg-[#f3faf6]"].join(" ")}><span className={["text-xs font-semibold", isDark ? "text-zinc-300" : "text-[#3f6459]"].join(" ")}>{label}</span><span className={["rounded-full px-2 py-1 text-[10px] font-bold", ok ? (isDark ? "bg-emerald-500/16 text-emerald-100" : "bg-[#dff0e8] text-[#134a3f]") : (isDark ? "bg-amber-500/16 text-amber-100" : "bg-amber-100 text-amber-800")].join(" ")}>{ok ? okText : badText}</span></div>;
+  return <div className={["mt-2 flex items-center justify-between px-2.5 py-2", isDark ? "rounded-xl bg-black/25" : "rounded-md bg-[#f4efe4]"].join(" ")}><span className={["text-xs font-semibold", isDark ? "text-zinc-300" : "text-[#756449]"].join(" ")}>{label}</span><span className={["px-2 py-1 text-[10px] font-bold", ok ? (isDark ? "rounded-full bg-emerald-500/15 text-emerald-100" : "rounded-md bg-[#f1e4cf] text-[#745737]") : (isDark ? "rounded-full bg-amber-500/16 text-amber-100" : "rounded-md bg-amber-100 text-amber-800")].join(" ")}>{ok ? okText : badText}</span></div>;
 }
 function DetailRow({ isDark, k, v }: { isDark: boolean; k: string; v: string }) {
-  return <div className={["grid grid-cols-[96px_1fr] gap-2 rounded-lg px-2 py-1.5", isDark ? "bg-black/20" : "bg-[#f4faf7]"].join(" ")}><div className={["text-[11px] font-bold", isDark ? "text-zinc-400" : "text-[#5e7f74]"].join(" ")}>{k}</div><div className={["break-words text-xs font-semibold", isDark ? "text-zinc-200" : "text-[#2f564a]"].join(" ")}>{v}</div></div>;
+  return <div className={["grid grid-cols-[86px_1fr] gap-2 px-2.5 py-1.5", isDark ? "rounded-lg bg-black/25" : "rounded-md bg-[#f4efe4]"].join(" ")}><div className={["text-[10px] font-bold", isDark ? "text-zinc-400" : "text-[#806f57]"].join(" ")}>{k}</div><div className={["break-words text-xs font-semibold", isDark ? "text-zinc-200" : "text-[#4f3d25]"].join(" ")}>{v}</div></div>;
 }
 function RateRow({ isDark, label, value, tone }: { isDark: boolean; label: string; value: number; tone: "emerald" | "teal" | "amber" }) {
   const safe = Math.max(0, Math.min(100, value));
-  const fill = tone === "teal" ? "from-teal-300 to-emerald-300" : tone === "amber" ? "from-amber-300 to-orange-300" : "from-emerald-400 to-teal-300";
-  return <div><div className="flex items-center justify-between text-xs"><span className={isDark ? "text-zinc-300" : "text-[#3f6459]"}>{label}</span><span className="font-black">{safe}%</span></div><div className={["mt-1 h-2 w-full overflow-hidden rounded-full", isDark ? "bg-white/10" : "bg-[#d7e6df]"].join(" ")}><div className={`h-2 rounded-full bg-gradient-to-r ${fill}`} style={{ width: `${safe}%` }} /></div></div>;
+  const fill = isDark
+    ? tone === "amber" ? "bg-amber-300" : tone === "teal" ? "bg-teal-300" : "bg-emerald-400"
+    : tone === "amber" ? "bg-[#c9922e]" : tone === "teal" ? "bg-[#a37e4d]" : "bg-[#8a6a3f]";
+  return <div><div className="flex items-center justify-between text-xs"><span className={isDark ? "text-zinc-300" : "text-[#756449]"}>{label}</span><span className="font-black">{safe}%</span></div><div className={["mt-1 h-2 w-full overflow-hidden rounded-full", isDark ? "bg-white/10" : "bg-[#e5d9c7]"].join(" ")}><div className={`h-2 rounded-full ${fill}`} style={{ width: `${safe}%` }} /></div></div>;
 }
 function ErrorBox({ isDark, children }: { isDark: boolean; children: string }) {
-  return <div className={["mt-3 rounded-xl border px-3 py-2 text-xs", isDark ? "border-rose-500/30 bg-rose-500/10 text-rose-200" : "border-rose-400/40 bg-rose-100 text-rose-700"].join(" ")}>{children}</div>;
+  return <div className={["mt-3 rounded-md border px-3 py-2 text-xs", isDark ? "border-rose-500/30 bg-rose-500/10 text-rose-200" : "border-rose-300 bg-rose-50 text-rose-700"].join(" ")}>{children}</div>;
 }

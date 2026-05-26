@@ -3,10 +3,11 @@ import { useAppSettings } from "../context/AppSettingsContext";
 import type { Lang, Theme } from "../context/AppSettingsContext";
 
 export default function SettingsDrawer() {
-  const { theme, lang, isDark, applySettings } = useAppSettings();
+  const { theme, lang, applySettings } = useAppSettings();
   const [open, setOpen] = useState(false);
   const [draftTheme, setDraftTheme] = useState<Theme>(theme);
   const [draftLang, setDraftLang] = useState<Lang>(lang);
+  const isGreen = theme === "green";
 
   useEffect(() => {
     if (!open) return;
@@ -41,135 +42,90 @@ export default function SettingsDrawer() {
         onClick={openDrawerWithCurrentSettings}
         title={lang === "tr" ? "Ayarlar" : "Settings"}
         aria-label={lang === "tr" ? "Ayarlar" : "Settings"}
-        className="fixed bottom-5 right-5 z-[90] inline-flex h-12 w-12 items-center justify-center rounded-2xl border border-emerald-300/30 bg-gradient-to-r from-emerald-400 to-teal-300 text-zinc-950 shadow-[0_16px_50px_rgba(16,185,129,0.45)] transition hover:brightness-110"
+        className={[
+          "fixed bottom-5 right-5 z-[90] inline-flex h-12 w-12 items-center justify-center rounded-2xl border text-white shadow-lg transition hover:-translate-y-0.5",
+          isGreen
+            ? "border-[#7fb897] bg-[#1f6b50] shadow-[0_16px_42px_rgba(31,107,80,0.32)]"
+            : "border-[#c8b18b] bg-[#8a6a3f] shadow-[0_16px_42px_rgba(138,106,63,0.28)]",
+        ].join(" ")}
       >
         <svg viewBox="0 0 24 24" fill="none" className="h-6 w-6" aria-hidden="true">
-          <circle cx="12" cy="12" r="7.2" className="stroke-zinc-900" strokeWidth="1.8" />
-          <circle cx="12" cy="12" r="3.2" className="stroke-zinc-900" strokeWidth="1.8" />
-          <path d="M12 2.8v2.1M12 19.1v2.1M2.8 12h2.1M19.1 12h2.1M5.5 5.5l1.5 1.5M17 17l1.5 1.5M5.5 18.5L7 17M17 7l1.5-1.5" className="stroke-zinc-900" strokeWidth="1.8" strokeLinecap="round" />
+          <circle cx="12" cy="12" r="7.2" className="stroke-current" strokeWidth="1.8" />
+          <circle cx="12" cy="12" r="3.2" className="stroke-current" strokeWidth="1.8" />
+          <path d="M12 2.8v2.1M12 19.1v2.1M2.8 12h2.1M19.1 12h2.1M5.5 5.5l1.5 1.5M17 17l1.5 1.5M5.5 18.5L7 17M17 7l1.5-1.5" className="stroke-current" strokeWidth="1.8" strokeLinecap="round" />
         </svg>
       </button>
 
       {open ? (
-        <div className="fixed inset-0 z-[100] grid place-items-center bg-black/55 p-4 backdrop-blur-[2px]">
+        <div className="fixed inset-0 z-[100] grid place-items-center bg-black/45 p-4">
           <div
             className={[
-              "relative w-full max-w-md overflow-hidden rounded-3xl border p-6 shadow-[0_32px_120px_rgba(0,0,0,0.45)]",
-              isDark
-                ? "border-white/15 bg-[#0d1114] text-white"
-                : "border-[#2f6154]/20 bg-[#f7fbf9] text-[#123a32]",
+              "relative w-full max-w-md overflow-hidden rounded-2xl border p-6 shadow-[0_32px_100px_rgba(0,0,0,0.30)]",
+              isGreen
+                ? "border-transparent bg-[#07100d] text-zinc-50"
+                : "border-[#dfd0b9] bg-[#fffaf0] text-[#342b1d]",
             ].join(" ")}
           >
-            <div className="pointer-events-none absolute inset-0">
-              <div className={isDark ? "absolute -left-20 -top-24 h-52 w-52 rounded-full bg-emerald-400/16 blur-3xl" : "absolute -left-20 -top-24 h-52 w-52 rounded-full bg-emerald-500/14 blur-3xl"} />
-              <div className={isDark ? "absolute -right-24 -bottom-24 h-56 w-56 rounded-full bg-teal-300/14 blur-3xl" : "absolute -right-24 -bottom-24 h-56 w-56 rounded-full bg-teal-400/12 blur-3xl"} />
-              <div className={isDark ? "absolute left-6 right-6 top-0 h-px bg-gradient-to-r from-transparent via-emerald-300/70 to-transparent" : "absolute left-6 right-6 top-0 h-px bg-gradient-to-r from-transparent via-emerald-700/45 to-transparent"} />
-            </div>
-
-            <div className="mb-5 flex items-center justify-between">
+            <div className="mb-5 flex items-start justify-between gap-4">
               <div>
-                <h3 className="text-lg font-extrabold">{draftLang === "tr" ? "Ayarlar" : "Settings"}</h3>
-                <p className={["mt-1 text-xs", isDark ? "text-zinc-400" : "text-[#4d6b62]"].join(" ")}>
-                  {draftLang === "tr" ? "Tema ve dil tercihlerini güncelle." : "Update your theme and language preferences."}
+                <h3 className="text-lg font-black">{draftLang === "tr" ? "Ayarlar" : "Settings"}</h3>
+                <p className={["mt-1 text-sm leading-6", isGreen ? "text-zinc-400" : "text-[#7b6d58]"].join(" ")}>
+                  {draftLang === "tr" ? "Arayüz temasını ve dil tercihini güncelle." : "Update interface theme and language."}
                 </p>
               </div>
               <button
                 type="button"
                 onClick={() => setOpen(false)}
                 className={[
-                  "rounded-xl border px-3 py-1.5 text-xs font-semibold",
-                  isDark ? "border-white/15 bg-white/5 text-zinc-200" : "border-[#2f6154]/20 bg-white text-[#2b574b]",
+                  "rounded-md border px-3 py-1.5 text-xs font-bold transition",
+                  isGreen
+                    ? "border-transparent bg-white/5 text-zinc-100 hover:bg-white/10"
+                    : "border-[#dfd0b9] bg-white text-[#6d5433] hover:bg-[#fbf4e8]",
                 ].join(" ")}
               >
                 {draftLang === "tr" ? "Kapat" : "Close"}
               </button>
             </div>
 
-            <section className="space-y-4">
+            <section className="space-y-5">
               <div>
-                <div className={["mb-2 text-xs font-bold", isDark ? "text-zinc-300" : "text-[#4d6b62]"].join(" ")}>
+                <div className={["mb-2 text-xs font-black uppercase", isGreen ? "text-emerald-200" : "text-[#806f57]"].join(" ")}>
                   {draftLang === "tr" ? "Tema" : "Theme"}
                 </div>
-                <div
-                  className={[
-                    "inline-flex h-10 w-full items-center rounded-full p-1 shadow-[0_0_0_1px_rgba(16,185,129,0.18)_inset,0_0_24px_rgba(16,185,129,0.12)]",
-                    isDark ? "border border-white/15 bg-white/5" : "border border-[#2f6154]/20 bg-white",
-                  ].join(" ")}
-                >
-                  <button
-                    type="button"
-                    onClick={() => setDraftTheme("light")}
-                    className={[
-                      "h-8 flex-1 rounded-full text-xs font-black transition",
-                      draftTheme === "light"
-                        ? isDark
-                          ? "bg-emerald-500/20 text-emerald-100 shadow-[0_0_18px_rgba(16,185,129,0.35)]"
-                          : "bg-[#dbece4] text-[#0f2f29]"
-                        : isDark
-                          ? "text-zinc-300 hover:bg-white/10"
-                          : "text-[#3e6057] hover:bg-[#eef5f1]",
-                    ].join(" ")}
-                  >
-                    {draftLang === "tr" ? "Açık" : "Light"}
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setDraftTheme("dark")}
-                    className={[
-                      "h-8 flex-1 rounded-full text-xs font-black transition",
-                      draftTheme === "dark"
-                        ? isDark
-                          ? "bg-emerald-500/20 text-emerald-100 shadow-[0_0_18px_rgba(16,185,129,0.35)]"
-                          : "bg-[#dbece4] text-[#0f2f29]"
-                        : isDark
-                          ? "text-zinc-300 hover:bg-white/10"
-                          : "text-[#3e6057] hover:bg-[#eef5f1]",
-                    ].join(" ")}
-                  >
-                    {draftLang === "tr" ? "Koyu" : "Dark"}
-                  </button>
+                <div className="grid gap-2 sm:grid-cols-2">
+                  <ThemeButton
+                    active={draftTheme === "green"}
+                    title={draftLang === "tr" ? "Yeşil" : "Green"}
+                    description={draftLang === "tr" ? "Daha klinik, canlı ve operasyon odaklı." : "Clinical, fresh and operational."}
+                    onClick={() => setDraftTheme("green")}
+                    tone="green"
+                  />
+                  <ThemeButton
+                    active={draftTheme === "cream"}
+                    title={draftLang === "tr" ? "Krem" : "Cream"}
+                    description={draftLang === "tr" ? "Daha sıcak, sakin ve okunaklı." : "Warm, calm and highly readable."}
+                    onClick={() => setDraftTheme("cream")}
+                    tone="cream"
+                  />
                 </div>
               </div>
 
               <div>
-                <div className={["mb-2 text-xs font-bold", isDark ? "text-zinc-300" : "text-[#4d6b62]"].join(" ")}>
+                <div className={["mb-2 text-xs font-black uppercase", isGreen ? "text-emerald-200" : "text-[#806f57]"].join(" ")}>
                   {draftLang === "tr" ? "Dil" : "Language"}
                 </div>
-                <div
-                  className={[
-                    "inline-flex h-10 w-full items-center rounded-full p-1 shadow-[0_0_0_1px_rgba(16,185,129,0.18)_inset,0_0_24px_rgba(16,185,129,0.12)]",
-                    isDark ? "border border-white/15 bg-white/5" : "border border-[#2f6154]/20 bg-white",
-                  ].join(" ")}
-                >
+                <div className={["grid grid-cols-2 rounded-lg border p-1", isGreen ? "border-transparent bg-white/5" : "border-[#dfd0b9] bg-[#f7eedf]"].join(" ")}>
                   <button
                     type="button"
                     onClick={() => setDraftLang("tr")}
-                    className={[
-                      "h-8 flex-1 rounded-full text-xs font-black transition",
-                      draftLang === "tr"
-                        ? isDark
-                          ? "bg-emerald-500/20 text-emerald-100 shadow-[0_0_18px_rgba(16,185,129,0.35)]"
-                          : "bg-[#dbece4] text-[#0f2f29]"
-                        : isDark
-                          ? "text-zinc-300 hover:bg-white/10"
-                          : "text-[#3e6057] hover:bg-[#eef5f1]",
-                    ].join(" ")}
+                    className={languageButtonClass(draftLang === "tr", draftTheme)}
                   >
                     Türkçe
                   </button>
                   <button
                     type="button"
                     onClick={() => setDraftLang("en")}
-                    className={[
-                      "h-8 flex-1 rounded-full text-xs font-black transition",
-                      draftLang === "en"
-                        ? isDark
-                          ? "bg-emerald-500/20 text-emerald-100 shadow-[0_0_18px_rgba(16,185,129,0.35)]"
-                          : "bg-[#dbece4] text-[#0f2f29]"
-                        : isDark
-                          ? "text-zinc-300 hover:bg-white/10"
-                          : "text-[#3e6057] hover:bg-[#eef5f1]",
-                    ].join(" ")}
+                    className={languageButtonClass(draftLang === "en", draftTheme)}
                   >
                     EN
                   </button>
@@ -180,7 +136,10 @@ export default function SettingsDrawer() {
             <button
               type="button"
               onClick={saveSettings}
-              className="mt-6 w-full rounded-2xl bg-gradient-to-r from-emerald-400 to-teal-300 px-4 py-3 text-sm font-extrabold text-zinc-950 shadow-[0_14px_40px_rgba(16,185,129,0.35)] transition hover:brightness-110"
+              className={[
+                "mt-6 w-full rounded-lg px-4 py-3 text-sm font-black text-white shadow-sm transition hover:-translate-y-0.5",
+                draftTheme === "green" ? "bg-[#1f6b50] hover:bg-[#185840]" : "bg-[#8a6a3f] hover:bg-[#765932]",
+              ].join(" ")}
             >
               {draftLang === "tr" ? "Kaydet ve Uygula" : "Save and Apply"}
             </button>
@@ -189,4 +148,60 @@ export default function SettingsDrawer() {
       ) : null}
     </>
   );
+}
+
+function ThemeButton({
+  active,
+  title,
+  description,
+  tone,
+  onClick,
+}: {
+  active: boolean;
+  title: string;
+  description: string;
+  tone: Theme;
+  onClick: () => void;
+}) {
+  const isGreen = tone === "green";
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={[
+        "rounded-lg border p-3 text-left transition hover:-translate-y-0.5",
+        active
+          ? isGreen
+            ? "border-[#1f6b50] bg-[#e2f1e6] shadow-sm"
+            : "border-[#8a6a3f] bg-[#f5ead7] shadow-sm"
+          : isGreen
+            ? "border-[#bfd8c5] bg-white hover:bg-[#f3faf5]"
+            : "border-[#dfd0b9] bg-white hover:bg-[#fbf4e8]",
+      ].join(" ")}
+    >
+      <div className="flex items-center gap-2">
+        <span className={["h-3 w-3 rounded-full", isGreen ? "bg-[#1f6b50]" : "bg-[#b28a52]"].join(" ")} />
+        <span className={["text-sm font-black", isGreen ? "text-[#12372e]" : "text-[#4f3d25]"].join(" ")}>
+          {title}
+        </span>
+      </div>
+      <p className={["mt-2 text-xs leading-5", isGreen ? "text-[#527164]" : "text-[#7b6d58]"].join(" ")}>
+        {description}
+      </p>
+    </button>
+  );
+}
+
+function languageButtonClass(active: boolean, theme: Theme) {
+  const isGreen = theme === "green";
+  return [
+    "rounded-md px-3 py-2 text-xs font-black transition",
+    active
+      ? isGreen
+        ? "bg-[#1f6b50] text-white shadow-sm"
+        : "bg-[#8a6a3f] text-white shadow-sm"
+      : isGreen
+        ? "text-zinc-300 hover:bg-white/10"
+        : "text-[#756449] hover:bg-white",
+  ].join(" ");
 }

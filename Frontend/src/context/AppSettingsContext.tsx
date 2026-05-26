@@ -1,7 +1,7 @@
 /* eslint-disable react-refresh/only-export-components */
 import { createContext, useContext, useEffect, useMemo, useState } from "react";
 
-export type Theme = "dark" | "light";
+export type Theme = "green" | "cream";
 export type Lang = "tr" | "en";
 
 type AppSettingsContextValue = {
@@ -16,7 +16,9 @@ type AppSettingsContextValue = {
 const AppSettingsContext = createContext<AppSettingsContextValue | null>(null);
 
 function readInitialTheme(): Theme {
-  return localStorage.getItem("sd_theme") === "dark" ? "dark" : "light";
+  const storedTheme = localStorage.getItem("sd_theme");
+  if (storedTheme === "green" || storedTheme === "dark") return "green";
+  return "cream";
 }
 
 function readInitialLang(): Lang {
@@ -54,7 +56,7 @@ export function AppSettingsProvider({ children }: { children: React.ReactNode })
     () => ({
       theme,
       lang,
-      isDark: theme === "dark",
+      isDark: theme === "green",
       setTheme,
       setLang,
       applySettings: (nextTheme: Theme, nextLang: Lang) => {

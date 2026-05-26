@@ -16,7 +16,7 @@ export default function AIAssistantWidget() {
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+    messagesEndRef.current?.scrollIntoView({ block: "end" });
   }, [messages]);
 
   useEffect(() => {
@@ -96,16 +96,16 @@ export default function AIAssistantWidget() {
       </button>
 
       {isOpen && (
-        <div className={`fixed bottom-[144px] right-5 z-[90] flex w-[360px] flex-col overflow-hidden rounded-3xl border shadow-[0_32px_120px_rgba(0,0,0,0.45)] ${isDark ? "border-white/15 bg-[#0d1114] text-white" : "border-[#2f6154]/20 bg-[#f7fbf9] text-[#123a32]"}`} style={{ height: '520px' }}>
+        <div className={`fixed bottom-[144px] right-5 z-[90] flex w-[360px] flex-col overflow-hidden rounded-3xl border shadow-[0_32px_120px_rgba(0,0,0,0.45)] ${isDark ? "border-transparent bg-[#0d1114] text-white" : "border-[#2f6154]/20 bg-[#f7fbf9] text-[#123a32]"}`} style={{ height: '520px' }}>
           
-          <div className={`flex items-center justify-between p-4 border-b ${isDark ? "border-white/10" : "border-black/5"}`}>
+          <div className={`flex items-center justify-between p-4 border-b ${isDark ? "border-emerald-400/10" : "border-black/5"}`}>
             <h3 className="text-sm font-extrabold flex items-center gap-2">
                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-4 w-4 text-purple-400">
                   <path d="m12 3-1.912 5.813a2 2 0 0 1-1.275 1.275L3 12l5.813 1.912a2 2 0 0 1 1.275 1.275L12 21l1.912-5.813a2 2 0 0 1 1.275-1.275L21 12l-5.813-1.912a2 2 0 0 1-1.275-1.275L12 3Z" />
                </svg>
                SmartDiet AI
             </h3>
-            <button onClick={() => setIsOpen(false)} className={`rounded-xl border px-2 py-1 text-xs font-semibold ${isDark ? "border-white/15 bg-white/5 text-zinc-200" : "border-[#2f6154]/20 bg-white text-[#2b574b]"}`}>Kapat</button>
+            <button onClick={() => setIsOpen(false)} className={`rounded-xl border px-2 py-1 text-xs font-semibold ${isDark ? "border-transparent bg-white/5 text-zinc-200" : "border-[#2f6154]/20 bg-white text-[#2b574b]"}`}>Kapat</button>
           </div>
 
           <div className="flex-1 overflow-y-auto p-4 space-y-4">
@@ -126,14 +126,14 @@ export default function AIAssistantWidget() {
             <div ref={messagesEndRef} />
           </div>
 
-          <div className={`p-4 border-t ${isDark ? "border-white/10 bg-[#0d1114]" : "border-black/5 bg-[#f7fbf9]"}`}>
+          <div className={`p-4 border-t ${isDark ? "border-emerald-400/10 bg-[#0d1114]" : "border-black/5 bg-[#f7fbf9]"}`}>
             <form onSubmit={(e) => { e.preventDefault(); sendMessage(); }} className="flex gap-2">
               <input
                 type="text"
                 value={input}
                 onChange={(e) => setInput(e.target.value)}
                 placeholder="Mesajınızı yazın..."
-                className={`flex-1 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 ${isDark ? "bg-white/5 border border-white/10 text-white placeholder-zinc-500" : "bg-white border border-[#2f6154]/20 text-[#123a32] placeholder-gray-400"}`}
+                className={`flex-1 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 ${isDark ? "border border-transparent bg-white/5 text-white placeholder-zinc-500" : "bg-white border border-[#2f6154]/20 text-[#123a32] placeholder-gray-400"}`}
               />
               <button
                 type="submit"

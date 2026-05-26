@@ -372,8 +372,6 @@ export default function Register() {
               : "absolute inset-0 opacity-[0.12] [background-image:radial-gradient(rgba(8,37,31,0.11)_1px,transparent_1px)] [background-size:22px_22px]"
           }
         />
-        <div className={isDark ? "absolute -top-56 -left-56 h-[720px] w-[720px] rounded-full bg-emerald-500/15 blur-[120px]" : "absolute -top-56 -left-56 h-[720px] w-[720px] rounded-full bg-emerald-600/16 blur-[120px]"} />
-        <div className={isDark ? "absolute -bottom-72 -right-72 h-[820px] w-[820px] rounded-full bg-teal-400/12 blur-[140px]" : "absolute -bottom-72 -right-72 h-[820px] w-[820px] rounded-full bg-teal-400/12 blur-[140px]"} />
       </div>
 
       <header className="relative z-10 mx-auto flex w-full max-w-6xl items-center justify-between px-4 py-5 sm:px-6">
@@ -422,7 +420,7 @@ export default function Register() {
         </section>
 
         <section>
-          <div className={isDark ? "rounded-[26px] border border-white/10 bg-white/5 p-5 shadow-[0_40px_140px_rgba(0,0,0,0.65)] backdrop-blur sm:p-7" : "rounded-[26px] border border-[#325d51]/25 bg-[#eaf2ed]/84 p-5 shadow-[0_40px_120px_rgba(8,22,20,0.12)] backdrop-blur sm:p-7"}>
+          <div className={isDark ? "rounded-[26px] border border-white/10 bg-white/5 p-5 shadow-[0_40px_140px_rgba(0,0,0,0.65)] sm:p-7" : "rounded-[26px] border border-[#325d51]/25 bg-[#eaf2ed]/84 p-5 shadow-[0_40px_120px_rgba(8,22,20,0.12)] sm:p-7"}>
             <div className="mb-5">
               <div className={isDark ? "text-base font-extrabold text-white" : "text-base font-extrabold text-[#0e2d27]"}>{t.cardTitle}</div>
               <div className={isDark ? "mt-1 text-xs text-zinc-400" : "mt-1 text-xs text-[#4d6b62]"}>{t.cardSub}</div>
@@ -666,7 +664,7 @@ function Field({
 
 function InfoPill({ isDark, icon, title, desc }: { isDark: boolean; icon: string; title: string; desc: string }) {
   return (
-    <div className={isDark ? "rounded-2xl border border-white/10 bg-white/5 p-4 backdrop-blur" : "rounded-2xl border border-[#325d51]/25 bg-[#eaf2ed]/84 p-4 backdrop-blur"}>
+    <div className={isDark ? "rounded-2xl border border-white/10 bg-white/5 p-4" : "rounded-2xl border border-[#325d51]/25 bg-[#eaf2ed]/84 p-4"}>
       <div className="flex items-center justify-between">
         <div className={isDark ? "text-sm font-extrabold text-white" : "text-sm font-extrabold text-[#0e2d27]"}>{title}</div>
         <div className={isDark ? "text-sm text-zinc-300" : "text-sm text-[#36544c]"}>{icon}</div>
@@ -675,4 +673,3 @@ function InfoPill({ isDark, icon, title, desc }: { isDark: boolean; icon: string
     </div>
   );
 }
-
