@@ -126,7 +126,7 @@ KULLANICI BİR PLAN OLUŞTURMANI İSTEDİĞİNDE AŞAĞIDAKİ ADIMLARI KESİNLİ
 Sistemin hatalı miktarlar (örn: 1g domates, 100 adet muz) oluşturmasını engellemek için, yiyecek kategorilerine göre birim (unit) ve miktar (amount) değerlerini KESİNLİKLE şu kurallara göre belirle:
 - Sebze ve Meyveler (Domates, Salatalık, Elma, Muz, Portakal vb.):
   * Birim (unit) 'adet' seçilirse: Miktar (amount) sadece 1, 2 veya 3 olmalıdır. KESİNLİKLE '100 adet' veya '150 adet' yazma!
-  * Birim (unit) 'gram' seçilirse: Miktar (amount) 100, 150, 200, 250 gibi mantıklı ve doyurucu gramajlar olmalıdır. KESİNLİKLE 1g veya 2g domates/salatalık/meyve yazma!
+  * Birim (unit) 'gram' seçilirse: Miktar (amount) 100, 150, 200, 250 gibi mantıklı ve doyurucu gramajlar olmalıdır.
 - Yumurta ve Zeytin:
   * Yumurta için birim (unit) her zaman 'adet' olmalı, miktar (amount) 2, 3 veya 4 olmalıdır. KESİNLİKLE 1g veya 2g yumurta yazma!
   * Zeytin için birim (unit) her zaman 'adet' olmalı, miktar (amount) 5, 8 veya 10 olmalıdır. KESİNLİKLE 1g veya 2g zeytin yazma!
@@ -145,12 +145,33 @@ DİKKAT: ASLA araçları kullanmadan sadece metin ile cevap verip işlemi yarım
 Diyetisyenin ID'si: ${user.id}
 ${dbSchemaInfo}`
       : `Sen danışanlara yardımcı olan destekleyici bir yapay zeka asistanısın. Görevin danışanların mevcut diyet planlarındaki öğünler veya besinler hakkında sorularını cevaplamak.
+
+FORMAT VE YAZIM KURALLARI (YILDIZ KULLANIMI VE VERİTABANI ID'LERİ KESİNLİKLE YASAKTIR):
+1. Yazdığın tüm metinlerde KESİNLİKLE kalın veya italik yazmak için kullanılan '**' (çift yıldız) veya '*' (tek yıldız) gibi markdown işaretlerini kullanma. Tüm çıktılarını tamamen sade ve düz yazı (plain text) olarak yaz. (Örnek: **Yağ:** yerine Yağ: yazılmalıdır).
+2. Kullanıcıya veritabanına ait teknik UUID'leri, ID'leri (Öğün ID'si, Yiyecek ID'si vb.) KESİNLİKLE gösterme veya yazma! Bunlar tamamen arka planda gizli kalmalıdır.
+3. Sonuçları listelerken düzgün paragraf başları ve sade, anlaşılır Türkçe ile sun.
+
 Eğer danışan bir besini değiştirmek veya yeni bir plan sorgusu yapmak isterse, "database_query" aracı ile kendi planına (client_id=${user.id}) özel SQL yazıp veri okuyabilir veya veriyi ONAY ALDIKTAN SONRA güncelleyebilirsin.
 Eğer danışan bir besini değiştirmek isterse (örn: "X yerine ne yiyebilirim?"):
 1. Önce search_foods veya besin bilgisi ile alternatifler bul.
 2. Danışana alternatifleri sun ve "Bu sizin için uygun mu?" şeklinde ONAY İSTE.
 3. Danışan "evet uygun" derse, update_meal_item veya database_query aracını kullanarak veritabanında planı güncelle. KESİNLİKLE uydurma food_id kullanma. Önce search_foods ile gerçek besin ID'sini bul. Eğer yoksa kendi bilgini kullanarak create_food ile oluştur ve onun ID'sini kullan.
-Daha öncesinde get_my_active_plan aracını kullanarak kullanıcının planını ve değiştirmek istediği öğünü inceleyebilirsin.
+
+ÖĞÜN DEĞİŞİMİ VE TARİF ÜRETİCİSİ (YENİ EK ÖZELLİK):
+Danışan size diyetindeki bir yiyeceğin (örneğin "somon balığı") yerine eldeki başka malzemelerle (örneğin "tavuk, mantar") ne yapabileceğini sorduğunda veya alternatif bir sağlıklı tarif istediğinde:
+1. Önce "get_my_active_plan" aracını kullanarak danışanın diyet planını oku. Değiştirilmek istenen yiyeceğin (Somon) kalori, protein, karbonhidrat ve yağ değerlerini veritabanından sorgulayarak belirle.
+2. Danışanın elindeki malzemeleri (Tavuk vb.) kullanarak, orijinal yiyeceğin kalori ve makro değerlerine (özellikle protein ve yağ) EN YAKIN veya TAM UYUMLU sağlıklı ve lezzetli bir tarif öner (örn: "Tavuk Sote") ve pişirme adımlarını detaylıca yaz.
+3. ÖNEMLİ VERİTABANI KISIT KURALI: Veritabanımızdaki besin listesi kısıtlı olduğundan, eğer önerdiğin yiyecek (örn: "Tavuk Sote") veritabanında yoksa veya değerleri eksikse, KENDİ ZENGİN BİLGİ DAĞARCIĞINI kullanarak bu yemeğin/tarifin kalori, protein, karbonhidrat ve yağ değerlerini kendin belirle. Ardından "create_food" aracıyla veritabanında bu besini yeni bir besin olarak oluştur ve oluşan ID'yi kullan!
+4. Danışana bu tarifi, malzemelerini, yapılışını, pişirme adımlarını ve besin değerlerini sunarak ONAY iste.
+5. Danışan "evet uygun, değiştir" veya "onaylıyorum" şeklinde onay verirse, veritabanındaki eski meal_item'ı "update_meal_item" aracını kullanarak yeni oluşturduğun veya bulduğun yiyecek (örn: Tavuk Sote) ile otomatik olarak anında güncelle ve "Diyet planınızdaki yiyeceği başarıyla yeni tarifinizle güncelledim!" şeklinde onay mesajı ver.
+
+FOTOĞRAFTAN TARANAN YEMEĞİ DİYET PLANINA EKLEME:
+Danışan "Az önce analiz ettiğin X yemeğini bugünkü planıma ekle" gibi bir istekte bulunursa:
+1. "get_my_active_plan" aracı veya SQL (database_query) ile danışanın aktif planını ve bugünün öğünlerini (Sabah, Öğle, Akşam vb.) sorgula.
+2. Eğer taranan yemek (örn: "Izgara Tavuklu Salata") veritabanındaki "foods" tablosunda yoksa, "create_food" aracı ile bu yemeği kalori ve makro değerleriyle veritabanına ekle ve yeni food_id'sini al.
+3. "database_query" aracını kullanarak, bugünün uygun olan öğün kaydının ID'sini (meal_id) tespit et ve diet_plan_meal_items tablosuna bu meal_id, food_id ve amount miktarını içeren yeni bir satır INSERT et (Örn: INSERT INTO diet_plan_meal_items (meal_id, food_id, amount) VALUES ('bulunan_meal_id', 'yeni_food_id', miktar)).
+4. İşlem başarıyla tamamlandığında, kullanıcıya yemeğin planına eklendiğini ve güncel planı bildiren şık bir onay mesajı yaz.
+
 Danışanın ID'si: ${user.id}
 ${dbSchemaInfo}`;
 
@@ -327,7 +348,9 @@ ${dbSchemaInfo}`;
 
       // Final response text
       const finalContent = response.content.find((c) => c.type === 'text') as Anthropic.TextBlock;
-      const responseText = finalContent ? finalContent.text : 'İşlem tamamlandı.';
+      let responseText = finalContent ? finalContent.text : 'İşlem tamamlandı.';
+      // Clean and strip any double stars (**) or single stars (*) markdown decorators to guarantee plain text
+      responseText = responseText.replace(/\*\*/g, '').replace(/\*/g, '');
 
       session.messages.push({ role: 'assistant', content: responseText });
       await this.sessionRepo.save(session);

@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, useCallback } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { DashboardMessagesLink, DashboardPanel, DashboardSectionHeader, DashboardShell, DashboardStatCard, dashboardButtonClass } from "../components/DashboardShell";
 import { useAppSettings } from "../context/AppSettingsContext";
@@ -488,6 +488,11 @@ export default function ClientHome({ profile }: { profile: Profile }) {
         </DashboardPanel>
       </section>
 
+      <div className="grid gap-3 lg:grid-cols-2">
+        <WaterTracker isDark={isDark} lang={lang} accessToken={accessToken || ""} />
+        <AppointmentBooking isDark={isDark} lang={lang} accessToken={accessToken || ""} />
+      </div>
+
       <DashboardPanel isDark={isDark}>
         <DashboardSectionHeader
           isDark={isDark}
@@ -590,5 +595,363 @@ function MeasurementStat({ isDark, label, value }: { isDark: boolean; label: str
       <div className={isDark ? "text-[10px] font-bold uppercase text-zinc-400" : "text-[10px] font-bold uppercase text-[#5e776e]"}>{label}</div>
       <div className="mt-2 text-xl font-black">{value}</div>
     </div>
+  );
+}
+
+function WaterTracker({ isDark, lang, accessToken }: { isDark: boolean; lang: string; accessToken: string }) {
+  const [amount, setAmount] = useState(0);
+  const [target] = useState(3000); // 3L
+
+  useEffect(() => {
+    if (!accessToken) return;
+    fetch("http://localhost:3000/api/water-tracking/today", {
+      headers: { Authorization: `Bearer ${accessToken}` }
+    })
+      .then(res => res.json())
+      .then(d => {
+        const payload = d?.data ?? d;
+        if (payload) {
+          setAmount(Number(payload.amount) || 0);
+        }
+      })
+      .catch(() => {});
+  }, [accessToken]);
+
+  const updateWater = async (newAmount: number) => {
+    if (newAmount < 0) newAmount = 0;
+    setAmount(newAmount); // Optimistic Update
+
+    try {
+      await fetch("http://localhost:3000/api/water-tracking", {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${accessToken}`
+        },
+        body: JSON.stringify({ amount: newAmount })
+      });
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
+  const pct = Math.min(100, Math.round((amount / target) * 100));
+
+  return (
+    <DashboardPanel isDark={isDark} className="relative overflow-hidden p-5 flex flex-col justify-between">
+      <div className="flex items-center gap-4 mb-4">
+        <div className={["flex h-10 w-10 items-center justify-center rounded-2xl text-xl", isDark ? "bg-blue-500/20 text-blue-400" : "bg-blue-100 text-blue-600"].join(" ")}>
+          💧
+        </div>
+        <div>
+          <h2 className="text-sm font-black">{lang === "tr" ? "Su Tüketim Takibi" : "Water Tracker"}</h2>
+          <p className={["text-[11px]", isDark ? "text-zinc-400" : "text-[#4d6b62]"].join(" ")}>
+            {lang === "tr" ? "Günlük su içme hedefinizi izleyin" : "Track your daily hydration"}
+          </p>
+        </div>
+      </div>
+
+      <div className="flex flex-col sm:flex-row items-center gap-6 py-2">
+        {/* Animated wave cup */}
+        <div className="relative w-20 h-32 border-4 border-blue-400/30 rounded-[24px] overflow-hidden bg-blue-500/5 shadow-inner flex items-center justify-center shrink-0">
+          <div 
+            className="absolute bottom-0 left-0 w-full bg-gradient-to-t from-blue-600 to-blue-400 transition-all duration-700 ease-out"
+            style={{ height: `${pct}%` }}
+          >
+            {pct > 5 && (
+              <div className="absolute inset-x-0 -top-4 h-4 overflow-hidden">
+                <div className="water-wave-anim w-[200%] h-8 bg-blue-400/30 rounded-[40%] absolute -left-1/2 -top-2 animate-[spin_8s_infinite_linear]" />
+              </div>
+            )}
+          </div>
+          <span className={["relative z-10 text-base font-black tracking-tight drop-shadow-[0_2px_4px_rgba(0,0,0,0.3)]", pct > 45 ? "text-white" : isDark ? "text-zinc-300" : "text-blue-900"].join(" ")}>
+            %{pct}
+          </span>
+        </div>
+
+        {/* Buttons & stats */}
+        <div className="flex-1 w-full space-y-3">
+          <div>
+            <div className="text-xl font-black">{amount} ml <span className={["text-xs font-semibold", isDark ? "text-zinc-500" : "text-[#7a7160]"].join(" ")}> / {target} ml</span></div>
+            <div className="mt-1.5 h-2 w-full bg-zinc-200 dark:bg-zinc-800 rounded-full overflow-hidden">
+              <div className="h-full bg-blue-500 transition-all duration-500 rounded-full" style={{ width: `${pct}%` }} />
+            </div>
+          </div>
+
+          <div className="grid grid-cols-2 gap-2">
+            <button 
+              onClick={() => updateWater(amount + 250)}
+              className={["py-1.5 text-[10px] font-bold rounded-xl transition-all border", isDark ? "bg-white/5 border-transparent text-white hover:bg-white/10" : "bg-[#edf3f6] border-[#cedce4] text-blue-900 hover:bg-[#dbe7ee]"].join(" ")}
+            >
+              +250 ml
+            </button>
+            <button 
+              onClick={() => updateWater(amount + 500)}
+              className={["py-1.5 text-[10px] font-bold rounded-xl transition-all border", isDark ? "bg-white/5 border-transparent text-white hover:bg-white/10" : "bg-[#edf3f6] border-[#cedce4] text-blue-900 hover:bg-[#dbe7ee]"].join(" ")}
+            >
+              +500 ml
+            </button>
+            <button 
+              onClick={() => updateWater(amount + 1000)}
+              className={["py-1.5 text-[10px] font-bold rounded-xl transition-all border", isDark ? "bg-white/5 border-transparent text-white hover:bg-white/10" : "bg-[#edf3f6] border-[#cedce4] text-blue-900 hover:bg-[#dbe7ee]"].join(" ")}
+            >
+              +1000 ml
+            </button>
+            <button 
+              onClick={() => updateWater(amount - 250)}
+              disabled={amount <= 0}
+              className={["py-1.5 text-[10px] font-bold rounded-xl transition-all border disabled:opacity-30", isDark ? "bg-rose-500/10 border-transparent text-rose-300 hover:bg-rose-500/20" : "bg-rose-50 border-rose-200 text-rose-700 hover:bg-rose-100"].join(" ")}
+            >
+              -250 ml
+            </button>
+          </div>
+        </div>
+      </div>
+      <style>{`
+        @keyframes spin-slow {
+          0% { transform: rotate(0deg); }
+          100% { transform: rotate(360deg); }
+        }
+        .water-wave-anim {
+          animation: spin-slow 8s infinite linear;
+        }
+      `}</style>
+    </DashboardPanel>
+  );
+}
+
+function AppointmentBooking({ isDark, lang, accessToken }: { isDark: boolean; lang: string; accessToken: string }) {
+  const [appointments, setAppointments] = useState<any[]>([]);
+  const [date, setDate] = useState(() => {
+    const d = new Date();
+    d.setDate(d.getDate() + 1); // default tomorrow
+    return d.toISOString().split('T')[0];
+  });
+  const [selectedSlot, setSelectedSlot] = useState("");
+  const [bookedSlots, setBookedSlots] = useState<string[]>([]);
+  const [notes, setNotes] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
+
+  const fetchAppointments = useCallback(async () => {
+    if (!accessToken) return;
+    try {
+      const res = await fetch("http://localhost:3000/api/appointments/client", {
+        headers: { Authorization: `Bearer ${accessToken}` }
+      });
+      const d = await res.json();
+      const payload = d?.data ?? d;
+      if (Array.isArray(payload)) {
+        setAppointments(payload);
+      }
+    } catch {}
+  }, [accessToken]);
+
+  const fetchBookedSlots = useCallback(async () => {
+    if (!accessToken || !date) return;
+    try {
+      const res = await fetch(`http://localhost:3000/api/appointments/booked-slots?date=${date}`, {
+        headers: { Authorization: `Bearer ${accessToken}` }
+      });
+      const d = await res.json();
+      const payload = d?.data ?? d;
+      if (Array.isArray(payload)) {
+        setBookedSlots(payload);
+      } else {
+        setBookedSlots([]);
+      }
+    } catch {
+      setBookedSlots([]);
+    }
+  }, [accessToken, date]);
+
+  useEffect(() => {
+    fetchAppointments();
+  }, [fetchAppointments]);
+
+  useEffect(() => {
+    fetchBookedSlots();
+    setSelectedSlot(""); // reset selected slot when date changes
+  }, [date, fetchBookedSlots]);
+
+  const handleBook = async () => {
+    if (!selectedSlot) return;
+    
+    // Check if weekend
+    const day = new Date(date).getDay();
+    if (day === 0 || day === 6) {
+      setToast({
+        message: lang === "tr" ? "Randevular sadece hafta içi (Pazartesi-Cuma) alınabilir." : "Appointments can only be booked on weekdays (Monday-Friday).",
+        type: 'error'
+      });
+      setTimeout(() => setToast(null), 3000);
+      return;
+    }
+
+    setLoading(true);
+    try {
+      const res = await fetch("http://localhost:3000/api/appointments/book", {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${accessToken}`
+        },
+        body: JSON.stringify({
+          date,
+          time_slot: selectedSlot,
+          notes
+        })
+      });
+      const d = await res.json();
+      if (res.ok) {
+        setToast({
+          message: lang === "tr" ? "Randevu talebiniz başarıyla iletildi!" : "Appointment requested successfully!",
+          type: 'success'
+        });
+        setTimeout(() => setToast(null), 3000);
+        setNotes("");
+        setSelectedSlot("");
+        fetchAppointments();
+        fetchBookedSlots();
+      } else {
+        setToast({
+          message: d.message || (lang === "tr" ? "Randevu alınamadı." : "Booking failed."),
+          type: 'error'
+        });
+        setTimeout(() => setToast(null), 3000);
+      }
+    } catch {
+      setToast({
+        message: lang === "tr" ? "Bağlantı hatası." : "Connection error.",
+        type: 'error'
+      });
+      setTimeout(() => setToast(null), 3000);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const slots = ["09:00", "10:00", "11:00", "12:00", "13:00", "14:00", "15:00", "16:00"];
+
+  const getStatusLabel = (status: string) => {
+    if (status === 'approved') return lang === "tr" ? "Onaylandı" : "Approved";
+    if (status === 'cancelled') return lang === "tr" ? "İptal Edildi" : "Cancelled";
+    if (status === 'rescheduled') return lang === "tr" ? "Ertelendi" : "Rescheduled";
+    return lang === "tr" ? "Onay Bekliyor" : "Pending";
+  };
+
+  const getStatusColor = (status: string) => {
+    if (status === 'approved') return "bg-emerald-500/10 text-emerald-400 border-emerald-500/20";
+    if (status === 'cancelled') return "bg-rose-500/10 text-rose-400 border-rose-500/20";
+    if (status === 'rescheduled') return "bg-amber-500/10 text-amber-400 border-amber-500/20";
+    return "bg-zinc-500/10 text-zinc-400 border-zinc-500/20";
+  };
+
+  return (
+    <DashboardPanel isDark={isDark} className="p-5 flex flex-col justify-between">
+      <div className="flex items-center gap-4 mb-4">
+        <div className={["flex h-10 w-10 items-center justify-center rounded-2xl text-xl", isDark ? "bg-emerald-500/20 text-emerald-400" : "bg-emerald-100 text-emerald-600"].join(" ")}>
+          📅
+        </div>
+        <div>
+          <h2 className="text-sm font-black">{lang === "tr" ? "Diyetisyen Randevusu Al" : "Book Appointment"}</h2>
+          <p className={["text-[11px]", isDark ? "text-zinc-400" : "text-[#4d6b62]"].join(" ")}>
+            {lang === "tr" ? "Hafta içi 09:00-17:00 arası uygun saatleri seçin" : "Select weekday slots between 09:00-17:00"}
+          </p>
+        </div>
+      </div>
+
+      {toast && (
+        <div className={["mb-3 rounded-xl border px-3 py-1.5 text-[11px] font-bold transition-all", 
+          toast.type === 'success' ? "bg-emerald-500/10 border-emerald-500/20 text-emerald-300" : "bg-rose-500/10 border-rose-500/20 text-rose-300"
+        ].join(" ")}>
+          {toast.message}
+        </div>
+      )}
+
+      <div className="grid gap-4 sm:grid-cols-2">
+        <div className="space-y-3">
+          <div>
+            <label className={["block text-[10px] font-black uppercase tracking-wider mb-1", isDark ? "text-zinc-500" : "text-[#5e776e]"].join(" ")}>
+              {lang === "tr" ? "Randevu Günü" : "Booking Date"}
+            </label>
+            <input 
+              type="date"
+              value={date}
+              onChange={(e) => setDate(e.target.value)}
+              className={["w-full rounded-xl border px-3 py-1.5 text-xs font-semibold outline-none transition", isDark ? "border-white/10 bg-black/40 text-white focus:border-emerald-500" : "border-[#325d51]/10 bg-white text-[#0e2d27] focus:border-emerald-500"].join(" ")}
+            />
+          </div>
+
+          <div>
+            <label className={["block text-[10px] font-black uppercase tracking-wider mb-1", isDark ? "text-zinc-500" : "text-[#5e776e]"].join(" ")}>
+              {lang === "tr" ? "Not (İsteğe Bağlı)" : "Notes (Optional)"}
+            </label>
+            <textarea
+              rows={2}
+              placeholder={lang === "tr" ? "Randevu notu..." : "Appointment notes..."}
+              value={notes}
+              onChange={(e) => setNotes(e.target.value)}
+              className={["w-full rounded-xl border px-3 py-1.5 text-xs font-semibold outline-none transition resize-none", isDark ? "border-white/10 bg-black/40 text-white focus:border-emerald-500" : "border-[#325d51]/10 bg-white text-[#0e2d27] focus:border-emerald-500"].join(" ")}
+            />
+          </div>
+        </div>
+
+        <div>
+          <label className={["block text-[10px] font-black uppercase tracking-wider mb-1", isDark ? "text-zinc-500" : "text-[#5e776e]"].join(" ")}>
+            {lang === "tr" ? "Saat Dilimi" : "Time Slot"}
+          </label>
+          <div className="grid grid-cols-4 gap-1.5">
+            {slots.map((slot) => {
+              const isBooked = bookedSlots.includes(slot);
+              const isSelected = selectedSlot === slot;
+              return (
+                <button
+                  key={slot}
+                  type="button"
+                  disabled={isBooked}
+                  onClick={() => setSelectedSlot(slot)}
+                  className={["py-1.5 text-[10px] font-bold rounded-xl transition-all border shrink-0", 
+                    isBooked ? (isDark ? "bg-white/5 border-transparent text-zinc-600 cursor-not-allowed opacity-30" : "bg-zinc-100 border-transparent text-zinc-400 cursor-not-allowed") :
+                    isSelected ? "bg-emerald-500 text-white border-transparent shadow-lg shadow-emerald-500/25 scale-105" :
+                    isDark ? "bg-white/5 border-transparent text-white hover:bg-white/10" : "bg-[#edf6ec] border-[#c7dbc7] text-[#285743] hover:bg-[#edf6ec]/80"
+                  ].join(" ")}
+                >
+                  {slot}
+                </button>
+              );
+            })}
+          </div>
+          <button
+            type="button"
+            disabled={loading || !selectedSlot}
+            onClick={handleBook}
+            className={["w-full mt-3 py-2 text-xs font-black rounded-xl transition-all disabled:opacity-40", isDark ? "bg-emerald-400 text-zinc-950 hover:brightness-110" : "bg-[#2f6154] text-white hover:bg-[#244f44]"].join(" ")}
+          >
+            {loading ? "..." : lang === "tr" ? "Talep Gönder" : "Request"}
+          </button>
+        </div>
+      </div>
+
+      {appointments.length > 0 && (
+        <div className="mt-4 border-t border-dashed border-emerald-500/10 pt-3">
+          <label className={["block text-[10px] font-black uppercase tracking-wider mb-2", isDark ? "text-zinc-500" : "text-[#5e776e]"].join(" ")}>
+            {lang === "tr" ? "Son Randevu Taleplerim" : "My Appointments"}
+          </label>
+          <div className="space-y-1.5 max-h-24 overflow-y-auto pr-1">
+            {appointments.slice(0, 3).map((app) => (
+              <div key={app.id} className={["flex items-center justify-between border px-2.5 py-1.5 text-[11px]", isDark ? "rounded-xl border-transparent bg-white/5" : "rounded-xl border-[#e4dbc9] bg-white"].join(" ")}>
+                <div>
+                  <div className="font-bold">{app.date} @ {app.time_slot}</div>
+                </div>
+                <span className={["rounded-full border px-1.5 py-0.5 text-[8px] font-bold", getStatusColor(app.status)].join(" ")}>
+                  {getStatusLabel(app.status)}
+                </span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+    </DashboardPanel>
   );
 }

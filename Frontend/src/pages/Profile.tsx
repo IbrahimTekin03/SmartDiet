@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useAppSettings } from "../context/AppSettingsContext";
 import { clearAuthSession, setAuthSession } from "../lib/authSession";
+import { ResponsiveContainer, AreaChart, Area, XAxis, YAxis, Tooltip, CartesianGrid, Legend } from "recharts";
 
 type Lang = "tr" | "en";
 
@@ -859,8 +860,7 @@ export default function Profile() {
           <div className="mt-6 grid gap-5 xl:grid-cols-[1fr_320px]">
             <ChartCard
               isDark={isDark}
-              weightPoints={weightPoints}
-              fatPoints={fatPoints}
+              measurements={measurements}
               weightLabel={t.weight}
               fatLabel={t.bodyFat}
               emptyLabel={t.noMeasurements}
@@ -1082,40 +1082,18 @@ function MetricCard({
 
 function ChartCard({
   isDark,
-  weightPoints,
-  fatPoints,
+  measurements,
   emptyLabel,
   weightLabel,
   fatLabel,
 }: {
   isDark: boolean;
-  weightPoints: Array<{ x: string; y: number }>;
-  fatPoints: Array<{ x: string; y: number }>;
+  measurements: any[];
   emptyLabel: string;
   weightLabel: string;
   fatLabel: string;
 }) {
-  const width = 760;
-  const height = 250;
-  const pad = 24;
-
-  const values = [...weightPoints.map((p) => p.y), ...fatPoints.map((p) => p.y)];
-  const min = values.length ? Math.min(...values) : 0;
-  const max = values.length ? Math.max(...values) : 0;
-  const range = max - min || 1;
-
-  const toPath = (points: Array<{ y: number }>) => {
-    if (!points.length) return "";
-    return points
-      .map((p, i) => {
-        const x = pad + (i / Math.max(points.length - 1, 1)) * (width - pad * 2);
-        const y = height - pad - ((p.y - min) / range) * (height - pad * 2);
-        return `${i === 0 ? "M" : "L"}${x.toFixed(1)},${y.toFixed(1)}`;
-      })
-      .join(" ");
-  };
-
-  if (!weightPoints.length && !fatPoints.length) {
+  if (!measurements || measurements.length === 0) {
     return (
       <div className={["rounded-3xl border p-5 text-sm", isDark ? "border-transparent bg-black/20 text-zinc-400 shadow-[inset_0_1px_0_rgba(16,185,129,0.08)]" : "border-[#2f6154]/18 bg-white text-[#5a776d]"].join(" ")}>
         {emptyLabel}
@@ -1123,25 +1101,88 @@ function ChartCard({
     );
   }
 
-  return (
-    <div className={["rounded-3xl border p-4", isDark ? "border-transparent bg-black/20 shadow-[inset_0_1px_0_rgba(16,185,129,0.08)]" : "border-[#2f6154]/18 bg-white"].join(" ")}>
-      <div className="mb-3 flex flex-wrap items-center gap-4 text-xs font-extrabold">
-        <span className="inline-flex items-center gap-2">
-          <i className="h-2 w-2 rounded-full bg-emerald-400" />
-          <span className={isDark ? "text-zinc-200" : "text-[#0f2f29]"}>{weightLabel}</span>
-        </span>
-        <span className="inline-flex items-center gap-2">
-          <i className="h-2 w-2 rounded-full bg-green-300" />
-          <span className={isDark ? "text-zinc-200" : "text-[#0f2f29]"}>{fatLabel}</span>
-        </span>
-      </div>
+  const chartData = measurements.map((m) => ({
+    date: m.date,
+    [weightLabel]: m.weight != null ? Number(m.weight) : null,
+    [fatLabel]: m.body_fat != null ? Number(m.body_fat) : null,
+  }));
 
-      <svg viewBox={`0 0 ${width} ${height}`} className="h-[240px] w-full">
-        <line x1={pad} y1={height - pad} x2={width - pad} y2={height - pad} stroke={isDark ? "rgba(52,211,153,0.28)" : "#c8ddd4"} strokeWidth="1" />
-        <line x1={pad} y1={pad} x2={pad} y2={height - pad} stroke={isDark ? "rgba(52,211,153,0.28)" : "#c8ddd4"} strokeWidth="1" />
-        <path d={toPath(weightPoints)} fill="none" stroke="#34d399" strokeWidth="3" strokeLinecap="round" />
-        <path d={toPath(fatPoints)} fill="none" stroke="#86efac" strokeWidth="3" strokeLinecap="round" />
-      </svg>
+  const strokeColor1 = isDark ? "#34d399" : "#10b981";
+  const strokeColor2 = isDark ? "#f59e0b" : "#d97706";
+  const gridColor = isDark ? "rgba(255,255,255,0.05)" : "rgba(0,0,0,0.05)";
+  const tooltipBg = isDark ? "#0d1114" : "#ffffff";
+  const tooltipBorder = isDark ? "rgba(16,185,129,0.2)" : "#e4dbc9";
+  const tooltipText = isDark ? "#ffffff" : "#0f2f29";
+
+  return (
+    <div className={["w-full rounded-3xl border p-4", isDark ? "border-transparent bg-black/20 shadow-[inset_0_1px_0_rgba(16,185,129,0.08)]" : "border-[#2f6154]/18 bg-white"].join(" ")}>
+      <div className="h-[250px] w-full text-xs font-semibold">
+        <ResponsiveContainer width="100%" height="100%">
+          <AreaChart data={chartData} margin={{ top: 10, right: 5, left: -20, bottom: 0 }}>
+            <defs>
+              <linearGradient id="colorWeight" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="5%" stopColor={strokeColor1} stopOpacity={0.2}/>
+                <stop offset="95%" stopColor={strokeColor1} stopOpacity={0}/>
+              </linearGradient>
+              <linearGradient id="colorFat" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="5%" stopColor={strokeColor2} stopOpacity={0.2}/>
+                <stop offset="95%" stopColor={strokeColor2} stopOpacity={0}/>
+              </linearGradient>
+            </defs>
+            <CartesianGrid strokeDasharray="3 3" stroke={gridColor} />
+            <XAxis 
+              dataKey="date" 
+              stroke={isDark ? "#71717a" : "#4e6f65"} 
+              tick={{ fontSize: 10 }}
+              tickLine={false}
+            />
+            <YAxis 
+              yAxisId="left" 
+              stroke={strokeColor1} 
+              tick={{ fontSize: 10 }}
+              tickLine={false}
+              domain={['dataMin - 5', 'dataMax + 5']}
+            />
+            <YAxis 
+              yAxisId="right" 
+              orientation="right" 
+              stroke={strokeColor2} 
+              tick={{ fontSize: 10 }}
+              tickLine={false}
+              domain={['dataMin - 2', 'dataMax + 2']}
+            />
+            <Tooltip 
+              contentStyle={{ 
+                backgroundColor: tooltipBg, 
+                borderColor: tooltipBorder, 
+                borderRadius: '16px', 
+                color: tooltipText 
+              }} 
+            />
+            <Legend verticalAlign="top" height={36} iconType="circle" iconSize={8} />
+            <Area 
+              yAxisId="left"
+              type="monotone" 
+              dataKey={weightLabel} 
+              stroke={strokeColor1} 
+              strokeWidth={3}
+              fillOpacity={1} 
+              fill="url(#colorWeight)" 
+              connectNulls
+            />
+            <Area 
+              yAxisId="right"
+              type="monotone" 
+              dataKey={fatLabel} 
+              stroke={strokeColor2} 
+              strokeWidth={3}
+              fillOpacity={1} 
+              fill="url(#colorFat)" 
+              connectNulls
+            />
+          </AreaChart>
+        </ResponsiveContainer>
+      </div>
     </div>
   );
 }

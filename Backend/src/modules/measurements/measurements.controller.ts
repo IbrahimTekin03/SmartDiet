@@ -22,9 +22,15 @@ export class MeasurementsController {
 
   @Get('history')
   @ApiOperation({ summary: 'Tarihsel olcum grafikleri icin gecmis veriyi getir' })
-  @ApiResponse({ status: 200, description: '?l??m ge?mi?i getirildi', type: ResponseDto })
+  @ApiResponse({ status: 200, description: 'Ölçüm geçmişi getirildi', type: ResponseDto })
   async history(@Request() req, @Query() query: MeasurementHistoryDto) {
-    const result = await this.measurementsService.history(req.user.id, query.days ?? 30);
+    const isDietitian = (req.user.roles || []).some((r: any) => {
+      if (typeof r === 'string') return r.toLowerCase() === 'diyetisyen';
+      return r.name?.toLowerCase() === 'diyetisyen';
+    }) || req.user.account_type?.toLowerCase() === 'diyetisyen';
+
+    const targetClientId = (isDietitian && query.clientId) ? query.clientId : req.user.id;
+    const result = await this.measurementsService.history(targetClientId, query.days ?? 30);
     return ResponseDto.success('Measurement history', result);
   }
 }

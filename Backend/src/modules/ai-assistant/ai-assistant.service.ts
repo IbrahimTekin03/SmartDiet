@@ -135,4 +135,165 @@ Sadece geçerli JSON döndür.`;
       throw new InternalServerErrorException('Failed to generate substitution suggestions.');
     }
   }
+
+  async scanMealImage(base64Image: string, mimeType: string) {
+    const geminiApiKey = process.env.GEMINI_API_KEY;
+
+    let detectedMime = mimeType;
+    if (base64Image.startsWith('/9j/')) {
+      detectedMime = 'image/jpeg';
+    } else if (base64Image.startsWith('iVBORw0KGgo')) {
+      detectedMime = 'image/png';
+    } else if (base64Image.startsWith('R0lGODlh')) {
+      detectedMime = 'image/gif';
+    } else if (base64Image.startsWith('UklGR')) {
+      detectedMime = 'image/webp';
+    }
+
+    const systemPrompt = `Sen bir beslenme uzmanı ve yapay zeka asistanısın. Sana gönderilen yemek fotoğrafını analiz etmen gerekiyor.
+Fotoğraftaki yiyecekleri tespit et. Bu yiyeceklerin yaklaşık miktarını (gram veya adet cinsinden), toplam kalori, protein, yağ ve karbonhidrat değerlerini hesapla.
+Yanıtını SADECE şu JSON formatında döndür:
+{
+  "food_name": "Yemek adı (örn: Izgara Tavuklu Salata)",
+  "amount": 250,
+  "unit": "gram",
+  "calories": 320,
+  "protein": 28,
+  "carbohydrates": 12,
+  "fat": 16,
+  "description": "Fotoğraftaki yemeğin kısa açıklaması ve tespit edilen malzemeler."
+}
+Markdown veya başka hiçbir metin biçimlendirmesi kullanma, sadece saf JSON metni döndür.`;
+
+    if (geminiApiKey) {
+      console.log('Using Google Gemini 1.5 Flash (v1 endpoint) for image analysis...');
+      try {
+        const url = `https://generativelanguage.googleapis.com/v1/models/gemini-1.5-flash:generateContent?key=${geminiApiKey}`;
+        const payload = {
+          contents: [
+            {
+              parts: [
+                {
+                  text: `${systemPrompt}\n\nLütfen bu fotoğraftaki yemeği analiz et ve JSON olarak döndür.`
+                },
+                {
+                  inlineData: {
+                    mimeType: detectedMime,
+                    data: base64Image
+                  }
+                }
+              ]
+            }
+          ]
+        };
+
+        const res = await fetch(url, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify(payload)
+        });
+
+        const data = await res.json();
+        
+        if (data.error) {
+          throw new Error(data.error.message || 'Gemini API Error');
+        }
+
+        const responseText = data.candidates?.[0]?.content?.parts?.[0]?.text || '';
+        const jsonMatch = responseText.match(/\{[\s\S]*\}/);
+        const jsonStr = jsonMatch ? jsonMatch[0] : responseText;
+        return JSON.parse(jsonStr);
+
+      } catch (geminiError: any) {
+        console.error('Gemini v1 Vision Error, trying v1beta:', geminiError);
+        
+        // Try v1beta as fallback for Gemini
+        try {
+          const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${geminiApiKey}`;
+          const payload = {
+            contents: [
+              {
+                parts: [
+                  {
+                    text: `${systemPrompt}\n\nLütfen bu fotoğraftaki yemeği analiz et ve JSON olarak döndür.`
+                  },
+                  {
+                    inlineData: {
+                      mimeType: detectedMime,
+                      data: base64Image
+                    }
+                  }
+                ]
+              }
+            ]
+          };
+
+          const res = await fetch(url, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(payload)
+          });
+
+          const data = await res.json();
+          if (data.error) throw new Error(data.error.message);
+
+          const responseText = data.candidates?.[0]?.content?.parts?.[0]?.text || '';
+          const jsonMatch = responseText.match(/\{[\s\S]*\}/);
+          const jsonStr = jsonMatch ? jsonMatch[0] : responseText;
+          return JSON.parse(jsonStr);
+        } catch (v1betaError: any) {
+          console.error('Gemini v1beta Vision Error, falling back to Claude:', v1betaError);
+        }
+      }
+    }
+
+    // Claude Fallback
+    if (!process.env.ANTHROPIC_API_KEY) {
+      throw new InternalServerErrorException('Yemek analiz anahtarı (Gemini veya Anthropic) yapılandırılmamış.');
+    }
+
+    console.log('Using Claude for image analysis...');
+    // Fall back to claude-haiku-4-5-20251001 (their verified chat model!)
+    const claudeModel = 'claude-haiku-4-5-20251001';
+
+    try {
+      const response = await this.anthropic.messages.create({
+        model: claudeModel,
+        max_tokens: 1000,
+        temperature: 0.2,
+        system: systemPrompt,
+        messages: [
+          {
+            role: 'user',
+            content: [
+              {
+                type: 'image',
+                source: {
+                  type: 'base64',
+                  media_type: detectedMime as any,
+                  data: base64Image,
+                },
+              },
+              {
+                type: 'text',
+                text: 'Lütfen bu fotoğraftaki yemeği analiz et ve JSON olarak döndür.',
+              },
+            ],
+          },
+        ],
+      });
+
+      const responseText = (response.content[0] as any).text;
+      const jsonMatch = responseText.match(/\{[\s\S]*\}/);
+      const jsonStr = jsonMatch ? jsonMatch[0] : responseText;
+      return JSON.parse(jsonStr);
+    } catch (error: any) {
+      console.error('Claude Vision API Error:', error);
+      throw new InternalServerErrorException('Yemek fotoğrafı analiz edilirken bir hata oluştu: ' + error.message);
+    }
+  }
 }

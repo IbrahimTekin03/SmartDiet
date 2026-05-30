@@ -1,4 +1,4 @@
-import { Body, Controller, Post, UseGuards } from '@nestjs/common';
+import { Body, Controller, Post, UseGuards, UseInterceptors, UploadedFile, BadRequestException } from '@nestjs/common';
 import { ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
 import { AiChatService } from './ai-chat.service';
 import { AiAssistantService } from './ai-assistant.service';
@@ -8,6 +8,7 @@ import { RolesGuard } from '../acl/guards/roles.guard';
 import { Roles } from '../acl/decorators/roles.decorator';
 import { ResponseDto } from '@/common/dto/response.dto';
 import { Req } from '@nestjs/common';
+import { FileInterceptor } from '@nestjs/platform-express';
 
 @ApiTags('ai-assistant')
 @Controller('ai-assistant')
@@ -42,5 +43,19 @@ export class AiAssistantController {
   async chat(@Req() req: any, @Body() dto: ChatRequestDto) {
     const result = await this.aiChatService.processChat(req.user, dto.prompt, dto.sessionId);
     return ResponseDto.success('Sohbet yanıtı', result);
+  }
+
+  @Post('scan-meal')
+  @UseInterceptors(FileInterceptor('image'))
+  @ApiOperation({ summary: 'Fotoğraftan yemek analizi yap (Gemini/Claude Vision)' })
+  @ApiResponse({ status: 200, description: 'Yemek analizi başarılı' })
+  async scanMeal(@UploadedFile() file: any) {
+    if (!file) {
+      throw new BadRequestException('Lütfen bir resim dosyası yükleyin.');
+    }
+    const base64 = file.buffer.toString('base64');
+    const mimeType = file.mimetype;
+    const result = await this.aiAssistantService.scanMealImage(base64, mimeType);
+    return ResponseDto.success('Yemek analizi sonucu', result);
   }
 }

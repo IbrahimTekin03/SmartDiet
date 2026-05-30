@@ -1,9 +1,10 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, useCallback } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { DashboardMessagesLink, DashboardPanel, DashboardSectionHeader, DashboardShell, DashboardStatCard, dashboardButtonClass } from "../components/DashboardShell";
 import { useAppSettings } from "../context/AppSettingsContext";
 import { useSocket } from "../context/SocketContext";
 import { clearAuthSession, useAuthSession } from "../lib/authSession";
+import { ResponsiveContainer, AreaChart, Area, XAxis, YAxis, Tooltip, CartesianGrid, BarChart, Bar } from "recharts";
 
 type Profile = {
   first_name?: string;
@@ -209,10 +210,108 @@ export default function DietitianHome({ profile, isAdmin }: { profile: Profile; 
   const [clientPlans, setClientPlans] = useState<any[]>([]);
   const [loadingPlans, setLoadingPlans] = useState(false);
 
+  // Tracking and appointments states
+  const [activeTab, setActiveTab] = useState<'plans' | 'tracking'>('plans');
+  const [clientMeasurements, setClientMeasurements] = useState<any[]>([]);
+  const [clientWaterLogs, setClientWaterLogs] = useState<any[]>([]);
+  const [loadingTracking, setLoadingTracking] = useState(false);
+
+  const [appointments, setAppointments] = useState<any[]>([]);
+  const [reschedulingAppId, setReschedulingAppId] = useState<string | null>(null);
+  const [reschedDate, setReschedDate] = useState("");
+  const [reschedSlot, setReschedSlot] = useState("");
+  const [reschedNotes, setReschedNotes] = useState("");
+
+  const fetchClientTracking = async (clientId: string) => {
+    setLoadingTracking(true);
+    try {
+      const resM = await fetch(`${API_BASE}/api/measurements/history?days=30&clientId=${clientId}`, {
+        headers: { Authorization: `Bearer ${accessToken}` }
+      });
+      const dM = await resM.json();
+      const payloadM = dM?.data?.items ?? dM?.items ?? [];
+      setClientMeasurements(payloadM);
+
+      const resW = await fetch(`${API_BASE}/api/water-tracking/client/${clientId}?days=7`, {
+        headers: { Authorization: `Bearer ${accessToken}` }
+      });
+      const dW = await resW.json();
+      const payloadW = dW?.data?.items ?? dW?.items ?? [];
+      setClientWaterLogs(payloadW);
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setLoadingTracking(false);
+    }
+  };
+
+  const fetchAppointments = useCallback(async () => {
+    if (!accessToken) return;
+    try {
+      const res = await fetch(`${API_BASE}/api/appointments/dietitian`, {
+        headers: { Authorization: `Bearer ${accessToken}` }
+      });
+      const d = await res.json();
+      const payload = d?.data ?? d;
+      if (Array.isArray(payload)) {
+        setAppointments(payload);
+      }
+    } catch {}
+  }, [accessToken]);
+
+  useEffect(() => {
+    fetchAppointments();
+  }, [fetchAppointments]);
+
+  const handleUpdateStatus = async (appId: string, status: string) => {
+    try {
+      const res = await fetch(`${API_BASE}/api/appointments/${appId}`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${accessToken}`
+        },
+        body: JSON.stringify({ status })
+      });
+      if (res.ok) {
+        fetchAppointments();
+      }
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
+  const handleRescheduleSubmit = async (appId: string) => {
+    try {
+      const res = await fetch(`${API_BASE}/api/appointments/${appId}`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${accessToken}`
+        },
+        body: JSON.stringify({
+          status: 'rescheduled',
+          date: reschedDate,
+          time_slot: reschedSlot,
+          notes: reschedNotes
+        })
+      });
+      if (res.ok) {
+        setReschedulingAppId(null);
+        fetchAppointments();
+      }
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
   const openClientPlans = async (client: any) => {
     setSelectedClient(client);
+    setActiveTab('plans');
     setLoadingPlans(true);
     setClientPlans([]);
+    setClientMeasurements([]);
+    setClientWaterLogs([]);
 
     try {
       const res = await fetch(`${API_BASE}/api/diet-plans/client?clientId=${client.user_id}`, {
@@ -222,6 +321,7 @@ export default function DietitianHome({ profile, isAdmin }: { profile: Profile; 
       if (data.success) {
         setClientPlans(data.data || []);
       }
+      await fetchClientTracking(client.user_id);
     } catch (err) {
       console.error(err);
     } finally {
@@ -416,91 +516,280 @@ export default function DietitianHome({ profile, isAdmin }: { profile: Profile; 
             <div className="mt-1 text-2xl font-black">{clientsWithContact}/{clients.length || 0}</div>
           </div>
         </DashboardPanel>
+
+        <DashboardPanel isDark={isDark} className="mt-3">
+          <DashboardSectionHeader isDark={isDark} title={lang === "tr" ? "Randevu Talepleri" : "Appointment Requests"} subtitle={lang === "tr" ? "Bekleyen danışan randevuları" : "Pending client appointments"} />
+          
+          <div className="space-y-3 max-h-80 overflow-y-auto pr-1">
+            {appointments.length === 0 ? (
+              <div className={["text-xs font-semibold text-center py-6", isDark ? "text-zinc-500" : "text-[#7a7160]"].join(" ")}>
+                {lang === "tr" ? "Bekleyen randevu talebi bulunmuyor." : "No pending appointments."}
+              </div>
+            ) : (
+              appointments.map((app) => (
+                <div key={app.id} className={["border p-3 space-y-2", isDark ? "rounded-xl border-transparent bg-black/25" : "rounded-xl border-[#e4dbc9] bg-white"].join(" ")}>
+                  <div className="flex justify-between items-start">
+                    <div>
+                      <div className="text-xs font-black">{app.client?.name || app.client?.first_name || (lang === "tr" ? "Danışan" : "Client")}</div>
+                      <div className={["text-[10px] font-semibold mt-0.5", isDark ? "text-zinc-400" : "text-[#4d6b62]"].join(" ")}>
+                        {app.date} @ {app.time_slot}
+                      </div>
+                    </div>
+                    <span className={["rounded-full border px-1.5 py-0.5 text-[8px] font-bold uppercase", 
+                      app.status === 'approved' ? "bg-emerald-500/10 text-emerald-400 border-emerald-500/20" :
+                      app.status === 'cancelled' ? "bg-rose-500/10 text-rose-400 border-rose-500/20" :
+                      app.status === 'rescheduled' ? "bg-amber-500/10 text-amber-400 border-amber-500/20" :
+                      "bg-zinc-500/10 text-zinc-400 border-zinc-500/20"
+                    ].join(" ")}>
+                      {app.status}
+                    </span>
+                  </div>
+
+                  {app.notes && (
+                    <div className={["text-[10px] font-medium leading-relaxed border-t pt-1.5", isDark ? "text-zinc-400 border-emerald-400/5" : "text-[#5e776e] border-black/5"].join(" ")}>
+                      {app.notes}
+                    </div>
+                  )}
+
+                  {reschedulingAppId === app.id ? (
+                    <div className="space-y-2 border-t pt-2 border-dashed border-emerald-500/20">
+                      <div className="grid grid-cols-2 gap-2">
+                        <input 
+                          type="date"
+                          value={reschedDate}
+                          onChange={(e) => setReschedDate(e.target.value)}
+                          className={["w-full rounded-lg border px-2 py-1 text-[10px] outline-none", isDark ? "border-white/10 bg-black/40 text-white" : "border-gray-200 bg-white text-zinc-950"].join(" ")}
+                        />
+                        <select
+                          value={reschedSlot}
+                          onChange={(e) => setReschedSlot(e.target.value)}
+                          className={["w-full rounded-lg border px-2 py-1 text-[10px] outline-none", isDark ? "border-white/10 bg-black/40 text-white" : "border-gray-200 bg-white text-zinc-950"].join(" ")}
+                        >
+                          <option value="">Saat seç</option>
+                          {["09:00", "10:00", "11:00", "12:00", "13:00", "14:00", "15:00", "16:00"].map(s => <option key={s} value={s}>{s}</option>)}
+                        </select>
+                      </div>
+                      <input 
+                        type="text"
+                        placeholder="Erteleme sebebi..."
+                        value={reschedNotes}
+                        onChange={(e) => setReschedNotes(e.target.value)}
+                        className={["w-full rounded-lg border px-2 py-1 text-[10px] outline-none", isDark ? "border-white/10 bg-black/40 text-white" : "border-gray-200 bg-white text-zinc-950"].join(" ")}
+                      />
+                      <div className="flex gap-2 justify-end">
+                        <button 
+                          onClick={() => setReschedulingAppId(null)}
+                          className={["rounded-lg px-2 py-1 text-[9px] font-black uppercase transition", isDark ? "bg-white/5 text-zinc-300" : "border border-gray-200 text-zinc-700"].join(" ")}
+                        >
+                          İptal
+                        </button>
+                        <button 
+                          onClick={() => handleRescheduleSubmit(app.id)}
+                          className="rounded-lg bg-amber-500 text-white px-2 py-1 text-[9px] font-black uppercase"
+                        >
+                          Kaydet
+                        </button>
+                      </div>
+                    </div>
+                  ) : (
+                    app.status === 'pending' && (
+                      <div className="flex justify-end gap-1.5 border-t pt-2 border-dashed border-emerald-500/10">
+                        <button
+                          onClick={() => {
+                            setReschedulingAppId(app.id);
+                            setReschedDate(app.date);
+                            setReschedSlot(app.time_slot);
+                            setReschedNotes("");
+                          }}
+                          className={["rounded-lg border px-2 py-1 text-[9px] font-black uppercase transition", isDark ? "border-amber-400/25 bg-amber-500/10 text-amber-300 hover:bg-amber-500/15" : "border-amber-200 bg-amber-50 text-amber-700 hover:bg-amber-100"].join(" ")}
+                        >
+                          {lang === "tr" ? "Ertele" : "Reschedule"}
+                        </button>
+                        <button
+                          onClick={() => handleUpdateStatus(app.id, 'cancelled')}
+                          className={["rounded-lg border px-2 py-1 text-[9px] font-black uppercase transition", isDark ? "border-rose-400/25 bg-rose-500/10 text-rose-300 hover:bg-rose-500/15" : "border-rose-200 bg-rose-50 text-rose-700 hover:bg-rose-100"].join(" ")}
+                        >
+                          {lang === "tr" ? "Reddet" : "Reject"}
+                        </button>
+                        <button
+                          onClick={() => handleUpdateStatus(app.id, 'approved')}
+                          className="rounded-lg bg-emerald-500 hover:brightness-110 text-white px-2 py-1 text-[9px] font-black uppercase"
+                        >
+                          {lang === "tr" ? "Onayla" : "Approve"}
+                        </button>
+                      </div>
+                    )
+                  )}
+                </div>
+              ))
+            )}
+          </div>
+        </DashboardPanel>
       </section>
 
       {selectedClient && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 p-4">
           <div className={["w-full max-w-2xl overflow-hidden border shadow-2xl transition-all", isDark ? "rounded-2xl border-transparent bg-[#080b0a]/95" : "rounded-2xl border-[#e4dbc9] bg-[#fffaf2]"].join(" ")}>
             
-            <div className={["flex items-center justify-between border-b px-5 py-4", isDark ? "border-emerald-400/10" : "border-[#e4dbc9]"].join(" ")}>
-              <div className="flex min-w-0 items-center gap-3">
-                <div className={["flex h-11 w-11 shrink-0 items-center justify-center rounded-xl text-base font-black", isDark ? "bg-emerald-500/15 text-emerald-200" : "bg-[#edf6ec] text-[#285743]"].join(" ")}>
-                  {selectedClient.name?.charAt(0) || "D"}
-                </div>
-                <div className="min-w-0">
-                  <h3 className={["truncate text-base font-black", isDark ? "text-white" : "text-[#123a32]"].join(" ")}>
-                    {selectedClient.name}
-                  </h3>
-                  <p className={["text-xs", isDark ? "text-zinc-400" : "text-[#4d6b62]"].join(" ")}>
-                    {t.clientPlansTitle}
-                  </p>
-                </div>
+            <div className={["flex items-center justify-between border-b px-5", isDark ? "border-emerald-400/10" : "border-[#e4dbc9]"].join(" ")}>
+              <div className="flex">
+                <button
+                  onClick={() => setActiveTab('plans')}
+                  className={["px-4 py-3 text-xs font-black border-b-2 transition-all outline-none", 
+                    activeTab === 'plans' ? "border-emerald-500 text-emerald-400" : isDark ? "border-transparent text-zinc-400 hover:text-white" : "border-transparent text-[#5e776e] hover:text-[#123a32]"
+                  ].join(" ")}
+                >
+                  {lang === "tr" ? "Öğün Programları" : "Meal Plans"}
+                </button>
+                <button
+                  onClick={() => setActiveTab('tracking')}
+                  className={["px-4 py-3 text-xs font-black border-b-2 transition-all outline-none", 
+                    activeTab === 'tracking' ? "border-emerald-500 text-emerald-400" : isDark ? "border-transparent text-zinc-400 hover:text-white" : "border-transparent text-[#5e776e] hover:text-[#123a32]"
+                  ].join(" ")}
+                >
+                  {lang === "tr" ? "Danışan Takibi" : "Client Tracking"}
+                </button>
               </div>
-              <button onClick={() => setSelectedClient(null)} className={["rounded-lg p-2 transition", isDark ? "text-zinc-400 hover:bg-white/10 hover:text-white" : "text-[#5e776e] hover:bg-[#edf6ec] hover:text-[#123a32]"].join(" ")}>
-                <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                </svg>
+              <button
+                onClick={() => setSelectedClient(null)}
+                className={["rounded-xl border px-3 py-1 text-xs font-black hover:scale-105 transition outline-none", isDark ? "border-transparent bg-white/5 text-zinc-200 hover:bg-white/10" : "border-[#e4dbc9] bg-white text-[#2b574b] hover:bg-gray-100"].join(" ")}
+              >
+                {lang === "tr" ? "Kapat" : "Close"}
               </button>
             </div>
 
             <div className="max-h-[60vh] overflow-y-auto p-5">
-              {loadingPlans ? (
-                <div className="flex justify-center py-12">
-                  <div className="h-8 w-8 animate-spin rounded-full border-4 border-emerald-500 border-t-transparent"></div>
-                </div>
-              ) : clientPlans.length === 0 ? (
-                <div className="py-10 text-center">
-                  <div className={["mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-xl", isDark ? "bg-emerald-500/10 text-emerald-300" : "bg-[#edf6ec] text-[#285743]"].join(" ")}>
-                    <svg className="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
-                    </svg>
-                  </div>
-                  <p className="text-sm font-black">
-                    {t.noPlans}
-                  </p>
-                  <p className={["mt-1 text-xs", isDark ? "text-zinc-500" : "text-[#7a7160]"].join(" ")}>
-                    {t.noPlansSub}
-                  </p>
-                </div>
-              ) : (
-                <div className="space-y-3">
-                  {clientPlans.map((plan) => (
-                    <div key={plan.id} className={["flex flex-col gap-3 border p-3 transition sm:flex-row sm:items-center sm:justify-between", isDark ? "rounded-2xl border-transparent bg-black/20 shadow-[inset_0_1px_0_rgba(16,185,129,0.08)] hover:border-transparent" : "rounded-2xl border-[#e4dbc9] bg-[#fffaf2] hover:border-[#d4c9b5]"].join(" ")}>
-                      <div className="min-w-0">
-                        <div className="flex flex-wrap items-center gap-2">
-                          <h4 className={["truncate text-sm font-black", isDark ? "text-white" : "text-[#123a32]"].join(" ")}>{plan.title}</h4>
-                          {plan.is_active && (
-                            <span className={["rounded-full border px-2 py-0.5 text-[10px] font-black uppercase", isDark ? "border-emerald-300/20 bg-emerald-500/10 text-emerald-100" : "border-[#dce8dc] bg-[#edf6ec] text-[#285743]"].join(" ")}>{t.active}</span>
-                          )}
-                        </div>
-                        <p className={["mt-1 text-[11px] font-black uppercase", isDark ? "text-zinc-500" : "text-[#4d6b62]"].join(" ")}>
-                          {planTypeLabel(plan.plan_type)} Plan
-                        </p>
-                        <p className={["mt-1 text-[11px]", isDark ? "text-zinc-600" : "text-[#7a7160]"].join(" ")}>
-                          {t.createdAt}: {new Date(plan.created_at).toLocaleDateString(lang === "tr" ? "tr-TR" : "en-US")}
-                        </p>
-                      </div>
-                      
-                      <button 
-                        onClick={() => navigate(`/plan/${plan.id}`)}
-                        className={["flex h-9 shrink-0 items-center justify-center px-4 text-xs font-black transition", isDark ? "rounded-xl bg-emerald-400 text-zinc-950 hover:brightness-110" : "rounded-xl bg-[#2f6154] text-white hover:bg-[#244f44]"].join(" ")}
-                      >
-                        {t.viewPlan}
-                      </button>
+              {activeTab === 'plans' && (
+                <>
+                  {loadingPlans ? (
+                    <div className="flex justify-center py-12">
+                      <div className="h-8 w-8 animate-spin rounded-full border-4 border-emerald-500 border-t-transparent"></div>
                     </div>
-                  ))}
+                  ) : clientPlans.length === 0 ? (
+                    <div className="py-10 text-center">
+                      <div className={["mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-xl", isDark ? "bg-emerald-500/10 text-emerald-300" : "bg-[#edf6ec] text-[#285743]"].join(" ")}>
+                        <svg className="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+                        </svg>
+                      </div>
+                      <p className="text-sm font-black">
+                        {t.noPlans}
+                      </p>
+                      <p className={["mt-1 text-xs", isDark ? "text-zinc-500" : "text-[#7a7160]"].join(" ")}>
+                        {t.noPlansSub}
+                      </p>
+                    </div>
+                  ) : (
+                    <div className="space-y-3">
+                      {clientPlans.map((plan) => (
+                        <div key={plan.id} className={["flex flex-col gap-3 border p-3 transition sm:flex-row sm:items-center sm:justify-between", isDark ? "rounded-2xl border-transparent bg-black/20 shadow-[inset_0_1px_0_rgba(16,185,129,0.08)] hover:border-transparent" : "rounded-2xl border-[#e4dbc9] bg-[#fffaf2] hover:border-[#d4c9b5]"].join(" ")}>
+                          <div className="min-w-0">
+                            <div className="flex flex-wrap items-center gap-2">
+                              <h4 className={["truncate text-sm font-black", isDark ? "text-white" : "text-[#123a32]"].join(" ")}>{plan.title}</h4>
+                              {plan.is_active && (
+                                <span className={["rounded-full border px-2 py-0.5 text-[10px] font-black uppercase", isDark ? "border-emerald-300/20 bg-emerald-500/10 text-emerald-100" : "border-[#dce8dc] bg-[#edf6ec] text-[#285743]"].join(" ")}>{t.active}</span>
+                              )}
+                            </div>
+                            <p className={["mt-1 text-[11px] font-black uppercase", isDark ? "text-zinc-500" : "text-[#4d6b62]"].join(" ")}>
+                              {planTypeLabel(plan.plan_type)} Plan
+                            </p>
+                            <p className={["mt-1 text-[11px]", isDark ? "text-zinc-600" : "text-[#7a7160]"].join(" ")}>
+                              {t.createdAt}: {new Date(plan.created_at).toLocaleDateString(lang === "tr" ? "tr-TR" : "en-US")}
+                            </p>
+                          </div>
+                          
+                          <button 
+                            onClick={() => navigate(`/plan/${plan.id}`)}
+                            className={["flex h-9 shrink-0 items-center justify-center px-4 text-xs font-black transition", isDark ? "rounded-xl bg-emerald-400 text-zinc-950 hover:brightness-110" : "rounded-xl bg-[#2f6154] text-white hover:bg-[#244f44]"].join(" ")}
+                          >
+                            {t.viewPlan}
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </>
+              )}
+
+              {activeTab === 'tracking' && (
+                <div className="space-y-6">
+                  {loadingTracking ? (
+                    <div className="flex justify-center py-12">
+                      <div className="h-8 w-8 animate-spin rounded-full border-4 border-emerald-500 border-t-transparent"></div>
+                    </div>
+                  ) : (
+                    <>
+                      {/* Measurements AreaChart */}
+                      <div>
+                        <h4 className={["text-xs font-black uppercase tracking-wider mb-2", isDark ? "text-zinc-400" : "text-[#4d6b62]"].join(" ")}>
+                          {lang === "tr" ? "Ölçüm Geçmişi (Son 30 Gün)" : "Measurement History (30 Days)"}
+                        </h4>
+                        {clientMeasurements.length === 0 ? (
+                          <div className={["text-xs font-semibold text-center py-6 border border-dashed rounded-2xl", isDark ? "border-zinc-800 text-zinc-500" : "border-gray-200 text-[#7a7160]"].join(" ")}>
+                            {lang === "tr" ? "Ölçüm verisi bulunmamaktadır." : "No measurements found."}
+                          </div>
+                        ) : (
+                          <div className="h-[200px] w-full text-[10px] font-semibold bg-black/10 p-2 rounded-2xl">
+                            {(() => {
+                              const strokeColor1 = isDark ? "#34d399" : "#10b981";
+                              const strokeColor2 = isDark ? "#f59e0b" : "#d97706";
+                              return (
+                                <ResponsiveContainer width="100%" height="100%">
+                                  <AreaChart data={clientMeasurements.map(m => ({ date: m.date, Kilo: m.weight != null ? Number(m.weight) : null, Yağ: m.body_fat != null ? Number(m.body_fat) : null }))} margin={{ top: 5, right: 5, left: -25, bottom: 0 }}>
+                                    <CartesianGrid strokeDasharray="3 3" stroke={isDark ? "rgba(255,255,255,0.05)" : "rgba(0,0,0,0.05)"} />
+                                    <XAxis dataKey="date" stroke={isDark ? "#71717a" : "#4e6f65"} />
+                                    <YAxis yAxisId="left" stroke={strokeColor1} domain={['dataMin - 5', 'dataMax + 5']} />
+                                    <YAxis yAxisId="right" orientation="right" stroke={strokeColor2} domain={['dataMin - 2', 'dataMax + 2']} />
+                                    <Tooltip contentStyle={{ backgroundColor: isDark ? '#0d1114' : '#fff', borderColor: 'rgba(16,185,129,0.2)', color: isDark ? '#fff' : '#000' }} />
+                                    <Area yAxisId="left" type="monotone" dataKey="Kilo" stroke={strokeColor1} strokeWidth={2} fill={isDark ? "rgba(52,211,153,0.05)" : "rgba(16,185,129,0.05)"} connectNulls />
+                                    <Area yAxisId="right" type="monotone" dataKey="Yağ" stroke={strokeColor2} strokeWidth={2} fill={isDark ? "rgba(245,158,11,0.05)" : "rgba(217,119,6,0.05)"} connectNulls />
+                                  </AreaChart>
+                                </ResponsiveContainer>
+                              );
+                            })()}
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Water logs BarChart */}
+                      <div>
+                        <h4 className={["text-xs font-black uppercase tracking-wider mb-2", isDark ? "text-zinc-400" : "text-[#4d6b62]"].join(" ")}>
+                          {lang === "tr" ? "Su Tüketimi (Son 7 Gün)" : "Water Consumption (7 Days)"}
+                        </h4>
+                        {clientWaterLogs.length === 0 ? (
+                          <div className={["text-xs font-semibold text-center py-6 border border-dashed rounded-2xl", isDark ? "border-zinc-800 text-zinc-500" : "border-gray-200 text-[#7a7160]"].join(" ")}>
+                            {lang === "tr" ? "Su tüketim verisi bulunmamaktadır." : "No water tracking logs found."}
+                          </div>
+                        ) : (
+                          <div className="h-[180px] w-full text-[10px] font-semibold bg-black/10 p-2 rounded-2xl">
+                            <ResponsiveContainer width="100%" height="100%">
+                              <BarChart data={clientWaterLogs.map(w => ({ date: w.date, Su: Number(w.amount) }))} margin={{ top: 5, right: 5, left: -20, bottom: 0 }}>
+                                <CartesianGrid strokeDasharray="3 3" stroke={isDark ? "rgba(255,255,255,0.05)" : "rgba(0,0,0,0.05)"} />
+                                <XAxis dataKey="date" stroke={isDark ? "#71717a" : "#4e6f65"} />
+                                <YAxis stroke="#3b82f6" />
+                                <Tooltip contentStyle={{ backgroundColor: isDark ? '#0d1114' : '#fff', borderColor: 'rgba(59,130,246,0.2)', color: isDark ? '#fff' : '#000' }} />
+                                <Bar dataKey="Su" fill="#3b82f6" radius={[6, 6, 0, 0]} />
+                              </BarChart>
+                            </ResponsiveContainer>
+                          </div>
+                        )}
+                      </div>
+                    </>
+                  )}
                 </div>
               )}
             </div>
             
-            <div className={["border-t px-5 py-4", isDark ? "border-emerald-400/10 bg-black/20" : "border-[#e4dbc9] bg-[#f9f6ec]"].join(" ")}>
-              <button 
-                onClick={() => navigate(`/meal-planner?clientId=${selectedClient.user_id}`)}
-                className={["w-full py-2.5 text-sm font-black transition active:scale-[0.99]", isDark ? "rounded-xl bg-emerald-400 text-zinc-950 hover:brightness-110" : "rounded-xl bg-[#2f6154] text-white hover:bg-[#244f44]"].join(" ")}
-              >
-                + {t.newPlan}
-              </button>
-            </div>
+            {activeTab === 'plans' && (
+              <div className={["border-t px-5 py-4", isDark ? "border-emerald-400/10 bg-black/20" : "border-[#e4dbc9] bg-[#f9f6ec]"].join(" ")}>
+                <button 
+                  onClick={() => navigate(`/meal-planner?clientId=${selectedClient.user_id}`)}
+                  className={["w-full py-2.5 text-sm font-black transition active:scale-[0.99]", isDark ? "rounded-xl bg-emerald-400 text-zinc-950 hover:brightness-110" : "rounded-xl bg-[#2f6154] text-white hover:bg-[#244f44]"].join(" ")}
+                >
+                  + {t.newPlan}
+                </button>
+              </div>
+            )}
           </div>
         </div>
       )}
