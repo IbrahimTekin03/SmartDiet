@@ -2,6 +2,7 @@ import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { MoreThanOrEqual, Repository } from 'typeorm';
 import { Measurement } from './entities/measurement.entity';
+import { UserProfile } from '../users/entities/user.profile.entity';
 import { AddMeasurementDto } from './dto/add-measurement.dto';
 
 @Injectable()
@@ -9,6 +10,8 @@ export class MeasurementsService {
   constructor(
     @InjectRepository(Measurement)
     private readonly measurementRepository: Repository<Measurement>,
+    @InjectRepository(UserProfile)
+    private readonly userProfileRepository: Repository<UserProfile>,
   ) {}
 
   async add(clientId: string, dto: AddMeasurementDto) {
@@ -22,7 +25,14 @@ export class MeasurementsService {
       hip: dto.hip ?? null,
       notes: dto.notes ?? null,
     });
-    return this.measurementRepository.save(measurement);
+    
+    const saved = await this.measurementRepository.save(measurement);
+    
+    if (dto.height) {
+      await this.userProfileRepository.update({ user_id: clientId }, { height: dto.height });
+    }
+    
+    return saved;
   }
 
   async history(clientId: string, days = 30) {

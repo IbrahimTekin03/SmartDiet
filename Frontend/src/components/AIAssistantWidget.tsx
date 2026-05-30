@@ -2,6 +2,16 @@ import { useState, useRef, useEffect } from "react";
 import { useAuthSession, parseStoredUser } from "../lib/authSession";
 import { useAppSettings } from "../context/AppSettingsContext";
 
+type ScannedMealItem = {
+  name: string;
+  amount: number;
+  unit: string;
+  calories: number;
+  protein: number;
+  carbohydrates: number;
+  fat: number;
+};
+
 type ScannedMeal = {
   food_name: string;
   amount: number;
@@ -11,6 +21,7 @@ type ScannedMeal = {
   carbohydrates: number;
   fat: number;
   description: string;
+  items?: ScannedMealItem[];
 };
 
 type Message = { 
@@ -47,7 +58,24 @@ export default function AIAssistantWidget() {
 
   const startEditingMeal = (idx: number, meal: ScannedMeal) => {
     setEditingMealIndex(idx);
-    setEditMealData({ ...meal });
+    
+    // Ensure it always has items, even if taranan meal didn't have one (backward compatibility)
+    const items = meal.items && meal.items.length > 0
+      ? meal.items.map(it => ({ ...it }))
+      : [{
+          name: meal.food_name,
+          amount: meal.amount,
+          unit: meal.unit,
+          calories: meal.calories,
+          protein: meal.protein,
+          carbohydrates: meal.carbohydrates,
+          fat: meal.fat
+        }];
+
+    setEditMealData({
+      ...meal,
+      items
+    });
   };
 
   const saveEditedMeal = (idx: number) => {
@@ -63,6 +91,128 @@ export default function AIAssistantWidget() {
     }));
     setEditingMealIndex(null);
     setEditMealData(null);
+  };
+
+  const handleItemNameChange = (itemIdx: number, newName: string) => {
+    if (!editMealData || !editMealData.items) return;
+    const updatedItems = [...editMealData.items];
+    updatedItems[itemIdx] = {
+      ...updatedItems[itemIdx],
+      name: newName
+    };
+    setEditMealData({
+      ...editMealData,
+      items: updatedItems
+    });
+  };
+
+  const handleItemAmountChange = (itemIdx: number, newAmount: number) => {
+    if (!editMealData || !editMealData.items) return;
+    const item = editMealData.items[itemIdx];
+    const oldAmount = item.amount || 1;
+    const ratio = newAmount / oldAmount;
+    
+    const updatedItems = [...editMealData.items];
+    updatedItems[itemIdx] = {
+      ...item,
+      amount: newAmount,
+      calories: Math.round((item.calories || 0) * ratio),
+      protein: Math.round((item.protein || 0) * ratio * 10) / 10,
+      carbohydrates: Math.round((item.carbohydrates || 0) * ratio * 10) / 10,
+      fat: Math.round((item.fat || 0) * ratio * 10) / 10,
+    };
+
+    // Recalculate plate totals
+    const totalAmount = updatedItems.reduce((sum, it) => sum + (it.amount || 0), 0);
+    const totalCalories = updatedItems.reduce((sum, it) => sum + (it.calories || 0), 0);
+    const totalProtein = Math.round(updatedItems.reduce((sum, it) => sum + (it.protein || 0), 0) * 10) / 10;
+    const totalCarbs = Math.round(updatedItems.reduce((sum, it) => sum + (it.carbohydrates || 0), 0) * 10) / 10;
+    const totalFat = Math.round(updatedItems.reduce((sum, it) => sum + (it.fat || 0), 0) * 10) / 10;
+
+    setEditMealData({
+      ...editMealData,
+      amount: totalAmount,
+      calories: totalCalories,
+      protein: totalProtein,
+      carbohydrates: totalCarbs,
+      fat: totalFat,
+      items: updatedItems
+    });
+  };
+
+  const handleItemMacroChange = (itemIdx: number, key: 'calories' | 'protein' | 'carbohydrates' | 'fat', value: number) => {
+    if (!editMealData || !editMealData.items) return;
+    const updatedItems = [...editMealData.items];
+    updatedItems[itemIdx] = {
+      ...updatedItems[itemIdx],
+      [key]: value
+    };
+    
+    // Recalculate plate totals
+    const totalCalories = updatedItems.reduce((sum, it) => sum + (it.calories || 0), 0);
+    const totalProtein = Math.round(updatedItems.reduce((sum, it) => sum + (it.protein || 0), 0) * 10) / 10;
+    const totalCarbs = Math.round(updatedItems.reduce((sum, it) => sum + (it.carbohydrates || 0), 0) * 10) / 10;
+    const totalFat = Math.round(updatedItems.reduce((sum, it) => sum + (it.fat || 0), 0) * 10) / 10;
+
+    setEditMealData({
+      ...editMealData,
+      calories: totalCalories,
+      protein: totalProtein,
+      carbohydrates: totalCarbs,
+      fat: totalFat,
+      items: updatedItems
+    });
+  };
+
+  const deleteIngredient = (itemIdx: number) => {
+    if (!editMealData || !editMealData.items) return;
+    const updatedItems = editMealData.items.filter((_, i) => i !== itemIdx);
+    
+    const totalAmount = updatedItems.reduce((sum, it) => sum + (it.amount || 0), 0);
+    const totalCalories = updatedItems.reduce((sum, it) => sum + (it.calories || 0), 0);
+    const totalProtein = Math.round(updatedItems.reduce((sum, it) => sum + (it.protein || 0), 0) * 10) / 10;
+    const totalCarbs = Math.round(updatedItems.reduce((sum, it) => sum + (it.carbohydrates || 0), 0) * 10) / 10;
+    const totalFat = Math.round(updatedItems.reduce((sum, it) => sum + (it.fat || 0), 0) * 10) / 10;
+
+    setEditMealData({
+      ...editMealData,
+      amount: totalAmount,
+      calories: totalCalories,
+      protein: totalProtein,
+      carbohydrates: totalCarbs,
+      fat: totalFat,
+      items: updatedItems
+    });
+  };
+
+  const addIngredient = () => {
+    if (!editMealData) return;
+    const newItem: ScannedMealItem = {
+      name: lang === "tr" ? "Yeni Yiyecek" : "New Food",
+      amount: 100,
+      unit: "gram",
+      calories: 100,
+      protein: 0,
+      carbohydrates: 0,
+      fat: 0
+    };
+    const updatedItems = [...(editMealData.items || []), newItem];
+    
+    const totalAmount = updatedItems.reduce((sum, it) => sum + (it.amount || 0), 0);
+    const totalCalories = updatedItems.reduce((sum, it) => sum + (it.calories || 0), 0);
+    const totalProtein = Math.round(updatedItems.reduce((sum, it) => sum + (it.protein || 0), 0) * 10) / 10;
+    const totalCarbs = Math.round(updatedItems.reduce((sum, it) => sum + (it.carbohydrates || 0), 0) * 10) / 10;
+    const totalFat = Math.round(updatedItems.reduce((sum, it) => sum + (it.fat || 0), 0) * 10) / 10;
+
+    setEditMealData({
+      ...editMealData,
+      amount: totalAmount,
+      calories: totalCalories,
+      protein: totalProtein,
+      carbohydrates: totalCarbs,
+      fat: totalFat,
+      items: updatedItems
+    });
   };
 
   // New Meal Creation States for Empty Days
@@ -90,6 +240,16 @@ export default function AIAssistantWidget() {
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ block: "end" });
   }, [messages]);
+
+  useEffect(() => {
+    if (mealsForDay.length === 0) {
+      setSelectedMealId("CREATE_NEW");
+      setAddMode("create_and_add");
+    } else {
+      setSelectedMealId("");
+      setAddMode("add");
+    }
+  }, [selectedDay, selectedPlanId, mealsForDay.length]);
 
   useEffect(() => {
     if (messages.length === 0 && user) {
@@ -374,6 +534,10 @@ export default function AIAssistantWidget() {
       ? `${selectedDay}. Gün` 
       : (dayNames[selectedDay - 1] || "Pazartesi");
 
+    const itemsDescription = meal.items && meal.items.length > 0
+      ? meal.items.map(it => `- ${it.name} (${it.amount} ${it.unit}, ${it.calories} kcal, ${it.protein}g protein, ${it.carbohydrates}g karbonhidrat, ${it.fat}g yağ)`).join('\n')
+      : `- ${meal.food_name} (${meal.amount} ${meal.unit}, ${meal.calories} kcal, ${meal.protein}g protein, ${meal.carbohydrates}g karbonhidrat, ${meal.fat}g yağ)`;
+
     let prompt = "";
     
     if (addMode === "create_and_add") {
@@ -382,37 +546,41 @@ export default function AIAssistantWidget() {
         return;
       }
       prompt = lang === "tr"
-        ? `Az önce analiz ettiğin ${meal.food_name} (${meal.amount} ${meal.unit}, ${meal.calories} kcal, ${meal.protein}g protein, ${meal.carbohydrates}g karbonhidrat, ${meal.fat}g yağ) yemeğini, "${plan.title}" planımın "${dayName}" günü için yeni bir "${newMealName}" öğünü (saat "${newMealTime || '12:00'}") oluşturup ekler misin? Lütfen database_query aracını kullanarak önce bu yeni öğünü "diet_plan_meals" tablosuna ekle, ardından "diet_plan_meal_items" tablosuna yiyeceği ekle. Sonucu bana bildir.`
-        : `Could you please create a new meal named "${newMealName}" (time "${newMealTime || '12:00'}") on "${dayName}" of my plan "${plan.title}", and add the newly scanned ${meal.food_name} (${meal.amount} ${meal.unit}, ${meal.calories} kcal, ${meal.protein}g protein, ${meal.carbohydrates}g carbs, ${meal.fat}g fat) into it? Please insert these into the database and confirm.`;
+        ? `Az önce analiz ettiğin şu yiyecekleri:\n${itemsDescription}\nyeni oluşturacağın "${newMealName}" öğününe (saat "${newMealTime || '12:00'}") ekler misin? Bu yeni öğün "${plan.title}" planımın "${dayName}" günü için olmalıdır. Lütfen database_query aracını kullanarak önce bu yeni öğünü "diet_plan_meals" tablosuna ekle, ardından bu yiyeceklerin her birini "foods" tablosunda aratarak veya yoksa "create_food" aracıyla (veya veritabanına ekleyerek) oluşturup "diet_plan_meal_items" tablosuna ekle. Sonucu bana bildir.`
+        : `Could you please create a new meal named "${newMealName}" (time "${newMealTime || '12:00'}") on "${dayName}" of my plan "${plan.title}", and insert the following ingredients into it:\n${itemsDescription}\nPlease insert these into the database and confirm.`;
     } else if (addMode === "add") {
       const mealObj = plan?.meals?.find((m: any) => m.id === selectedMealId);
       prompt = lang === "tr"
-        ? `Az önce analiz ettiğin ${meal.food_name} (${meal.amount} ${meal.unit}, ${meal.calories} kcal, ${meal.protein}g protein, ${meal.carbohydrates}g karbonhidrat, ${meal.fat}g yağ) yemeğini, "${plan.title}" planımın "${dayName}" günündeki "${mealObj.name}" (meal_id: "${selectedMealId}") öğününe yeni bir yiyecek olarak ekler misin? Lütfen database_query aracını kullanarak veritabanına ekle ve güncel planı bana bildir.`
-        : `Could you please add the ${meal.food_name} (${meal.amount} ${meal.unit}, ${meal.calories} kcal, ${meal.protein}g protein, ${meal.carbohydrates}g carbs, ${meal.fat}g fat) which I just scanned to the "${mealObj.name}" meal (meal_id: "${selectedMealId}") on "${dayName}" of my plan "${plan.title}" as a new food item? Please insert it into the database and confirm.`;
+        ? `Az önce analiz ettiğin şu yiyecekleri:\n${itemsDescription}\n"${plan.title}" planımın "${dayName}" günündeki "${mealObj.name}" (meal_id: "${selectedMealId}") öğününe yeni yiyecekler olarak ekler misin? Lütfen her bir yiyecek bileşeni için foods tablosunda aratarak veya yoksa create_food aracıyla oluşturup, database_query veya SQL kullanarak diet_plan_meal_items tablosuna ekle ve güncel planı bana bildir.`
+        : `Could you please add the following ingredients:\n${itemsDescription}\nto the "${mealObj.name}" meal (meal_id: "${selectedMealId}") on "${dayName}" of my plan "${plan.title}"? Please insert them into the database and confirm.`;
     } else {
       const mealObj = plan?.meals?.find((m: any) => m.id === selectedMealId);
       const itemObj = mealObj?.items?.find((i: any) => i.id === selectedMealItemId);
       prompt = lang === "tr"
-        ? `Az önce analiz ettiğin ${meal.food_name} (${meal.amount} ${meal.unit}, ${meal.calories} kcal, ${meal.protein}g protein, ${meal.carbohydrates}g karbonhidrat, ${meal.fat}g yağ) yemeğini, "${plan.title}" planımın "${dayName}" günündeki "${mealObj.name}" öğününde yer alan "${itemObj?.food?.name || 'mevcut yiyecek'}" (meal_item_id: "${selectedMealItemId}") yerine ekleyerek değiştirir misin? Lütfen update_meal_item veya database_query aracı ile güncellemeyi yap ve sonucu bana bildir.`
-        : `Could you please replace "${itemObj?.food?.name || 'existing food'}" (meal_item_id: "${selectedMealItemId}") in the "${mealObj.name}" meal on "${dayName}" of my plan "${plan.title}" with the newly scanned ${meal.food_name} (${meal.amount} ${meal.unit}, ${meal.calories} kcal, ${meal.protein}g protein, ${meal.carbohydrates}g carbs, ${meal.fat}g fat)? Please execute this update and confirm.`;
+        ? `Az önce analiz ettiğin şu yiyecekleri:\n${itemsDescription}\n"${plan.title}" planımın "${dayName}" günündeki "${mealObj.name}" öğününde yer alan "${itemObj?.food?.name || 'mevcut yiyecek'}" (meal_item_id: "${selectedMealItemId}") yerine ekleyerek değiştirir misin? Lütfen her bir yiyecek bileşeni için foods tablosunda aratarak veya yoksa create_food aracıyla oluşturup, update_meal_item veya database_query aracı ile güncellemeyi yap ve sonucu bana bildir.`
+        : `Could you please replace "${itemObj?.food?.name || 'existing food'}" (meal_item_id: "${selectedMealItemId}") in the "${mealObj.name}" meal on "${dayName}" of my plan "${plan.title}" with the following ingredients:\n${itemsDescription}? Please execute this update and confirm.`;
     }
+
+    const displayItemsDescription = meal.items && meal.items.length > 0
+      ? meal.items.map(it => `${it.name} (${it.amount} ${it.unit})`).join(', ')
+      : `${meal.food_name} (${meal.amount} ${meal.unit})`;
 
     let displayPrompt = "";
     if (addMode === "create_and_add") {
       displayPrompt = lang === "tr"
-        ? `Bu resimdeki tabağı "${plan.title}" planımın "${dayName}" günü saat "${newMealTime || '12:00'}" için yeni bir "${newMealName}" öğünü oluşturup ekler misin?`
-        : `Could you please create a new meal named "${newMealName}" (time "${newMealTime || '12:00'}") on "${dayName}" of my plan "${plan.title}" and add the food in this photo into it?`;
+        ? `Bu resimdeki tabağı (${displayItemsDescription}) "${plan.title}" planımın "${dayName}" günü saat "${newMealTime || '12:00'}" için yeni bir "${newMealName}" öğünü oluşturup ekler misin?`
+        : `Could you please create a new meal named "${newMealName}" (time "${newMealTime || '12:00'}") on "${dayName}" of my plan "${plan.title}" and add the food items in this photo (${displayItemsDescription}) into it?`;
     } else if (addMode === "add") {
       const mealObj = plan?.meals?.find((m: any) => m.id === selectedMealId);
       displayPrompt = lang === "tr"
-        ? `Bu resimdeki tabağı "${plan.title}" planımın "${dayName}" günündeki "${mealObj?.name || ''}" öğününe ekler misin?`
-        : `Could you please add the food in this photo to the "${mealObj?.name || ''}" meal on "${dayName}" of my plan "${plan.title}"?`;
+        ? `Bu resimdeki tabağı (${displayItemsDescription}) "${plan.title}" planımın "${dayName}" günündeki "${mealObj?.name || ''}" öğününe ekler misin?`
+        : `Could you please add the food items in this photo (${displayItemsDescription}) to the "${mealObj?.name || ''}" meal on "${dayName}" of my plan "${plan.title}"?`;
     } else {
       const mealObj = plan?.meals?.find((m: any) => m.id === selectedMealId);
       const itemObj = mealObj?.items?.find((i: any) => i.id === selectedMealItemId);
       displayPrompt = lang === "tr"
-        ? `Bu resimdeki tabağı "${plan.title}" planımın "${dayName}" günündeki "${mealObj?.name || ''}" öğününde yer alan "${itemObj?.food?.name || 'mevcut yiyecek'}" yerine ekleyerek değiştirir misin?`
-        : `Could you please replace "${itemObj?.food?.name || 'existing food'}" in the "${mealObj?.name || ''}" meal on "${dayName}" of my plan "${plan.title}" with the food in this photo?`;
+        ? `Bu resimdeki tabağı (${displayItemsDescription}) "${plan.title}" planımın "${dayName}" günündeki "${mealObj?.name || ''}" öğününde yer alan "${itemObj?.food?.name || 'mevcut yiyecek'}" yerine ekleyerek değiştirir misin?`
+        : `Could you please replace "${itemObj?.food?.name || 'existing food'}" in the "${mealObj?.name || ''}" meal on "${dayName}" of my plan "${plan.title}" with the food items in this photo (${displayItemsDescription})?`;
     }
 
     setExpandedFormIndex(null);
@@ -538,13 +706,19 @@ export default function AIAssistantWidget() {
                   {msg.scannedMeal && (
                     <div className={`mt-3 overflow-hidden rounded-2xl border ${isDark ? "border-indigo-500/30 bg-indigo-500/10 text-zinc-100 shadow-[0_8px_32px_rgba(99,102,241,0.15)]" : "border-indigo-100 bg-indigo-50/50 text-indigo-950"} p-3`}>
                       {editingMealIndex === idx && editMealData ? (
-                        <div className="space-y-3.5 text-left text-xs">
-                          <div className="text-[10px] font-black text-indigo-400 tracking-widest uppercase mb-1">
-                            ÖĞÜN VERİLERİNİ DÜZENLE
+                        <div className="space-y-3.5 text-left text-xs max-h-[300px] overflow-y-auto pr-1">
+                          <div className="flex items-center justify-between border-b border-indigo-500/20 pb-1.5">
+                            <div className="text-[10px] font-black text-indigo-400 tracking-widest uppercase">
+                              TABAK İÇERİĞİNİ DÜZENLE
+                            </div>
+                            <span className="rounded-full bg-indigo-500/20 px-2 py-0.5 text-[9px] font-extrabold text-indigo-300">
+                              Toplam: {editMealData.calories} kcal
+                            </span>
                           </div>
-                          
+
+                          {/* Plate Name Input */}
                           <div>
-                            <label className="block text-[9px] font-bold opacity-60 mb-0.5">Yemek Adı</label>
+                            <label className="block text-[9px] font-bold opacity-60 mb-0.5">Tabak Adı</label>
                             <input
                               type="text"
                               value={editMealData.food_name}
@@ -552,79 +726,129 @@ export default function AIAssistantWidget() {
                               className="w-full rounded-xl border border-indigo-500/30 bg-black/60 px-2.5 py-1.5 text-xs text-white outline-none focus:border-indigo-400 focus:ring-1 focus:ring-indigo-500/20 transition"
                             />
                           </div>
-                          
-                          <div className="grid grid-cols-2 gap-2">
-                            <div>
-                              <label className="block text-[9px] font-bold opacity-60 mb-0.5">Miktar</label>
-                              <input
-                                type="number"
-                                value={editMealData.amount}
-                                onChange={(e) => setEditMealData({ ...editMealData, amount: Number(e.target.value) })}
-                                className="w-full rounded-xl border border-indigo-500/30 bg-black/60 px-2.5 py-1.5 text-xs text-white outline-none focus:border-indigo-400 focus:ring-1 focus:ring-indigo-500/20 transition"
-                              />
-                            </div>
-                            <div>
-                              <label className="block text-[9px] font-bold opacity-60 mb-0.5">Birim</label>
-                              <input
-                                type="text"
-                                value={editMealData.unit}
-                                onChange={(e) => setEditMealData({ ...editMealData, unit: e.target.value })}
-                                className="w-full rounded-xl border border-indigo-500/30 bg-black/60 px-2.5 py-1.5 text-xs text-white outline-none focus:border-indigo-400 focus:ring-1 focus:ring-indigo-500/20 transition"
-                              />
-                            </div>
+
+                          {/* List of Ingredients */}
+                          <div className="space-y-3.5 border-t border-indigo-500/10 pt-3">
+                            {(editMealData.items || []).map((item, itemIdx) => (
+                              <div key={itemIdx} className="relative rounded-2xl bg-black/40 border border-indigo-500/10 p-2.5 space-y-2">
+                                <div className="flex items-center justify-between">
+                                  <span className="text-[9px] font-bold text-indigo-400">Yiyecek #{itemIdx + 1}</span>
+                                  <button
+                                    type="button"
+                                    onClick={() => deleteIngredient(itemIdx)}
+                                    className="text-rose-400 hover:text-rose-500 transition text-[9px] font-bold flex items-center gap-0.5"
+                                  >
+                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" className="h-3 w-3">
+                                      <polyline points="3 6 5 6 21 6" />
+                                      <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
+                                    </svg>
+                                    Sil
+                                  </button>
+                                </div>
+
+                                <div className="grid grid-cols-2 gap-2">
+                                  <div>
+                                    <label className="block text-[8px] font-bold opacity-60 mb-0.5">Yiyecek Adı</label>
+                                    <input
+                                      type="text"
+                                      value={item.name}
+                                      onChange={(e) => handleItemNameChange(itemIdx, e.target.value)}
+                                      className="w-full rounded-lg border border-indigo-500/20 bg-black/50 px-2 py-1 text-xs text-white outline-none focus:border-indigo-400 transition"
+                                    />
+                                  </div>
+                                  <div className="grid grid-cols-2 gap-1">
+                                    <div>
+                                      <label className="block text-[8px] font-bold opacity-60 mb-0.5">Miktar</label>
+                                      <input
+                                        type="number"
+                                        value={item.amount}
+                                        onChange={(e) => handleItemAmountChange(itemIdx, Number(e.target.value))}
+                                        className="w-full rounded-lg border border-indigo-500/20 bg-black/50 px-1 py-1 text-xs text-white outline-none focus:border-indigo-400 transition text-center"
+                                      />
+                                    </div>
+                                    <div>
+                                      <label className="block text-[8px] font-bold opacity-60 mb-0.5">Birim</label>
+                                      <input
+                                        type="text"
+                                        value={item.unit}
+                                        onChange={(e) => {
+                                          const updated = [...(editMealData.items || [])];
+                                          updated[itemIdx].unit = e.target.value;
+                                          setEditMealData({ ...editMealData, items: updated });
+                                        }}
+                                        className="w-full rounded-lg border border-indigo-500/20 bg-black/50 px-1.5 py-1 text-xs text-white outline-none focus:border-indigo-400 transition text-center"
+                                      />
+                                    </div>
+                                  </div>
+                                </div>
+
+                                <div className="grid grid-cols-4 gap-1 text-[9px]">
+                                  <div>
+                                    <label className="block text-[8px] font-bold opacity-60 mb-0.5 text-center">Kalori</label>
+                                    <input
+                                      type="number"
+                                      value={item.calories}
+                                      onChange={(e) => handleItemMacroChange(itemIdx, 'calories', Number(e.target.value))}
+                                      className="w-full rounded-lg border border-indigo-500/20 bg-black/50 py-0.5 text-xs text-white outline-none focus:border-indigo-400 transition text-center"
+                                    />
+                                  </div>
+                                  <div>
+                                    <label className="block text-[8px] font-bold opacity-60 mb-0.5 text-center">Protein</label>
+                                    <input
+                                      type="number"
+                                      value={item.protein}
+                                      onChange={(e) => handleItemMacroChange(itemIdx, 'protein', Number(e.target.value))}
+                                      className="w-full rounded-lg border border-indigo-500/20 bg-black/50 py-0.5 text-xs text-white outline-none focus:border-indigo-400 transition text-center"
+                                    />
+                                  </div>
+                                  <div>
+                                    <label className="block text-[8px] font-bold opacity-60 mb-0.5 text-center">Karb</label>
+                                    <input
+                                      type="number"
+                                      value={item.carbohydrates}
+                                      onChange={(e) => handleItemMacroChange(itemIdx, 'carbohydrates', Number(e.target.value))}
+                                      className="w-full rounded-lg border border-indigo-500/20 bg-black/50 py-0.5 text-xs text-white outline-none focus:border-indigo-400 transition text-center"
+                                    />
+                                  </div>
+                                  <div>
+                                    <label className="block text-[8px] font-bold opacity-60 mb-0.5 text-center">Yağ</label>
+                                    <input
+                                      type="number"
+                                      value={item.fat}
+                                      onChange={(e) => handleItemMacroChange(itemIdx, 'fat', Number(e.target.value))}
+                                      className="w-full rounded-lg border border-indigo-500/20 bg-black/50 py-0.5 text-xs text-white outline-none focus:border-indigo-400 transition text-center"
+                                    />
+                                  </div>
+                                </div>
+                              </div>
+                            ))}
                           </div>
-                          
-                          <div className="grid grid-cols-4 gap-1.5">
-                            <div>
-                              <label className="block text-[8px] font-bold opacity-60 mb-0.5">Kalori (kcal)</label>
-                              <input
-                                type="number"
-                                value={editMealData.calories}
-                                onChange={(e) => setEditMealData({ ...editMealData, calories: Number(e.target.value) })}
-                                className="w-full text-center rounded-xl border border-indigo-500/30 bg-black/60 px-1 py-1.5 text-xs text-white outline-none focus:border-indigo-400 focus:ring-1 focus:ring-indigo-500/20 transition"
-                              />
-                            </div>
-                            <div>
-                              <label className="block text-[8px] font-bold opacity-60 mb-0.5">Prot (g)</label>
-                              <input
-                                type="number"
-                                value={editMealData.protein}
-                                onChange={(e) => setEditMealData({ ...editMealData, protein: Number(e.target.value) })}
-                                className="w-full text-center rounded-xl border border-indigo-500/30 bg-black/60 px-1 py-1.5 text-xs text-white outline-none focus:border-indigo-400 focus:ring-1 focus:ring-indigo-500/20 transition"
-                              />
-                            </div>
-                            <div>
-                              <label className="block text-[8px] font-bold opacity-60 mb-0.5">Karb (g)</label>
-                              <input
-                                type="number"
-                                value={editMealData.carbohydrates}
-                                onChange={(e) => setEditMealData({ ...editMealData, carbohydrates: Number(e.target.value) })}
-                                className="w-full text-center rounded-xl border border-indigo-500/30 bg-black/60 px-1 py-1.5 text-xs text-white outline-none focus:border-indigo-400 focus:ring-1 focus:ring-indigo-500/20 transition"
-                              />
-                            </div>
-                            <div>
-                              <label className="block text-[8px] font-bold opacity-60 mb-0.5">Yağ (g)</label>
-                              <input
-                                type="number"
-                                value={editMealData.fat}
-                                onChange={(e) => setEditMealData({ ...editMealData, fat: Number(e.target.value) })}
-                                className="w-full text-center rounded-xl border border-indigo-500/30 bg-black/60 px-1 py-1.5 text-xs text-white outline-none focus:border-indigo-400 focus:ring-1 focus:ring-indigo-500/20 transition"
-                              />
-                            </div>
-                          </div>
-                          
+
+                          {/* Add Ingredient Button */}
+                          <button
+                            type="button"
+                            onClick={addIngredient}
+                            className="w-full flex items-center justify-center gap-1 rounded-xl border border-indigo-500/20 bg-indigo-500/5 py-2 text-xs font-bold text-indigo-300 hover:bg-indigo-500/10 transition"
+                          >
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" className="h-3.5 w-3.5">
+                              <line x1="12" y1="5" x2="12" y2="19" />
+                              <line x1="5" y1="12" x2="19" y2="12" />
+                            </svg>
+                            Yeni Malzeme Ekle
+                          </button>
+
                           <div className="flex gap-2 pt-2">
                             <button
                               type="button"
                               onClick={() => saveEditedMeal(idx)}
-                              className="flex-1 rounded-xl bg-indigo-500 py-2 text-xs font-black text-white hover:bg-indigo-600 shadow-md transition"
+                              className="flex-1 rounded-xl bg-indigo-500 py-2.5 text-xs font-black text-white hover:bg-indigo-600 shadow-md transition"
                             >
                               Kaydet
                             </button>
                             <button
                               type="button"
                               onClick={() => { setEditingMealIndex(null); setEditMealData(null); }}
-                              className="rounded-xl border border-indigo-500/30 bg-black/40 px-3 py-2 text-xs font-semibold text-zinc-300 hover:bg-black/60 transition"
+                              className="rounded-xl border border-indigo-500/30 bg-black/40 px-3 py-2.5 text-xs font-semibold text-zinc-300 hover:bg-black/60 transition"
                             >
                               İptal
                             </button>
@@ -645,8 +869,22 @@ export default function AIAssistantWidget() {
                             </span>
                           </div>
                           
-                          <div className="mt-1 text-[11px] font-semibold opacity-75">
-                            Porsiyon: {msg.scannedMeal.amount} {msg.scannedMeal.unit}
+                          <div className="mt-2.5 space-y-1.5 text-xs text-left">
+                            {msg.scannedMeal.items && msg.scannedMeal.items.length > 0 ? (
+                              <div className="space-y-1 border-t border-indigo-500/15 pt-2">
+                                <div className="text-[9px] font-black opacity-60 tracking-wider uppercase mb-1">TABAK BİLEŞENLERİ:</div>
+                                {msg.scannedMeal.items.map((it, itemIdx) => (
+                                  <div key={itemIdx} className="flex justify-between items-center text-[11px] font-medium opacity-85">
+                                    <span>• {it.name}</span>
+                                    <span className="font-extrabold">{it.amount} {it.unit} <span className="opacity-60">({it.calories} kcal)</span></span>
+                                  </div>
+                                ))}
+                              </div>
+                            ) : (
+                              <div className="text-[11px] font-semibold opacity-75">
+                                Porsiyon: {msg.scannedMeal.amount} {msg.scannedMeal.unit}
+                              </div>
+                            )}
                           </div>
                           
                           {msg.scannedMeal.description && (
@@ -654,21 +892,6 @@ export default function AIAssistantWidget() {
                               {msg.scannedMeal.description}
                             </p>
                           )}
-                          
-                          <div className="mt-3 grid grid-cols-3 gap-1.5 text-center text-[10px] font-bold">
-                            <div className={`rounded-lg py-1 ${isDark ? "bg-white/5" : "bg-white shadow-[0_2px_8px_rgba(0,0,0,0.02)]"}`}>
-                              <div className="opacity-70">Protein</div>
-                              <div className="text-xs font-black text-emerald-400">{msg.scannedMeal.protein}g</div>
-                            </div>
-                            <div className={`rounded-lg py-1 ${isDark ? "bg-white/5" : "bg-white shadow-[0_2px_8px_rgba(0,0,0,0.02)]"}`}>
-                              <div className="opacity-70">Karb</div>
-                              <div className="text-xs font-black text-amber-400">{msg.scannedMeal.carbohydrates}g</div>
-                            </div>
-                            <div className={`rounded-lg py-1 ${isDark ? "bg-white/5" : "bg-white shadow-[0_2px_8px_rgba(0,0,0,0.02)]"}`}>
-                              <div className="opacity-70">Yağ</div>
-                              <div className="text-xs font-black text-indigo-400">{msg.scannedMeal.fat}g</div>
-                            </div>
-                          </div>
 
                           {/* Interactive Selection Flow Form */}
                           {expandedFormIndex === idx ? (
@@ -739,13 +962,19 @@ export default function AIAssistantWidget() {
                                       <select
                                         value={selectedMealId}
                                         onChange={(e) => {
-                                          setSelectedMealId(e.target.value);
+                                          const val = e.target.value;
+                                          setSelectedMealId(val);
                                           setSelectedMealItemId("");
-                                          setAddMode(e.target.value === "" ? "add" : "add");
+                                          if (val === "CREATE_NEW") {
+                                            setAddMode("create_and_add");
+                                          } else {
+                                            setAddMode("add");
+                                          }
                                         }}
                                         className={`w-full rounded-xl border border-indigo-500/30 bg-black/60 backdrop-blur-md px-3 py-2 text-xs font-bold text-white shadow-inner focus:border-indigo-400 focus:ring-2 focus:ring-indigo-500/20 outline-none transition`}
                                       >
                                         <option value="">-- Öğün Seçin --</option>
+                                        <option value="CREATE_NEW">➕ {lang === "tr" ? "Yeni Öğün Oluştur" : "Create New Meal"}</option>
                                         {mealsForDay.map((m: any) => (
                                           <option key={m.id} value={m.id}>{m.name}</option>
                                         ))}
@@ -753,39 +982,35 @@ export default function AIAssistantWidget() {
                                     </div>
                                   </div>
 
-                                  {/* Empty Day Flow Trigger */}
-                                  {mealsForDay.length === 0 && (
-                                    <div className="rounded-xl border border-amber-500/20 bg-amber-500/10 p-3 space-y-2 mt-2">
-                                      <p className="text-[10px] text-amber-300 font-bold leading-tight">
-                                        ⚠️ Seçilen plan gününde henüz hiçbir öğün tanımlanmamış. Yeni bir öğün oluşturarak yemeği içine ekleyin:
+                                  {/* Create New Meal Fields */}
+                                  {addMode === "create_and_add" && (
+                                    <div className="rounded-xl border border-indigo-500/20 bg-indigo-500/10 p-3 space-y-2 mt-2">
+                                      <p className="text-[10px] text-indigo-300 font-bold leading-tight">
+                                        {mealsForDay.length === 0
+                                          ? (lang === "tr" ? "⚠️ Seçilen plan gününde henüz hiçbir öğün tanımlanmamış. Yeni bir öğün oluşturarak yemeği içine ekleyin:" : "⚠️ No meals are defined on the selected day. Create a new meal to add your food:")
+                                          : (lang === "tr" ? "Yeni oluşturulacak öğünün adı ve saatini girin:" : "Enter the name and time of the new meal:")}
                                       </p>
                                       <div className="space-y-1.5 pt-1">
                                         <input
                                           type="text"
                                           value={newMealName}
-                                          onChange={(e) => {
-                                            setNewMealName(e.target.value);
-                                            setAddMode("create_and_add");
-                                          }}
-                                          placeholder="Öğün Adı (örn: Sabah Kahvaltısı)"
-                                          className={`w-full rounded-lg px-2.5 py-1 text-xs border bg-black/40 border-amber-500/20 text-white outline-none focus:border-amber-500/40`}
+                                          onChange={(e) => setNewMealName(e.target.value)}
+                                          placeholder={lang === "tr" ? "Öğün Adı (örn: Sabah Kahvaltısı)" : "Meal Name (e.g., Breakfast)"}
+                                          className={`w-full rounded-lg px-2.5 py-1.5 text-xs border bg-black/40 border-indigo-500/20 text-white outline-none focus:border-indigo-500/40`}
                                         />
                                         <input
                                           type="text"
                                           value={newMealTime}
-                                          onChange={(e) => {
-                                            setNewMealTime(e.target.value);
-                                            setAddMode("create_and_add");
-                                          }}
-                                          placeholder="Öğün Saati (örn: 09:30)"
-                                          className={`w-full rounded-lg px-2.5 py-1 text-xs border bg-black/40 border-amber-500/20 text-white outline-none focus:border-amber-500/40`}
+                                          onChange={(e) => setNewMealTime(e.target.value)}
+                                          placeholder={lang === "tr" ? "Öğün Saati (örn: 09:30)" : "Meal Time (e.g., 09:30)"}
+                                          className={`w-full rounded-lg px-2.5 py-1.5 text-xs border bg-black/40 border-indigo-500/20 text-white outline-none focus:border-indigo-500/40`}
                                         />
                                       </div>
                                     </div>
                                   )}
 
                                   {/* Mode Selector for Configured Meals */}
-                                  {selectedMealId && mealsForDay.length > 0 && (
+                                  {selectedMealId && selectedMealId !== "CREATE_NEW" && mealsForDay.length > 0 && (
                                     <div>
                                       <label className="block text-[9px] font-bold opacity-60 mb-1">Ekleme Yöntemi</label>
                                       <div className="flex gap-2">
@@ -820,7 +1045,7 @@ export default function AIAssistantWidget() {
                                   )}
 
                                   {/* Replace Item Select Dropdown */}
-                                  {selectedMealId && addMode === "replace" && (
+                                  {selectedMealId && selectedMealId !== "CREATE_NEW" && addMode === "replace" && (
                                     <div>
                                       <label className="block text-[9px] font-bold opacity-60 mb-1">Değiştirilecek Yiyecek</label>
                                       <select
@@ -838,7 +1063,7 @@ export default function AIAssistantWidget() {
                                   )}
 
                                   {/* Final Execution Buttons */}
-                                  {(selectedMealId || addMode === "create_and_add") && (
+                                  {selectedMealId !== "" && (
                                     <div className="flex gap-2 pt-2">
                                       <button
                                         onClick={() => handleExecutePlanUpdate(msg.scannedMeal!)}
@@ -860,6 +1085,7 @@ export default function AIAssistantWidget() {
                                       </button>
                                     </div>
                                   )}
+
                                 </>
                               )}
                             </div>
@@ -884,7 +1110,7 @@ export default function AIAssistantWidget() {
                                   title={lang === "tr" ? "Bilgileri Düzenle" : "Edit Details"}
                                   className="rounded-xl border border-indigo-500/30 bg-indigo-500/10 p-2.5 text-indigo-400 hover:bg-indigo-500/20 transition disabled:opacity-50 flex items-center justify-center"
                                 >
-                                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" className="h-4 h-4">
+                                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" className="h-4 w-4">
                                     <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
                                     <path d="M18.5 2.5a2.121 2.121 0 1 1 3 3L12 15l-4 1 1-4z" />
                                   </svg>

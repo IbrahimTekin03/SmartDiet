@@ -152,16 +152,51 @@ Sadece geçerli JSON döndür.`;
 
     const systemPrompt = `Sen bir beslenme uzmanı ve yapay zeka asistanısın. Sana gönderilen yemek fotoğrafını analiz etmen gerekiyor.
 Fotoğraftaki yiyecekleri tespit et. Bu yiyeceklerin yaklaşık miktarını (gram veya adet cinsinden), toplam kalori, protein, yağ ve karbonhidrat değerlerini hesapla.
+
+LÜTFEN ŞU KURALLARA KESİNLİKLE UY:
+1. BILEŞEN İSİMLERİ: "items" dizisindeki hiçbir yiyecek bileşeninin adı, tüm tabağın/öğünün adı (örn: "Kıymalı Kebap Tabağı") olmamalıdır. Sadece o bileşenin kendi adı olmalıdır (örn: "Kıyma Kebabı" veya "Izgara Köfte" veya "Kebap Eti").
+2. MÜKERRER KALORİ VE MAKRO ÖNLEME: "items" dizisindeki her bir bileşenin kalori ve makro değerleri sadece o bileşenin kendi ağırlığına ve türüne ait olmalıdır. Örneğin, tabağın toplam kalorisi (örn: 780 kcal) asla ilk yiyecek bileşenine (örn: Kıyma Kebabı) atanmamalıdır; Kıyma Kebabı sadece kendi kalorisine (örn: 150g için ~350 kcal) sahip olmalıdır. Aksi takdirde diğer bileşenler (pilav vb.) de eklendiğinde mükerrer (2 katı) hesaplama oluşmaktadır.
+3. TOPLAM TUTARLILIĞI: Ana JSON objesindeki "calories", "protein", "carbohydrates" ve "fat" değerleri, "items" dizisindeki tüm elemanların kendi değerlerinin TAM TOPLAMINA (matematiksel olarak) eşit olmalıdır.
+
 Yanıtını SADECE şu JSON formatında döndür:
 {
-  "food_name": "Yemek adı (örn: Izgara Tavuklu Salata)",
-  "amount": 250,
+  "food_name": "Yemek adı (örn: Kıymalı Kebap Tabağı)",
+  "amount": 350,
   "unit": "gram",
-  "calories": 320,
-  "protein": 28,
-  "carbohydrates": 12,
-  "fat": 16,
-  "description": "Fotoğraftaki yemeğin kısa açıklaması ve tespit edilen malzemeler."
+  "calories": 520,
+  "protein": 32,
+  "carbohydrates": 38,
+  "fat": 24,
+  "description": "Fotoğraftaki yemeğin kısa açıklaması ve tespit edilen malzemeler.",
+  "items": [
+    {
+      "name": "Yiyecek bileşeni/malzeme adı (örn: Kıyma Kebabı)",
+      "amount": 150,
+      "unit": "gram",
+      "calories": 350,
+      "protein": 24,
+      "carbohydrates": 2,
+      "fat": 20
+    },
+    {
+      "name": "Yiyecek bileşeni/malzeme adı (örn: Pirinç Pilavı)",
+      "amount": 100,
+      "unit": "gram",
+      "calories": 150,
+      "protein": 3,
+      "carbohydrates": 32,
+      "fat": 3
+    },
+    {
+      "name": "Yiyecek bileşeni/malzeme adı (örn: Mevsim Salatası)",
+      "amount": 100,
+      "unit": "gram",
+      "calories": 20,
+      "protein": 5,
+      "carbohydrates": 4,
+      "fat": 1
+    }
+  ]
 }
 Markdown veya başka hiçbir metin biçimlendirmesi kullanma, sadece saf JSON metni döndür.`;
 

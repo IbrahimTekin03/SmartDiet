@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState, type FormEvent } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useAppSettings } from "../context/AppSettingsContext";
+import { TURKEY_CITIES } from "../data/turkeyCities";
 
 type Lang = "tr" | "en";
 type Status = "not_submitted" | "pending" | "approved" | "rejected";
@@ -377,11 +378,55 @@ export default function DietitianVerification() {
                     </select>
                   </div>
 
-                  <div className="grid gap-3 sm:grid-cols-2">
+                  <div>
                     <Field isDark={isDark} label={t.fieldClinicName} value={form.clinic_name} onChange={(v) => setForm((p) => ({ ...p, clinic_name: v }))} />
-                    <Field isDark={isDark} label={t.fieldCity} value={form.clinic_city} onChange={(v) => setForm((p) => ({ ...p, clinic_city: v }))} />
                   </div>
-                  <Field isDark={isDark} label={t.fieldDistrict} value={form.clinic_district} onChange={(v) => setForm((p) => ({ ...p, clinic_district: v }))} />
+
+                  <div className="grid gap-3 sm:grid-cols-2">
+                    <div>
+                      <label className={labelClass(isDark)}>{t.fieldCity}</label>
+                      <select
+                        value={form.clinic_city}
+                        onChange={(e) => {
+                          const newCity = e.target.value;
+                          setForm((p) => ({
+                            ...p,
+                            clinic_city: newCity,
+                            clinic_district: "",
+                          }));
+                        }}
+                        className={inputClass(isDark)}
+                        required
+                      >
+                        <option value="">-- {lang === "tr" ? "İl Seçin" : "Select Province"} --</option>
+                        {Object.keys(TURKEY_CITIES).sort((a, b) => a.localeCompare(b, "tr")).map((city) => (
+                          <option key={city} value={city}>{city}</option>
+                        ))}
+                      </select>
+                    </div>
+
+                    <div>
+                      <label className={labelClass(isDark)}>{t.fieldDistrict}</label>
+                      <select
+                        value={form.clinic_district}
+                        onChange={(e) => {
+                          const newDistrict = e.target.value;
+                          setForm((p) => ({
+                            ...p,
+                            clinic_district: newDistrict,
+                          }));
+                        }}
+                        className={inputClass(isDark)}
+                        required
+                        disabled={!form.clinic_city}
+                      >
+                        <option value="">-- {lang === "tr" ? "İlçe Seçin" : "Select District"} --</option>
+                        {(TURKEY_CITIES[form.clinic_city] || []).map((district) => (
+                          <option key={district} value={district}>{district}</option>
+                        ))}
+                      </select>
+                    </div>
+                  </div>
                   <Field isDark={isDark} label={t.fieldAddress} value={form.clinic_address} onChange={(v) => setForm((p) => ({ ...p, clinic_address: v }))} multiline />
                   <Field isDark={isDark} label={t.fieldNote} value={form.verification_note} onChange={(v) => setForm((p) => ({ ...p, verification_note: v }))} multiline />
 

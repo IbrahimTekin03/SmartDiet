@@ -7,6 +7,7 @@ import ClinicManagerPanel from "./ClinicManagerPanel";
 import ClientHome from "./ClientHome";
 import DietitianHome from "./DietitianHome";
 import DietitianVerification from "./DietitianVerification";
+import ClientVerification from "./ClientVerification";
 import Home from "./Home";
 
 type Profile = {
@@ -20,6 +21,7 @@ type Profile = {
   roles?: Array<{ name?: string }>;
   account_type?: "client" | "Diyetisyen";
   dietitian_verification_status?: "not_submitted" | "pending" | "approved" | "rejected";
+  client_verification_status?: "pending" | "approved" | "rejected";
   clinic_id?: string | null;
   clinic_name?: string | null;
 };
@@ -104,7 +106,12 @@ export default function AppEntry() {
     }
     return <DietitianVerification />;
   }
-  if (isClient) return <ClientHome profile={profile} />;
+  if (isClient) {
+    if (profile.client_verification_status === "approved") {
+      return <ClientHome profile={profile} />;
+    }
+    return <ClientVerification />;
+  }
 
   return <Home />;
 }

@@ -20,6 +20,7 @@ import { Subscription } from './entities/subscription.entity';
 import { ChatRoom } from './entities/chat-room.entity';
 import { UserAssignedDietitian } from '../users/entities/user-assigned-dietitian.entity';
 import { NotificationsModule } from '../notifications/notifications.module';
+import { Clinic } from '../clinics/entities/clinic.entity';
 
 @Module({
   imports: [
@@ -32,7 +33,8 @@ import { NotificationsModule } from '../notifications/notifications.module';
       UserProfile, 
       Subscription, 
       ChatRoom, 
-      UserAssignedDietitian
+      UserAssignedDietitian,
+      Clinic
     ]),
     PassportModule,
     JwtModule.registerAsync({

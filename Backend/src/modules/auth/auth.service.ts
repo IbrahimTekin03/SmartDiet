@@ -33,6 +33,7 @@ import { UserAssignedDietitian } from '../users/entities/user-assigned-dietitian
 import { NotificationsService } from '../notifications/notifications.service';
 import { DietPlan } from '../diet-plans/entities/diet-plan.entity';
 import { DietPlanTracking } from '../diet-plans/entities/diet-plan-tracking.entity';
+import { Clinic } from '../clinics/entities/clinic.entity';
 
 type ListDietitianApplicationsOptions = {
   status?: string;
@@ -87,6 +88,8 @@ export class AuthService {
     private readonly chatRoomRepository: Repository<ChatRoom>,
     @InjectRepository(UserAssignedDietitian)
     private readonly userAssignedDietitianRepository: Repository<UserAssignedDietitian>,
+    @InjectRepository(Clinic)
+    private readonly clinicRepository: Repository<Clinic>,
     public readonly jwtService: JwtService,
     private readonly configService: ConfigService,
     private readonly i18n: I18nService,
@@ -401,6 +404,10 @@ export class AuthService {
         requestedAccountType === AccountType.Dietitian
           ? DietitianVerificationStatus.NotSubmitted
           : DietitianVerificationStatus.Approved,
+      client_verification_status:
+        requestedAccountType === AccountType.Client
+          ? 'pending'
+          : 'approved',
       clinic_name: null,
       clinic_city: null,
       clinic_address: null,
@@ -689,6 +696,8 @@ export class AuthService {
       verification_submitted_at: profile?.verification_submitted_at ?? null,
       verification_reviewed_at: profile?.verification_reviewed_at ?? null,
       verification_reviewed_by: profile?.verification_reviewed_by ?? null,
+      client_verification_status: profile?.client_verification_status ?? 'pending',
+      height: profile?.height ?? null,
     };
   }
 
@@ -715,6 +724,7 @@ export class AuthService {
       avatar_url: null,
       account_type: AccountType.Client,
       dietitian_verification_status: DietitianVerificationStatus.Approved,
+      client_verification_status: 'pending',
       clinic_name: null,
       clinic_city: null,
       clinic_address: null,
@@ -1208,6 +1218,8 @@ export class AuthService {
         roles: (user?.roles || []).map((role) => role.name),
         account_type: profile.account_type,
         dietitian_verification_status: profile.dietitian_verification_status,
+        client_verification_status: profile.client_verification_status,
+        height: profile.height ?? null,
         clinic_name: profile.clinic_name ?? null,
         clinic_city: profile.clinic_city ?? null,
         is_active: Boolean(user?.is_active),
@@ -1619,6 +1631,115 @@ export class AuthService {
     };
   }
 
+  async listClientApplications(options: { status?: string; search?: string; page?: number; limit?: number }) {
+    const { status, search, page, limit } = options;
+    const normalizedStatus = status === 'rejected' ? 'rejected' : 'pending';
+    const { page: safePage, limit: safeLimit } = this.normalizePaging(page, limit);
+    const normalizedSearch = String(search || '').trim().toLowerCase();
+
+    const query = this.userProfileRepository
+      .createQueryBuilder('profile')
+      .leftJoin(User, 'user', 'user.id = profile.user_id')
+      .where('profile.account_type = :accountType', { accountType: AccountType.Client })
+      .andWhere('profile.client_verification_status = :status', { status: normalizedStatus });
+
+    if (normalizedSearch) {
+      query.andWhere(
+        new Brackets((qb) => {
+          qb.where('LOWER(COALESCE(user.first_name, \'\')) LIKE :search', { search: `%${normalizedSearch}%` })
+            .orWhere('LOWER(COALESCE(user.last_name, \'\')) LIKE :search', { search: `%${normalizedSearch}%` })
+            .orWhere('LOWER(COALESCE(user.email, \'\')) LIKE :search', { search: `%${normalizedSearch}%` })
+            .orWhere('LOWER(COALESCE(user.phone_number, \'\')) LIKE :search', { search: `%${normalizedSearch}%` });
+        }),
+      );
+    }
+
+    query
+      .orderBy('profile.createdAt', 'DESC')
+      .skip((safePage - 1) * safeLimit)
+      .take(safeLimit);
+
+    const [profiles, total] = await query.getManyAndCount();
+    const items = profiles.map((p) => ({
+      user_id: p.user_id,
+      first_name: p.first_name,
+      last_name: p.last_name,
+      email: null as string | null,
+      phone_number: null as string | null,
+      client_verification_status: p.client_verification_status,
+      createdAt: p.createdAt,
+      verification_review_note: p.verification_review_note,
+    }));
+
+    const userIds = profiles.map(p => p.user_id);
+    let usersMap = new Map<string, any>();
+    if (userIds.length > 0) {
+      const users = await this.userRepository.findByIds(userIds);
+      usersMap = new Map(users.map(u => [u.id, u]));
+    }
+
+    const itemsWithEmail = items.map(item => {
+      const u = usersMap.get(item.user_id);
+      return {
+        ...item,
+        email: u?.email ?? null,
+        phone_number: u?.phone_number ?? null,
+      };
+    });
+
+    return {
+      items: itemsWithEmail,
+      total,
+      page: safePage,
+      limit: safeLimit,
+      totalPages: Math.ceil(total / safeLimit),
+    };
+  }
+
+  async approveClientApplication(adminId: string, userId: string) {
+    const profile = await this.userProfileRepository.findOne({ where: { user_id: userId } });
+    if (!profile || profile.account_type !== AccountType.Client) {
+      throw new BadRequestException('Client application not found');
+    }
+
+    profile.client_verification_status = 'approved';
+    profile.verification_review_note = null;
+    profile.verification_reviewed_at = new Date();
+    profile.verification_reviewed_by = adminId;
+    await this.userProfileRepository.save(profile);
+
+    return {
+      ok: true,
+      user_id: userId,
+      status: profile.client_verification_status,
+    };
+  }
+
+  async rejectClientApplication(adminId: string, userId: string, reason: string) {
+    const profile = await this.userProfileRepository.findOne({ where: { user_id: userId } });
+    if (!profile || profile.account_type !== AccountType.Client) {
+      throw new BadRequestException('Client application not found');
+    }
+
+    const cleanReason = String(reason || '').trim();
+    if (!cleanReason) {
+      throw new BadRequestException('Rejection reason is required');
+    }
+
+    profile.client_verification_status = 'rejected';
+    profile.verification_review_note = cleanReason;
+    profile.verification_reviewed_at = new Date();
+    profile.verification_reviewed_by = adminId;
+    await this.userProfileRepository.save(profile);
+
+    return {
+      ok: true,
+      user_id: userId,
+      status: profile.client_verification_status,
+      review_note: profile.verification_review_note,
+    };
+  }
+
   private async tableExists(tableName: string): Promise<boolean> {
     const rows = await this.userRepository.query(
       `SELECT to_regclass($1) AS reg`,
@@ -1953,6 +2074,177 @@ export class AuthService {
       gender: p.gender,
       birth_date: p.birth_date,
     }));
+  }
+
+  async removeDietitianFromClinic(adminId: string, dietitianId: string) {
+    const profile = await this.userProfileRepository.findOne({ where: { user_id: dietitianId } });
+    if (!profile || profile.account_type !== AccountType.Dietitian) {
+      throw new BadRequestException('Dietitian not found');
+    }
+
+    profile.clinic_id = null;
+    profile.clinic_name = null;
+    profile.clinic_city = null;
+    profile.clinic_address = null;
+    await this.userProfileRepository.save(profile);
+
+    // Also update any assignments of this dietitian to clinicId = null
+    await this.userAssignedDietitianRepository.update({ dietitianId }, { clinicId: null });
+
+    return { ok: true };
+  }
+
+  async assignDietitianToClinic(adminId: string, dietitianId: string, clinicId: string) {
+    const profile = await this.userProfileRepository.findOne({ where: { user_id: dietitianId } });
+    if (!profile || profile.account_type !== AccountType.Dietitian) {
+      throw new BadRequestException('Dietitian not found');
+    }
+
+    const clinic = await this.clinicRepository.findOne({ where: { id: clinicId } });
+    if (!clinic) {
+      throw new BadRequestException('Clinic not found');
+    }
+
+    profile.clinic_id = clinic.id;
+    profile.clinic_name = clinic.name;
+    profile.clinic_city = clinic.city;
+    profile.clinic_address = clinic.address;
+    await this.userProfileRepository.save(profile);
+
+    // Also update any assignments of this dietitian to the new clinic's ID
+    await this.userAssignedDietitianRepository.update({ dietitianId }, { clinicId: clinic.id });
+
+    return { ok: true };
+  }
+
+  async unassignClient(adminId: string, subscriptionId: string) {
+    const subscription = await this.subscriptionRepository.findOne({ where: { id: subscriptionId } });
+    if (!subscription) {
+      throw new BadRequestException('Connection not found');
+    }
+
+    // Set subscription to cancelled
+    subscription.status = SubscriptionStatus.Cancelled;
+    subscription.end_date = new Date();
+    await this.subscriptionRepository.save(subscription);
+
+    // Deactivate chat room
+    const chatRoom = await this.chatRoomRepository.findOne({
+      where: { client_id: subscription.client_id, dietitian_id: subscription.dietitian_id },
+    });
+    if (chatRoom) {
+      chatRoom.is_active = false;
+      await this.chatRoomRepository.save(chatRoom);
+    }
+
+    // Delete assignment record
+    await this.userAssignedDietitianRepository.delete({ clientId: subscription.client_id });
+
+    return { ok: true };
+  }
+
+  async deleteUser(adminId: string, userId: string) {
+    if (adminId === userId) {
+      throw new BadRequestException('You cannot delete yourself');
+    }
+
+    const user = await this.userRepository.findOne({ where: { id: userId } });
+    if (!user) {
+      throw new BadRequestException('User not found');
+    }
+
+    // 1. Delete assigned dietitian entries
+    await this.userAssignedDietitianRepository.delete({ clientId: userId });
+    await this.userAssignedDietitianRepository.delete({ dietitianId: userId });
+
+    // 2. Delete subscriptions
+    await this.subscriptionRepository.delete({ client_id: userId });
+    await this.subscriptionRepository.delete({ dietitian_id: userId });
+
+    // 3. Delete chat rooms
+    await this.chatRoomRepository.delete({ client_id: userId });
+    await this.chatRoomRepository.delete({ dietitian_id: userId });
+
+    // 4. Delete user profile
+    await this.userProfileRepository.delete({ user_id: userId });
+
+    // 5. Delete user
+    await this.userRepository.delete({ id: userId });
+
+    return { ok: true };
+  }
+
+  async updateUserAdmin(adminId: string, userId: string, dto: any) {
+    const user = await this.userRepository.findOne({ where: { id: userId }, relations: ['roles'] });
+    if (!user) {
+      throw new BadRequestException('User not found');
+    }
+
+    const profile = await this.ensureUserProfile(userId);
+
+    // Update first_name and last_name
+    if (dto.first_name) {
+      user.first_name = dto.first_name;
+      profile.first_name = dto.first_name;
+    }
+    if (dto.last_name) {
+      user.last_name = dto.last_name;
+      profile.last_name = dto.last_name;
+    }
+
+    // Update email
+    if (dto.email && dto.email !== user.email) {
+      const existing = await this.userRepository.findOne({ where: { email: dto.email } });
+      if (existing && existing.id !== userId) {
+        throw new BadRequestException('Email already in use');
+      }
+      user.email = dto.email;
+    }
+
+    // Update phone_number
+    if (dto.phone_number && dto.phone_number !== user.phone_number) {
+      const existing = await this.userRepository.findOne({ where: { phone_number: dto.phone_number } });
+      if (existing && existing.id !== userId) {
+        throw new BadRequestException('Phone number already in use');
+      }
+      user.phone_number = dto.phone_number;
+    }
+
+    // Update clinic_id
+    if (dto.clinic_id === 'REMOVE' || dto.clinic_id === null || dto.clinic_id === '') {
+      profile.clinic_id = null;
+      profile.clinic_name = null;
+      profile.clinic_city = null;
+      profile.clinic_address = null;
+      await this.userAssignedDietitianRepository.update({ dietitianId: userId }, { clinicId: null });
+      await this.userAssignedDietitianRepository.update({ clientId: userId }, { clinicId: null });
+    } else if (dto.clinic_id) {
+      const clinic = await this.clinicRepository.findOne({ where: { id: dto.clinic_id } });
+      if (clinic) {
+        profile.clinic_id = clinic.id;
+        profile.clinic_name = clinic.name;
+        profile.clinic_city = clinic.city;
+        profile.clinic_address = clinic.address;
+        await this.userAssignedDietitianRepository.update({ dietitianId: userId }, { clinicId: clinic.id });
+        await this.userAssignedDietitianRepository.update({ clientId: userId }, { clinicId: clinic.id });
+      }
+    }
+
+    // Update role / account type if changed
+    if (dto.role) {
+      const targetRoleName = dto.role === 'admin' ? 'admin' : dto.role === 'dietitian' ? 'Diyetisyen' : 'client';
+      const role = await this.roleRepository.findOne({ where: { name: targetRoleName } });
+      if (role) {
+        user.roles = [role];
+      }
+      
+      profile.account_type = dto.role === 'admin' ? AccountType.Client : dto.role === 'dietitian' ? AccountType.Dietitian : AccountType.Client;
+    }
+
+    await this.userRepository.save(user);
+    await this.userProfileRepository.save(profile);
+
+    return { ok: true };
   }
 }
 

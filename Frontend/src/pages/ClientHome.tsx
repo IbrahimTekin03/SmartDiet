@@ -601,10 +601,16 @@ function MeasurementStat({ isDark, label, value }: { isDark: boolean; label: str
 function WaterTracker({ isDark, lang, accessToken }: { isDark: boolean; lang: string; accessToken: string }) {
   const [amount, setAmount] = useState(0);
   const [target] = useState(3000); // 3L
+  const [selectedDate, setSelectedDate] = useState(() => {
+    const d = new Date();
+    const offset = d.getTimezoneOffset();
+    const localTime = new Date(d.getTime() - (offset * 60 * 1000));
+    return localTime.toISOString().slice(0, 10);
+  });
 
   useEffect(() => {
     if (!accessToken) return;
-    fetch("http://localhost:3000/api/water-tracking/today", {
+    fetch(`http://localhost:3000/api/water-tracking/today?date=${selectedDate}`, {
       headers: { Authorization: `Bearer ${accessToken}` }
     })
       .then(res => res.json())
@@ -612,10 +618,14 @@ function WaterTracker({ isDark, lang, accessToken }: { isDark: boolean; lang: st
         const payload = d?.data ?? d;
         if (payload) {
           setAmount(Number(payload.amount) || 0);
+        } else {
+          setAmount(0);
         }
       })
-      .catch(() => {});
-  }, [accessToken]);
+      .catch(() => {
+        setAmount(0);
+      });
+  }, [accessToken, selectedDate]);
 
   const updateWater = async (newAmount: number) => {
     if (newAmount < 0) newAmount = 0;
@@ -628,7 +638,7 @@ function WaterTracker({ isDark, lang, accessToken }: { isDark: boolean; lang: st
           'Content-Type': 'application/json',
           Authorization: `Bearer ${accessToken}`
         },
-        body: JSON.stringify({ amount: newAmount })
+        body: JSON.stringify({ amount: newAmount, date: selectedDate })
       });
     } catch (err) {
       console.error(err);
@@ -639,15 +649,33 @@ function WaterTracker({ isDark, lang, accessToken }: { isDark: boolean; lang: st
 
   return (
     <DashboardPanel isDark={isDark} className="relative overflow-hidden p-5 flex flex-col justify-between">
-      <div className="flex items-center gap-4 mb-4">
-        <div className={["flex h-10 w-10 items-center justify-center rounded-2xl text-xl", isDark ? "bg-blue-500/20 text-blue-400" : "bg-blue-100 text-blue-600"].join(" ")}>
-          💧
+      <div className="flex items-center justify-between mb-4 border-b border-zinc-200/10 pb-3 flex-wrap gap-2">
+        <div className="flex items-center gap-3">
+          <div className={["flex h-10 w-10 items-center justify-center rounded-2xl text-xl", isDark ? "bg-blue-500/20 text-blue-400" : "bg-blue-100 text-blue-600"].join(" ")}>
+            💧
+          </div>
+          <div>
+            <h2 className="text-sm font-black">{lang === "tr" ? "Su Tüketim Takibi" : "Water Tracker"}</h2>
+            <p className={["text-[10px]", isDark ? "text-zinc-400" : "text-[#4d6b62]"].join(" ")}>
+              {lang === "tr" ? "Günlük su hedefinizi izleyin" : "Track your daily hydration"}
+            </p>
+          </div>
         </div>
-        <div>
-          <h2 className="text-sm font-black">{lang === "tr" ? "Su Tüketim Takibi" : "Water Tracker"}</h2>
-          <p className={["text-[11px]", isDark ? "text-zinc-400" : "text-[#4d6b62]"].join(" ")}>
-            {lang === "tr" ? "Günlük su içme hedefinizi izleyin" : "Track your daily hydration"}
-          </p>
+
+        {/* Retroactive Date Picker */}
+        <div className="flex items-center gap-1.5 text-[10px] font-bold">
+          <span className="opacity-60">{lang === "tr" ? "Tarih:" : "Date:"}</span>
+          <input
+            type="date"
+            value={selectedDate}
+            max={(() => {
+              const d = new Date();
+              const offset = d.getTimezoneOffset();
+              return new Date(d.getTime() - (offset * 60 * 1000)).toISOString().slice(0, 10);
+            })()}
+            onChange={(e) => setSelectedDate(e.target.value)}
+            className={["rounded-xl px-2.5 py-1.5 outline-none text-xs font-black shadow-inner", isDark ? "bg-black/60 border border-blue-500/20 text-white" : "bg-white border border-[#cedce4] text-blue-900"].join(" ")}
+          />
         </div>
       </div>
 

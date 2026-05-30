@@ -80,6 +80,12 @@ export class UserProfile {
   @Column({ nullable: true })
   verification_reviewed_by: string | null;
 
+  @Column({ type: 'int', nullable: true })
+  height: number | null;
+
+  @Column({ type: 'varchar', default: 'pending' })
+  client_verification_status: string;
+
   @CreateDateColumn()
   createdAt: Date;
 

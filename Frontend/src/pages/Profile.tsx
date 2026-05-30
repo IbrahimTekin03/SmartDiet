@@ -23,6 +23,7 @@ type SessionUser = {
   clinic_city?: string | null;
   dietitian_verification_status?: string | null;
   created_at?: string | null;
+  height?: number | null;
   roles?: Array<{ name?: string }>;
 };
 
@@ -40,6 +41,7 @@ type Measurement = {
   date: string;
   weight?: number | null;
   body_fat?: number | null;
+  height?: number | null;
 };
 
 type WorkspaceNetwork = {
@@ -83,6 +85,7 @@ const COPY = {
     addMeasurement: "Ölçüm Ekle",
     measurementSaved: "Ölçüm kaydedildi.",
     measurementFailed: "Ölçüm kaydedilemedi.",
+    measurementEmpty: "Lütfen en az bir değer girin (Kilo veya Yağ Oranı).",
     noMeasurements: "Bu aralıkta ölçüm bulunmuyor.",
     rangeLabel: "Aralık",
     latestWeight: "Güncel Kilo",
@@ -152,6 +155,7 @@ const COPY = {
     addMeasurement: "Add Measurement",
     measurementSaved: "Measurement saved.",
     measurementFailed: "Failed to save measurement.",
+    measurementEmpty: "Please enter at least one value (Weight or Body Fat).",
     noMeasurements: "No measurements in this range.",
     rangeLabel: "Range",
     latestWeight: "Latest Weight",
@@ -243,6 +247,7 @@ export default function Profile() {
     date: new Date().toISOString().slice(0, 10),
     weight: "",
     body_fat: "",
+    height: "",
   });
 
   const [measurements, setMeasurements] = useState<Measurement[]>([]);
@@ -519,6 +524,11 @@ export default function Profile() {
     const token = localStorage.getItem("access_token");
     if (!token) return;
 
+    if (!String(measurementForm.weight || "").trim() && !String(measurementForm.body_fat || "").trim() && !String(measurementForm.height || "").trim()) {
+      setMeasurementMsg(lang === "tr" ? "Lütfen en az bir değer girin (Kilo, Yağ Oranı veya Boy)." : "Please enter at least one value (Weight, Body Fat, or Height).");
+      return;
+    }
+
     setMeasurementSaving(true);
     setMeasurementMsg("");
     try {
@@ -532,11 +542,16 @@ export default function Profile() {
           date: measurementForm.date,
           weight: measurementForm.weight ? Number(measurementForm.weight) : undefined,
           body_fat: measurementForm.body_fat ? Number(measurementForm.body_fat) : undefined,
+          height: measurementForm.height ? Number(measurementForm.height) : undefined,
         }),
       });
 
       if (!res.ok) throw new Error();
       setMeasurementMsg(t.measurementSaved);
+      if (measurementForm.height) {
+        setUser((prev: any) => prev ? { ...prev, height: Number(measurementForm.height) } : null);
+      }
+      setMeasurementForm((p) => ({ ...p, weight: "", body_fat: "", height: "" }));
       loadMeasurements(rangeDays);
     } catch {
       setMeasurementMsg(t.measurementFailed);
@@ -544,6 +559,35 @@ export default function Profile() {
       setMeasurementSaving(false);
     }
   };
+
+  // BMI (Vucut Kitle Endeksi) Hesaplama
+  const latestHeight = useMemo(() => {
+    return user?.height || [...measurements].reverse().find((m) => m.height)?.height || null;
+  }, [user, measurements]);
+
+  const bmi = useMemo(() => {
+    if (!latestWeight || !latestHeight) return null;
+    const heightInMeters = latestHeight > 3 ? latestHeight / 100 : latestHeight;
+    return Number((latestWeight / (heightInMeters * heightInMeters)).toFixed(1));
+  }, [latestWeight, latestHeight]);
+
+  const bmiCategory = useMemo(() => {
+    if (!bmi) return null;
+    if (bmi < 18.5) return { name: lang === "tr" ? "Zayıf" : "Underweight", color: "text-sky-400", hex: "#38bdf8" };
+    if (bmi < 25) return { name: lang === "tr" ? "Sağlıklı" : "Healthy", color: "text-emerald-400", hex: "#10b981" };
+    if (bmi < 30) return { name: lang === "tr" ? "Şişman" : "Overweight", color: "text-amber-400", hex: "#f59e0b" };
+    if (bmi < 40) return { name: lang === "tr" ? "Obez" : "Obese", color: "text-orange-400", hex: "#f97316" };
+    return { name: lang === "tr" ? "Aşırı Obez" : "Severely Obese", color: "text-rose-500", hex: "#f43f5e" };
+  }, [bmi, lang]);
+
+  const needleAngle = useMemo(() => {
+    if (!bmi) return -90;
+    const minBmi = 15;
+    const maxBmi = 45;
+    const clamped = Math.max(minBmi, Math.min(maxBmi, bmi));
+    const pct = (clamped - minBmi) / (maxBmi - minBmi);
+    return -90 + pct * 180;
+  }, [bmi]);
 
   return (
     <div className={["relative min-h-screen w-screen overflow-x-hidden", isDark ? "text-zinc-100" : "text-[#0e2a23]"].join(" ")}>
@@ -833,10 +877,11 @@ export default function Profile() {
             </div>
           </div>
 
-          <div className="mt-6 grid gap-4 md:grid-cols-4">
+          <div className="mt-6 grid gap-4 sm:grid-cols-2 md:grid-cols-5">
             <InputField label={t.date} type="date" value={measurementForm.date} onChange={(v) => setMeasurementForm((p) => ({ ...p, date: v }))} isDark={isDark} />
             <InputField label={t.weight} type="number" value={measurementForm.weight} onChange={(v) => setMeasurementForm((p) => ({ ...p, weight: v }))} isDark={isDark} />
             <InputField label={t.bodyFat} type="number" value={measurementForm.body_fat} onChange={(v) => setMeasurementForm((p) => ({ ...p, body_fat: v }))} isDark={isDark} />
+            <InputField label={lang === "tr" ? "Boy (cm)" : "Height (cm)"} type="number" value={measurementForm.height} onChange={(v) => setMeasurementForm((p) => ({ ...p, height: v }))} isDark={isDark} />
             <div className="flex items-end">
               <button
                 onClick={addMeasurement}
@@ -852,7 +897,14 @@ export default function Profile() {
           </div>
 
           {measurementMsg ? (
-            <div className={["mt-4 rounded-2xl px-4 py-3 text-sm font-semibold", isDark ? "bg-black/35 text-zinc-100 ring-1 ring-emerald-300/30" : "bg-white text-[#123a32] ring-1 ring-[#2f6154]/14"].join(" ")}>
+            <div
+              className={[
+                "mt-4 rounded-2xl px-4 py-3 text-sm font-semibold transition-all duration-300",
+                measurementMsg === t.measurementSaved
+                  ? (isDark ? "bg-emerald-500/10 text-emerald-100 ring-1 ring-emerald-500/30" : "bg-emerald-50 text-emerald-800 ring-1 ring-emerald-200")
+                  : (isDark ? "bg-rose-500/10 text-rose-100 ring-1 ring-rose-500/30" : "bg-rose-50 text-rose-800 ring-1 ring-rose-200")
+              ].join(" ")}
+            >
               {measurementMsg}
             </div>
           ) : null}
@@ -875,6 +927,97 @@ export default function Profile() {
                 value={trendWeight != null ? `${trendWeight > 0 ? "+" : ""}${trendWeight.toFixed(1)} kg` : "-"}
                 tone="soft"
               />
+
+              {latestHeight && latestWeight && bmi ? (
+                <div className={["rounded-3xl p-5 border shadow-lg flex flex-col justify-center", isDark ? "bg-black/35 border-white/10 ring-1 ring-emerald-300/30" : "bg-white border-[#dfd0b9] ring-1 ring-[#2f6154]/14"].join(" ")}>
+                  <div className="text-center">
+                    <div className={["text-xs font-black tracking-wider uppercase mb-3", isDark ? "text-emerald-400" : "text-[#1d5244]"].join(" ")}>
+                      {lang === "tr" ? "Vücut Kitle Endeksi (VKE)" : "Body Mass Index (BMI)"}
+                    </div>
+                    <div className="relative flex items-center justify-center">
+                      <svg width="200" height="110" viewBox="0 0 200 110" className="overflow-visible">
+                        <defs>
+                          <linearGradient id="gauge-gradient" x1="0%" y1="0%" x2="100%" y2="0%">
+                            <stop offset="0%" stopColor="#38bdf8" />
+                            <stop offset="25%" stopColor="#10b981" />
+                            <stop offset="50%" stopColor="#f59e0b" />
+                            <stop offset="75%" stopColor="#f97316" />
+                            <stop offset="100%" stopColor="#f43f5e" />
+                          </linearGradient>
+                          <filter id="needle-glow" x="-20%" y="-20%" width="140%" height="140%">
+                            <feGaussianBlur stdDeviation="3" result="blur" />
+                            <feComposite in="SourceGraphic" in2="blur" operator="over" />
+                          </filter>
+                        </defs>
+                        {/* Background arc */}
+                        <path
+                          d="M 20,100 A 80,80 0 0,1 180,100"
+                          fill="none"
+                          stroke={isDark ? "#27272a" : "#f4f4f5"}
+                          strokeWidth="12"
+                          strokeLinecap="round"
+                        />
+                        {/* Colored gradient arc */}
+                        <path
+                          d="M 20,100 A 80,80 0 0,1 180,100"
+                          fill="none"
+                          stroke="url(#gauge-gradient)"
+                          strokeWidth="12"
+                          strokeLinecap="round"
+                        />
+                        {/* Needle group */}
+                        <g transform={`translate(100, 100) rotate(${needleAngle})`}>
+                          <line
+                            x1="0"
+                            y1="0"
+                            x2="0"
+                            y2="-75"
+                            stroke={isDark ? "#ffffff" : "#18181b"}
+                            strokeWidth="3"
+                            strokeLinecap="round"
+                            filter="url(#needle-glow)"
+                          />
+                          <circle r="6" fill={isDark ? "#ffffff" : "#18181b"} />
+                          <circle r="2.5" fill="#10b981" />
+                        </g>
+                      </svg>
+                    </div>
+
+                    <div className="mt-2 text-2xl font-black">{bmi}</div>
+                    <div className={["text-xs font-black px-3 py-0.5 rounded-full inline-block mt-1", bmiCategory?.color, isDark ? "bg-white/5" : "bg-black/5"].join(" ")}>
+                      {bmiCategory?.name}
+                    </div>
+
+                    {/* Legend */}
+                    <div className="mt-4 border-t border-dashed border-zinc-500/10 pt-3 text-[10px] space-y-1 text-left">
+                      <div className="flex justify-between items-center">
+                        <span className={bmi < 18.5 ? "text-sky-400 font-extrabold" : "text-zinc-500"}>{lang === "tr" ? "Zayıf" : "Underweight"}</span>
+                        <span className={bmi < 18.5 ? "text-sky-400 font-extrabold" : "text-zinc-500"}>&lt; 18.5</span>
+                      </div>
+                      <div className="flex justify-between items-center">
+                        <span className={bmi >= 18.5 && bmi < 25 ? "text-emerald-400 font-extrabold" : "text-zinc-500"}>{lang === "tr" ? "Sağlıklı" : "Healthy"}</span>
+                        <span className={bmi >= 18.5 && bmi < 25 ? "text-emerald-400 font-extrabold" : "text-zinc-500"}>18.5 - 24.9</span>
+                      </div>
+                      <div className="flex justify-between items-center">
+                        <span className={bmi >= 25 && bmi < 30 ? "text-amber-400 font-extrabold" : "text-zinc-500"}>{lang === "tr" ? "Şişman" : "Overweight"}</span>
+                        <span className={bmi >= 25 && bmi < 30 ? "text-amber-400 font-extrabold" : "text-zinc-500"}>25 - 29.9</span>
+                      </div>
+                      <div className="flex justify-between items-center">
+                        <span className={bmi >= 30 && bmi < 40 ? "text-orange-400 font-extrabold" : "text-zinc-500"}>{lang === "tr" ? "Obez" : "Obese"}</span>
+                        <span className={bmi >= 30 && bmi < 40 ? "text-orange-400 font-extrabold" : "text-zinc-500"}>30 - 39.9</span>
+                      </div>
+                      <div className="flex justify-between items-center">
+                        <span className={bmi >= 40 ? "text-rose-400 font-extrabold" : "text-zinc-500"}>{lang === "tr" ? "Aşırı Obez" : "Severely Obese"}</span>
+                        <span className={bmi >= 40 ? "text-rose-400 font-extrabold" : "text-zinc-500"}>&ge; 40</span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              ) : (
+                <div className={["rounded-3xl p-5 border shadow-lg text-center text-xs", isDark ? "bg-black/35 border-white/10 text-zinc-400" : "bg-white border-[#dfd0b9] text-zinc-500"].join(" ")}>
+                  {lang === "tr" ? "VKE hesaplanabilmesi için boy ve kilo ölçümü gereklidir." : "Height and weight measurements are required to calculate BMI."}
+                </div>
+              )}
             </div>
           </div>
 
@@ -893,6 +1036,7 @@ export default function Profile() {
                       <th className="pb-3">{t.date}</th>
                       <th className="pb-3">{t.weight}</th>
                       <th className="pb-3">{t.bodyFat}</th>
+                      <th className="pb-3">{lang === "tr" ? "Boy" : "Height"}</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -907,6 +1051,7 @@ export default function Profile() {
                         <td className="py-3 font-semibold">{m.date}</td>
                         <td className="py-3 font-semibold">{m.weight ?? "-"}</td>
                         <td className="py-3 font-semibold">{m.body_fat ?? "-"}</td>
+                        <td className="py-3 font-semibold">{m.height ? `${m.height} cm` : "-"}</td>
                       </tr>
                     ))}
                   </tbody>

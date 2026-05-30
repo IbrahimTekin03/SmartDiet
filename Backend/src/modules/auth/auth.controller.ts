@@ -1,6 +1,7 @@
 import {
   Body,
   Controller,
+  Delete,
   Get,
   Param,
   Post,
@@ -323,6 +324,50 @@ export class AuthController {
     return ResponseDto.success('Ba?vuru reddedildi', result);
   }
 
+  @Get('admin/client-applications')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('admin')
+  @ApiOperation({ summary: 'Danışan başvurularını durum filtresi ile listele' })
+  @ApiResponse({ status: 200, type: ResponseDto })
+  async listClientApplications(
+    @Query('status') status?: string,
+    @Query('search') search?: string,
+    @Query('page') page?: string,
+    @Query('limit') limit?: string,
+  ) {
+    const result = await this.authService.listClientApplications({
+      status,
+      search,
+      page: Number(page),
+      limit: Number(limit),
+    });
+    return ResponseDto.success('Danışan başvuru listesi', result);
+  }
+
+  @Post('admin/client-applications/:userId/approve')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('admin')
+  @ApiOperation({ summary: 'Danışan başvurusunu onayla' })
+  @ApiResponse({ status: 200, type: ResponseDto })
+  async approveClientApplication(@Request() req, @Param('userId') userId: string) {
+    const result = await this.authService.approveClientApplication(req.user.id, userId);
+    return ResponseDto.success('Danışan başvurusu onaylandı', result);
+  }
+
+  @Post('admin/client-applications/:userId/reject')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('admin')
+  @ApiOperation({ summary: 'Danışan başvurusunu reddet' })
+  @ApiResponse({ status: 200, type: ResponseDto })
+  async rejectClientApplication(
+    @Request() req,
+    @Param('userId') userId: string,
+    @Body('reason') reason: string,
+  ) {
+    const result = await this.authService.rejectClientApplication(req.user.id, userId, reason);
+    return ResponseDto.success('Danışan başvurusu reddedildi', result);
+  }
+
   @Get('admin/users-overview')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles('admin')
@@ -384,6 +429,64 @@ export class AuthController {
     const createdUser = await this.authService.adminRegister(registerDto);
     const message = await this.i18n.translate('common.auth.register_success');
     return ResponseDto.success(message, createdUser);
+  }
+
+  @Post('admin/dietitians/:userId/remove-clinic')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('admin')
+  @ApiOperation({ summary: 'Diyetisyeni klinikten çıkar' })
+  @ApiResponse({ status: 200, type: ResponseDto })
+  async removeDietitianFromClinic(@Request() req, @Param('userId') userId: string) {
+    const result = await this.authService.removeDietitianFromClinic(req.user.id, userId);
+    return ResponseDto.success('Diyetisyen klinikten çıkarıldı', result);
+  }
+
+  @Post('admin/dietitians/:userId/assign-clinic')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('admin')
+  @ApiOperation({ summary: 'Diyetisyeni kliniğe ata' })
+  @ApiResponse({ status: 200, type: ResponseDto })
+  async assignDietitianToClinic(
+    @Request() req,
+    @Param('userId') userId: string,
+    @Body('clinic_id') clinicId: string,
+  ) {
+    const result = await this.authService.assignDietitianToClinic(req.user.id, userId, clinicId);
+    return ResponseDto.success('Diyetisyen kliniğe atandı', result);
+  }
+
+  @Post('admin/connections/:connectionId/unassign')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('admin')
+  @ApiOperation({ summary: 'Danışanı diyetisyenden çıkar' })
+  @ApiResponse({ status: 200, type: ResponseDto })
+  async unassignClient(@Request() req, @Param('connectionId') connectionId: string) {
+    const result = await this.authService.unassignClient(req.user.id, connectionId);
+    return ResponseDto.success('Danışan diyetisyenden çıkarıldı', result);
+  }
+
+  @Delete('admin/users/:userId')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('admin')
+  @ApiOperation({ summary: 'Kullanıcıyı sistemden sil' })
+  @ApiResponse({ status: 200, type: ResponseDto })
+  async deleteUser(@Request() req, @Param('userId') userId: string) {
+    const result = await this.authService.deleteUser(req.user.id, userId);
+    return ResponseDto.success('Kullanıcı silindi', result);
+  }
+
+  @Post('admin/users/:userId/edit')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('admin')
+  @ApiOperation({ summary: 'Kullanıcıyı düzenle' })
+  @ApiResponse({ status: 200, type: ResponseDto })
+  async updateUserAdmin(
+    @Request() req,
+    @Param('userId') userId: string,
+    @Body() dto: any,
+  ) {
+    const result = await this.authService.updateUserAdmin(req.user.id, userId, dto);
+    return ResponseDto.success('Kullanıcı güncellendi', result);
   }
 
   @Post('refresh-token')

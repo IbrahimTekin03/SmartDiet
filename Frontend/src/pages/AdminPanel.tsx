@@ -2,9 +2,10 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useAppSettings } from "../context/AppSettingsContext";
 import { clearAuthSession, setAuthSession } from "../lib/authSession";
+import { TURKEY_CITIES } from "../data/turkeyCities";
 
 type Lang = "tr" | "en";
-type ViewMode = "queue" | "ops" | "clinics";
+type ViewMode = "queue" | "ops" | "clinics" | "clients";
 type SortMode = "newest" | "oldest";
 type ApplicationStatus = "pending" | "rejected";
 type AccountKind = "admin" | "dietitian" | "client" | "user";
@@ -390,6 +391,29 @@ export default function AdminPanel() {
   const [clinicError, setClinicError] = useState("");
   const [editingClinic, setEditingClinic] = useState<Partial<Clinic> | null>(null);
   const [savingClinic, setSavingClinic] = useState(false);
+  const [editingUser, setEditingUser] = useState<UserOverviewItem | null>(null);
+  const [editForm, setEditForm] = useState({
+    first_name: "",
+    last_name: "",
+    email: "",
+    phone_number: "",
+    role: "",
+    clinic_id: "",
+  });
+  const [savingUser, setSavingUser] = useState(false);
+  const [saveUserError, setSaveUserError] = useState("");
+  const [clientApplications, setClientApplications] = useState<any[]>([]);
+  const [clientAppsLoading, setClientAppsLoading] = useState(false);
+  const [clientAppsTotal, setClientAppsTotal] = useState(0);
+  const [clientAppsPage, setClientAppsPage] = useState(1);
+  const [clientAppsTotalPages, setClientAppsTotalPages] = useState(0);
+  const [clientAppStatus, setClientAppStatus] = useState<ApplicationStatus>("pending");
+  const [clientSearch, setClientSearch] = useState("");
+  const [clientSearchInput, setClientSearchInput] = useState("");
+  const [selectedClientAppId, setSelectedClientAppId] = useState("");
+  const [clientRejectReason, setClientRejectReason] = useState("");
+  const [clientApprovingId, setClientApprovingId] = useState<string | null>(null);
+  const [clientRejectingId, setClientRejectingId] = useState<string | null>(null);
   const refreshInFlightRef = useRef(false);
   const refreshAllRef = useRef<() => Promise<void>>(async () => undefined);
 
@@ -399,6 +423,11 @@ export default function AdminPanel() {
     const timer = window.setTimeout(() => setSearch(searchInput), 320);
     return () => window.clearTimeout(timer);
   }, [searchInput]);
+
+  useEffect(() => {
+    const timer = window.setTimeout(() => setClientSearch(clientSearchInput), 320);
+    return () => window.clearTimeout(timer);
+  }, [clientSearchInput]);
 
   useEffect(() => {
     const token = localStorage.getItem("access_token");
@@ -505,6 +534,34 @@ export default function AdminPanel() {
       setHistoryLoading(false);
     }
   }, [historyLimit, t.historyLoadError]);
+
+  const fetchClientApps = useCallback(async (token: string, status: ApplicationStatus, page: number) => {
+    setClientAppsLoading(true);
+    try {
+      const params = new URLSearchParams();
+      params.set("status", status);
+      params.set("page", String(page));
+      params.set("limit", "10");
+      if (clientSearch.trim()) params.set("search", clientSearch.trim());
+
+      const res = await fetch(`${API_BASE}/api/auth/admin/client-applications?${params.toString()}`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error();
+      const payload = data?.data ?? data;
+      setClientApplications(Array.isArray(payload?.items) ? payload.items : []);
+      setClientAppsTotal(Number(payload?.total ?? 0));
+      setClientAppsPage(Number(payload?.page ?? page));
+      setClientAppsTotalPages(Number(payload?.totalPages ?? 0));
+    } catch {
+      setClientApplications([]);
+      setClientAppsTotal(0);
+      setClientAppsTotalPages(0);
+    } finally {
+      setClientAppsLoading(false);
+    }
+  }, [clientSearch]);
 
   const fetchStats = useCallback(async () => {
     try {
@@ -647,12 +704,13 @@ export default function AdminPanel() {
         fetchUsersOverview(token),
         fetchConnections(token),
         fetchClinics(token),
+        fetchClientApps(token, clientAppStatus, clientAppsPage),
       ]);
       setLastUpdatedAt(Date.now());
     } finally {
       refreshInFlightRef.current = false;
     }
-  }, [applicationStatus, applicationsPage, fetchApps, fetchConnections, fetchHistory, fetchStats, fetchSummary, fetchUsersOverview, historyPage, isAdmin]);
+  }, [applicationStatus, applicationsPage, fetchApps, fetchConnections, fetchHistory, fetchStats, fetchSummary, fetchUsersOverview, historyPage, isAdmin, fetchClientApps, clientAppStatus, clientAppsPage]);
 
   useEffect(() => {
     refreshAllRef.current = refreshAll;
@@ -682,6 +740,17 @@ export default function AdminPanel() {
   useEffect(() => {
     setApplicationsPage(1);
   }, [applicationStatus, cityFilter, search, sortMode]);
+
+  useEffect(() => {
+    setClientAppsPage(1);
+  }, [clientAppStatus, clientSearch]);
+
+  useEffect(() => {
+    if (!clientApplications.length) return setSelectedClientAppId("");
+    if (!selectedClientAppId || !clientApplications.some((app) => app.user_id === selectedClientAppId)) {
+      setSelectedClientAppId(clientApplications[0].user_id);
+    }
+  }, [clientApplications, selectedClientAppId]);
 
   const cities = useMemo(() => {
     const values = new Set<string>();
@@ -808,6 +877,62 @@ export default function AdminPanel() {
     }
   };
 
+  const handleApproveClient = async (userId: string) => {
+    const token = localStorage.getItem("access_token");
+    if (!token) return;
+    setClientApprovingId(userId);
+    try {
+      const res = await fetch(`${API_BASE}/api/auth/admin/client-applications/${userId}/approve`, {
+        method: "POST",
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (!res.ok) throw new Error();
+      const nextPage = clientApplications.length === 1 && clientAppsPage > 1 ? clientAppsPage - 1 : clientAppsPage;
+      await Promise.all([
+        fetchClientApps(token, clientAppStatus, nextPage),
+        fetchStats(),
+        fetchUsersOverview(token),
+      ]);
+    } catch {
+      alert(lang === "tr" ? "Onaylama işlemi başarısız oldu." : "Failed to approve client.");
+    } finally {
+      setClientApprovingId(null);
+    }
+  };
+
+  const handleRejectClient = async (userId: string, reason: string) => {
+    const token = localStorage.getItem("access_token");
+    if (!token) return;
+    const cleanReason = reason.trim();
+    if (!cleanReason) {
+      alert(lang === "tr" ? "Red nedeni gereklidir." : "Rejection reason is required.");
+      return;
+    }
+    setClientRejectingId(userId);
+    try {
+      const res = await fetch(`${API_BASE}/api/auth/admin/client-applications/${userId}/reject`, {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ reason: cleanReason }),
+      });
+      if (!res.ok) throw new Error();
+      setClientRejectReason("");
+      const nextPage = clientApplications.length === 1 && clientAppsPage > 1 ? clientAppsPage - 1 : clientAppsPage;
+      await Promise.all([
+        fetchClientApps(token, clientAppStatus, nextPage),
+        fetchStats(),
+        fetchUsersOverview(token),
+      ]);
+    } catch {
+      alert(lang === "tr" ? "Reddetme işlemi başarısız oldu." : "Failed to reject client.");
+    } finally {
+      setClientRejectingId(null);
+    }
+  };
+
   const assignConnection = async () => {
     const token = localStorage.getItem("access_token");
     if (!token || !selectedClientId || !selectedDietitianId) return;
@@ -838,6 +963,131 @@ export default function AdminPanel() {
       setConnectionError(lang === "tr" ? "Atama kaydedilemedi." : "Failed to save assignment.");
     } finally {
       setAssigningConnection(false);
+    }
+  };
+
+  const handleRemoveDietitianClinic = async (dietitianId: string) => {
+    if (!window.confirm(lang === "tr" ? "Bu diyetisyeni klinikten çıkarmak istediğinize emin misiniz?" : "Are you sure you want to remove this dietitian from the clinic?")) return;
+    const token = localStorage.getItem("access_token");
+    if (!token) return;
+
+    setConnectionError("");
+    try {
+      const res = await fetch(`${API_BASE}/api/auth/admin/dietitians/${dietitianId}/remove-clinic`, {
+        method: "POST",
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      if (!res.ok) throw new Error();
+      await refreshAll();
+    } catch {
+      setConnectionError(lang === "tr" ? "Klinikten çıkarma işlemi başarısız." : "Failed to remove dietitian from clinic.");
+    }
+  };
+
+  const handleAssignDietitianClinic = async (dietitianId: string, clinicId: string) => {
+    const token = localStorage.getItem("access_token");
+    if (!token) return;
+
+    setConnectionError("");
+    try {
+      const res = await fetch(`${API_BASE}/api/auth/admin/dietitians/${dietitianId}/assign-clinic`, {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({ clinic_id: clinicId })
+      });
+      if (!res.ok) throw new Error();
+      await refreshAll();
+    } catch {
+      setConnectionError(lang === "tr" ? "Kliniğe atama işlemi başarısız." : "Failed to assign dietitian to clinic.");
+    }
+  };
+
+  const handleUnassignClient = async (connectionId: string) => {
+    if (!window.confirm(lang === "tr" ? "Bu danışanı diyetisyenden çıkarmak istediğinize emin misiniz?" : "Are you sure you want to unassign this client from their dietitian?")) return;
+    const token = localStorage.getItem("access_token");
+    if (!token) return;
+
+    setConnectionError("");
+    try {
+      const res = await fetch(`${API_BASE}/api/auth/admin/connections/${connectionId}/unassign`, {
+        method: "POST",
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      if (!res.ok) throw new Error();
+      await refreshAll();
+    } catch {
+      setConnectionError(lang === "tr" ? "Danışan çıkarma işlemi başarısız." : "Failed to unassign client.");
+    }
+  };
+
+  const handleDeleteUser = async (userId: string) => {
+    if (!window.confirm(lang === "tr" ? "Bu kullanıcıyı ve tüm bağlı verilerini (üyelikler, sohbetler vb.) sistemden TAMAMEN silmek istediğinize emin misiniz? Bu işlem geri alınamaz!" : "Are you sure you want to PERMANENTLY delete this user and all related data (subscriptions, chats, etc.)? This action cannot be undone!")) return;
+    
+    const token = localStorage.getItem("access_token");
+    if (!token) return;
+
+    setConnectionError("");
+    try {
+      const res = await fetch(`${API_BASE}/api/auth/admin/users/${userId}`, {
+        method: "DELETE",
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data?.message || "Delete failed");
+      await refreshAll();
+    } catch (err: any) {
+      setConnectionError(lang === "tr" ? `Silme işlemi başarısız: ${err?.message || ""}` : `Failed to delete user: ${err?.message || ""}`);
+    }
+  };
+
+  const openEditUserModal = (item: UserOverviewItem) => {
+    const matchedClinic = clinics.find(
+      (c) => c.name?.toLowerCase() === item.clinic_name?.toLowerCase()
+    );
+
+    setEditingUser(item);
+    setEditForm({
+      first_name: item.first_name || "",
+      last_name: item.last_name || "",
+      email: item.email || "",
+      phone_number: item.phone_number || "",
+      role: accountKind(item),
+      clinic_id: matchedClinic ? matchedClinic.id : "",
+    });
+    setSaveUserError("");
+  };
+
+  const handleUpdateUser = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingUser) return;
+
+    const token = localStorage.getItem("access_token");
+    if (!token) return;
+
+    setSavingUser(true);
+    setSaveUserError("");
+
+    try {
+      const res = await fetch(`${API_BASE}/api/auth/admin/users/${editingUser.user_id}/edit`, {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify(editForm)
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data?.message || "Edit failed");
+      
+      setEditingUser(null);
+      await refreshAll();
+    } catch (err: any) {
+      setSaveUserError(lang === "tr" ? `Güncelleme başarısız: ${err?.message || ""}` : `Update failed: ${err?.message || ""}`);
+    } finally {
+      setSavingUser(false);
     }
   };
 
@@ -888,7 +1138,8 @@ export default function AdminPanel() {
         <section className="grid gap-3 xl:grid-cols-[minmax(0,1fr)_320px]">
           <div className={panelClass(isDark)}>
             <div className={["mb-4 inline-flex border p-1", isDark ? "rounded-2xl border-white/10 bg-black/20" : "rounded-lg border-[#dfd0b9] bg-[#f7eedf]"].join(" ")}>
-              <button type="button" onClick={() => setViewMode("queue")} className={tabClass(isDark, viewMode === "queue")}>{t.queueTab}</button>
+              <button type="button" onClick={() => setViewMode("queue")} className={tabClass(isDark, viewMode === "queue")}>{lang === "tr" ? "Diyetisyen Başvuruları" : "Dietitian Applications"}</button>
+              <button type="button" onClick={() => setViewMode("clients")} className={tabClass(isDark, viewMode === "clients")}>{lang === "tr" ? "Danışan Başvuruları" : "Client Applications"}</button>
               <button type="button" onClick={() => setViewMode("clinics")} className={tabClass(isDark, viewMode === "clinics")}>{t.clinicsTab}</button>
               <button type="button" onClick={() => setViewMode("ops")} className={tabClass(isDark, viewMode === "ops")}>{t.opsTab}</button>
             </div>
@@ -1022,6 +1273,138 @@ export default function AdminPanel() {
                   </div>
                 </div>
               </>
+            ) : viewMode === "clients" ? (
+              <>
+                <h2 className="text-sm font-black">{lang === "tr" ? "Danışan Başvuruları" : "Client Applications"}</h2>
+
+                <div className="mt-3 flex items-center gap-2">
+                  <button type="button" onClick={() => setClientAppStatus("pending")} className={tabClass(isDark, clientAppStatus === "pending")}>
+                    {lang === "tr" ? "Bekleyenler" : "Pending"}
+                  </button>
+                  <button type="button" onClick={() => setClientAppStatus("rejected")} className={tabClass(isDark, clientAppStatus === "rejected")}>
+                    {lang === "tr" ? "Reddedilenler" : "Rejected"}
+                  </button>
+                </div>
+
+                <div className="mt-3 grid gap-2 sm:grid-cols-2">
+                  <label>
+                    <span className={labelClass(isDark)}>{lang === "tr" ? "Danışan Ara" : "Search Clients"}</span>
+                    <input
+                      value={clientSearchInput}
+                      onChange={(e) => setClientSearchInput(e.target.value)}
+                      placeholder={lang === "tr" ? "isim, e-posta, telefon" : "name, email, phone"}
+                      className={inputClass(isDark)}
+                    />
+                  </label>
+                </div>
+
+                <div className="mt-3 grid gap-3 lg:grid-cols-[1fr_0.88fr]">
+                  <div className={innerPanel(isDark)}>
+                    <div className="mb-2 text-xs font-bold">
+                      {clientAppStatus === "pending" ? (lang === "tr" ? "Bekleyen Danışan" : "Pending Clients") : (lang === "tr" ? "Reddedilen Danışan" : "Rejected Clients")}: {clientAppsTotal}
+                    </div>
+                    <div className="max-h-[360px] space-y-2 overflow-auto pr-1">
+                      {clientAppsLoading ? <div className={hintClass(isDark)}>{t.load}</div> : null}
+                      {!clientAppsLoading && clientApplications.length === 0 ? <div className={hintClass(isDark)}>{t.noResult}</div> : null}
+                      {clientApplications.map((app) => (
+                        <button
+                          key={app.user_id}
+                          type="button"
+                          onClick={() => setSelectedClientAppId(app.user_id)}
+                          className={["w-full border px-3 py-2.5 text-left transition", app.user_id === selectedClientAppId ? (isDark ? "rounded-xl border-emerald-400/35 bg-emerald-500/10 shadow-[0_0_0_1px_rgba(16,185,129,0.10)_inset]" : "rounded-md border-[#b28a52]/50 bg-[#f5ead7]") : (isDark ? "rounded-xl border-white/10 bg-black/20 hover:bg-white/5" : "rounded-md border-[#e4d5bf] bg-[#fffdf7] hover:bg-white")].join(" ")}
+                        >
+                          <div className="text-sm font-black">
+                            {[app.first_name, app.last_name].filter(Boolean).join(" ").trim() || app.email || app.phone_number || app.user_id}
+                          </div>
+                          <div className={["mt-1 text-xs", isDark ? "text-zinc-300" : "text-[#7b6d58]"].join(" ")}>
+                            {app.email || "-"} · {app.phone_number || "-"}
+                          </div>
+                        </button>
+                      ))}
+                    </div>
+                    <div className="mt-3 flex items-center justify-between gap-2">
+                      <div className={["text-xs", isDark ? "text-zinc-400" : "text-[#8a7a61]"].join(" ")}>
+                        {t.pagination}: {clientAppsPage}/{Math.max(1, clientAppsTotalPages)}
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <button
+                          type="button"
+                          disabled={clientAppsPage <= 1 || clientAppsLoading}
+                          onClick={() => setClientAppsPage((prev) => Math.max(1, prev - 1))}
+                          className={btnClass(isDark)}
+                        >
+                          {t.prev}
+                        </button>
+                        <button
+                          type="button"
+                          disabled={clientAppsPage >= clientAppsTotalPages || clientAppsLoading || clientAppsTotalPages === 0}
+                          onClick={() => setClientAppsPage((prev) => Math.min(Math.max(1, clientAppsTotalPages), prev + 1))}
+                          className={btnClass(isDark)}
+                        >
+                          {t.next}
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className={innerPanel(isDark)}>
+                    <div className="text-sm font-black">{t.selectedTitle}</div>
+                    {(() => {
+                      const selectedApp = clientApplications.find((app) => app.user_id === selectedClientAppId);
+                      if (!selectedApp) {
+                        return <div className={["mt-2 text-sm", isDark ? "text-zinc-400" : "text-[#7b6d58]"].join(" ")}>{t.noSelection}</div>;
+                      }
+                      return (
+                        <div className="mt-2 space-y-1.5 text-xs">
+                          <DetailRow isDark={isDark} k={t.detailName} v={[selectedApp.first_name, selectedApp.last_name].filter(Boolean).join(" ").trim() || "-"} />
+                          <DetailRow isDark={isDark} k={t.detailEmail} v={selectedApp.email || "-"} />
+                          <DetailRow isDark={isDark} k={t.detailPhone} v={selectedApp.phone_number || "-"} />
+                          <DetailRow isDark={isDark} k={lang === "tr" ? "Başvuru Tarihi" : "Application Date"} v={formatDate(selectedApp.createdAt, lang)} />
+                          {selectedApp.verification_review_note ? (
+                            <DetailRow isDark={isDark} k={t.reviewNote} v={selectedApp.verification_review_note} />
+                          ) : null}
+
+                          {clientAppStatus === "pending" ? (
+                            <>
+                              <button
+                                type="button"
+                                disabled={clientApprovingId === selectedApp.user_id || clientRejectingId === selectedApp.user_id}
+                                onClick={() => handleApproveClient(selectedApp.user_id)}
+                                className={primaryButtonClass(isDark, "mt-2 w-full px-3 py-2 text-xs")}
+                              >
+                                {clientApprovingId === selectedApp.user_id ? t.approving : t.approve}
+                              </button>
+
+                              <label className="mt-2 block">
+                                <span className={labelClass(isDark)}>{t.rejectReason}</span>
+                                <textarea
+                                  value={clientRejectReason}
+                                  onChange={(e) => setClientRejectReason(e.target.value)}
+                                  rows={3}
+                                  placeholder={t.rejectReasonPh}
+                                  className={inputClass(isDark)}
+                                />
+                              </label>
+                              <button
+                                type="button"
+                                disabled={clientRejectingId === selectedApp.user_id || clientApprovingId === selectedApp.user_id}
+                                onClick={() => handleRejectClient(selectedApp.user_id, clientRejectReason)}
+                                className={["w-full rounded-md px-3 py-2 text-xs font-black transition disabled:opacity-60", isDark ? "bg-rose-500/18 text-rose-100 hover:bg-rose-500/26" : "bg-rose-100 text-rose-700 hover:bg-rose-200"].join(" ")}
+                              >
+                                {clientRejectingId === selectedApp.user_id ? t.rejecting : t.reject}
+                              </button>
+                            </>
+                          ) : (
+                            <div className={["mt-2 border px-3 py-2 text-xs rounded-md", isDark ? "border-rose-500/30 bg-rose-500/10 text-rose-100" : "border-rose-200 bg-rose-50 text-rose-700"].join(" ")}>
+                              {lang === "tr" ? "Bu başvuru reddedilmiştir." : "This application has been rejected."}
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })()}
+                  </div>
+                </div>
+              </>
             ) : viewMode === "clinics" ? (
               <div className="space-y-4">
                 <div className="flex items-center justify-between gap-3">
@@ -1041,7 +1424,7 @@ export default function AdminPanel() {
 
                 {editingClinic && (
                   <form onSubmit={saveClinic} className={innerPanel(isDark)}>
-                    <div className="grid gap-3 sm:grid-cols-2">
+                    <div className="grid gap-3 sm:grid-cols-3">
                       <label>
                         <span className={labelClass(isDark)}>{t.clinicName}</span>
                         <input
@@ -1051,15 +1434,55 @@ export default function AdminPanel() {
                           required
                         />
                       </label>
-                      <label>
-                        <span className={labelClass(isDark)}>{t.clinicCity}</span>
-                        <input
-                          value={editingClinic.city || ""}
-                          onChange={(e) => setEditingClinic({ ...editingClinic, city: e.target.value })}
-                          className={inputClass(isDark)}
-                          required
-                        />
-                      </label>
+                      {(() => {
+                        const loc = splitClinicCity(editingClinic.city);
+                        const availableDistricts = TURKEY_CITIES[loc.city] || [];
+                        return (
+                          <>
+                            <label>
+                              <span className={labelClass(isDark)}>{lang === "tr" ? "İl" : "Province"}</span>
+                              <select
+                                value={loc.city}
+                                onChange={(e) => {
+                                  const newCity = e.target.value;
+                                  setEditingClinic({
+                                    ...editingClinic,
+                                    city: composeClinicCity(newCity, ""),
+                                  });
+                                }}
+                                className={inputClass(isDark)}
+                                required
+                              >
+                                <option value="">-- {lang === "tr" ? "İl Seçin" : "Select Province"} --</option>
+                                {Object.keys(TURKEY_CITIES).sort((a, b) => a.localeCompare(b, "tr")).map((city) => (
+                                  <option key={city} value={city}>{city}</option>
+                                ))}
+                              </select>
+                            </label>
+                            <label>
+                              <span className={labelClass(isDark)}>{lang === "tr" ? "İlçe" : "District"}</span>
+                              <select
+                                value={loc.district}
+                                onChange={(e) => {
+                                  const newDistrict = e.target.value;
+                                  setEditingClinic({
+                                    ...editingClinic,
+                                    city: composeClinicCity(loc.city, newDistrict),
+                                  });
+                                }}
+                                className={inputClass(isDark)}
+                                required
+                                disabled={!loc.city}
+                              >
+                                <option value="">-- {lang === "tr" ? "İlçe Seçin" : "Select District"} --</option>
+                                {availableDistricts.map((district) => (
+                                  <option key={district} value={district}>{district}</option>
+                                ))}
+                              </select>
+                            </label>
+                          </>
+                        );
+                      })()}
                     </div>
                     <label className="mt-3 block">
                       <span className={labelClass(isDark)}>{t.clinicAddress}</span>
@@ -1216,6 +1639,45 @@ export default function AdminPanel() {
                       {recordKind(item, lang)}
                     </span>
                   </div>
+
+                  {accountKind(item) === "dietitian" && (
+                    <div className="mt-2.5 border-t border-dashed border-indigo-500/15 pt-2.5 space-y-2">
+                      <div className={["text-[9px] font-black tracking-widest uppercase", isDark ? "text-emerald-400" : "text-[#236b58]"].join(" ")}>
+                        {lang === "tr" ? "Klinik Yönetimi" : "Clinic Management"}
+                      </div>
+                      <div className="flex flex-wrap items-center gap-1.5">
+                        {item.clinic_name && (
+                          <button
+                            type="button"
+                            onClick={() => handleRemoveDietitianClinic(item.user_id)}
+                            className="rounded-lg bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 px-2 py-1 text-[10px] font-bold transition"
+                          >
+                            {lang === "tr" ? "Klinikten Çıkar" : "Remove Clinic"}
+                          </button>
+                        )}
+                        <div className="flex-1 min-w-[130px]">
+                          <select
+                            defaultValue=""
+                            onChange={(e) => {
+                              const val = e.target.value;
+                              if (val) handleAssignDietitianClinic(item.user_id, val);
+                            }}
+                            className={["w-full rounded-lg px-2 py-1 text-[10px] outline-none border focus:ring-1", 
+                              isDark 
+                                ? "bg-black/60 border-white/10 text-white focus:border-emerald-500/40" 
+                                : "bg-white border-[#dfd0b9] text-[#2f2b22] focus:border-[#8a6a3f]/50"
+                            ].join(" ")}
+                          >
+                            <option value="">-- {lang === "tr" ? "Kliniğe Ata" : "Assign Clinic"} --</option>
+                            {clinics.map((c) => (
+                              <option key={c.id} value={c.id}>{c.name} ({c.city})</option>
+                            ))}
+                          </select>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
                   <div className={["mt-3 flex items-center justify-between gap-3 border-t pt-2 text-[11px]", isDark ? "border-white/10 text-zinc-400" : "border-[#eadcc8] text-[#7b6d58]"].join(" ")}>
                     <span className="inline-flex items-center gap-1.5">
                       <span className={["h-1.5 w-1.5 rounded-full", item.is_active ? "bg-emerald-400" : (isDark ? "bg-zinc-600" : "bg-[#b9a98d]")].join(" ")} />
@@ -1224,6 +1686,31 @@ export default function AdminPanel() {
                     <span className="truncate font-bold">
                       {recordMeta(item, lang)}
                     </span>
+                  </div>
+
+                  <div className="mt-2.5 flex items-center justify-end gap-2 border-t border-dashed border-zinc-500/10 pt-2.5">
+                    <button
+                      type="button"
+                      onClick={() => openEditUserModal(item)}
+                      className={["rounded-lg px-2.5 py-1 text-[10px] font-bold transition",
+                        isDark 
+                          ? "bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400" 
+                          : "bg-emerald-50/80 hover:bg-emerald-100/80 text-emerald-700 border border-emerald-200/50"
+                      ].join(" ")}
+                    >
+                      {lang === "tr" ? "Düzenle" : "Edit"}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => handleDeleteUser(item.user_id)}
+                      className={["rounded-lg px-2.5 py-1 text-[10px] font-bold transition",
+                        isDark 
+                          ? "bg-rose-500/10 hover:bg-rose-500/20 text-rose-400" 
+                          : "bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200"
+                      ].join(" ")}
+                    >
+                      {lang === "tr" ? "Sil" : "Delete"}
+                    </button>
                   </div>
                 </div>
               ))}
@@ -1314,9 +1801,21 @@ export default function AdminPanel() {
               <div className="mt-4 space-y-2">
                 {connections.map((item) => (
                   <div key={item.id} className={innerPanel(isDark)}>
-                    <div className="text-xs font-black">{item.client_name}</div>
-                    <div className={hintClass(isDark)}>
-                      {item.dietitian_name} {item.clinic_name ? `- ${item.clinic_name}` : ""}
+                    <div className="flex justify-between items-start gap-3">
+                      <div>
+                        <div className="text-xs font-black">{item.client_name}</div>
+                        <div className={hintClass(isDark)}>
+                          {item.dietitian_name} {item.clinic_name ? `- ${item.clinic_name}` : ""}
+                        </div>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => handleUnassignClient(item.id)}
+                        className="shrink-0 rounded-lg bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 px-2 py-1 text-[10px] font-bold border border-transparent transition"
+                        title={lang === "tr" ? "Danışanı diyetisyenden çıkar" : "Remove client from dietitian"}
+                      >
+                        {lang === "tr" ? "Çıkar" : "Remove"}
+                      </button>
                     </div>
                     <div className={["mt-1 text-[11px]", isDark ? "text-zinc-500" : "text-[#8a7a61]"].join(" ")}>
                       {formatDate(item.start_date, lang)}
@@ -1332,6 +1831,123 @@ export default function AdminPanel() {
           </div>
         </section>
       </main>
+
+      {editingUser && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-fadeIn">
+          <div className={["w-full max-w-lg border p-6 shadow-2xl transition-all duration-300", isDark ? "rounded-3xl border-white/10 bg-zinc-950 text-white shadow-emerald-500/5" : "rounded-2xl border-[#dfd0b9] bg-[#fbf8f3] text-[#2f2b22]"].join(" ")}>
+            <div className="flex items-center justify-between border-b pb-3 mb-4">
+              <h3 className="text-base font-black">
+                {lang === "tr" ? "Kullanıcıyı Düzenle" : "Edit User"}
+              </h3>
+              <button
+                type="button"
+                onClick={() => setEditingUser(null)}
+                className={["text-xl font-bold transition hover:scale-110", isDark ? "text-zinc-400 hover:text-white" : "text-[#8a7a61] hover:text-[#2f2b22]"].join(" ")}
+              >
+                &times;
+              </button>
+            </div>
+
+            {saveUserError ? <ErrorBox isDark={isDark}>{saveUserError}</ErrorBox> : null}
+
+            <form onSubmit={handleUpdateUser} className="space-y-4">
+              <div className="grid gap-3 sm:grid-cols-2">
+                <label>
+                  <span className={labelClass(isDark)}>{lang === "tr" ? "Adı" : "First Name"}</span>
+                  <input
+                    type="text"
+                    value={editForm.first_name}
+                    onChange={(e) => setEditForm({ ...editForm, first_name: e.target.value })}
+                    className={inputClass(isDark)}
+                    required
+                  />
+                </label>
+                <label>
+                  <span className={labelClass(isDark)}>{lang === "tr" ? "Soyadı" : "Last Name"}</span>
+                  <input
+                    type="text"
+                    value={editForm.last_name}
+                    onChange={(e) => setEditForm({ ...editForm, last_name: e.target.value })}
+                    className={inputClass(isDark)}
+                    required
+                  />
+                </label>
+              </div>
+
+              <label className="block">
+                <span className={labelClass(isDark)}>{lang === "tr" ? "E-posta" : "Email"}</span>
+                <input
+                  type="email"
+                  value={editForm.email}
+                  onChange={(e) => setEditForm({ ...editForm, email: e.target.value })}
+                  className={inputClass(isDark)}
+                  required
+                />
+              </label>
+
+              <label className="block">
+                <span className={labelClass(isDark)}>{lang === "tr" ? "Telefon Numarası" : "Phone Number"}</span>
+                <input
+                  type="text"
+                  value={editForm.phone_number}
+                  onChange={(e) => setEditForm({ ...editForm, phone_number: e.target.value })}
+                  className={inputClass(isDark)}
+                />
+              </label>
+
+              <div className="grid gap-3 sm:grid-cols-2">
+                <label>
+                  <span className={labelClass(isDark)}>{lang === "tr" ? "Rol" : "Role"}</span>
+                  <select
+                    value={editForm.role}
+                    onChange={(e) => setEditForm({ ...editForm, role: e.target.value })}
+                    className={inputClass(isDark)}
+                    required
+                  >
+                    <option value="client">{lang === "tr" ? "Danışan" : "Client"}</option>
+                    <option value="dietitian">{lang === "tr" ? "Diyetisyen" : "Dietitian"}</option>
+                    <option value="admin">{lang === "tr" ? "Yönetici (Admin)" : "Administrator (Admin)"}</option>
+                  </select>
+                </label>
+
+                <label>
+                  <span className={labelClass(isDark)}>{lang === "tr" ? "Klinik" : "Clinic"}</span>
+                  <select
+                    value={editForm.clinic_id}
+                    onChange={(e) => setEditForm({ ...editForm, clinic_id: e.target.value })}
+                    className={inputClass(isDark)}
+                  >
+                    <option value="">-- {lang === "tr" ? "Değişiklik Yok" : "No Change"} --</option>
+                    <option value="REMOVE">{lang === "tr" ? "Kliğinini Sil / Kaldır" : "Remove / Unassign Clinic"}</option>
+                    {clinics.map((c) => (
+                      <option key={c.id} value={c.id}>
+                        {c.name} ({c.city})
+                      </option>
+                    ))}
+                  </select>
+                </label>
+              </div>
+
+              <div className="mt-6 flex justify-end gap-3 pt-3 border-t">
+                <button
+                  type="button"
+                  onClick={() => setEditingUser(null)}
+                  className={btnClass(isDark)}
+                >
+                  {lang === "tr" ? "İptal" : "Cancel"}
+                </button>
+                <button
+                  type="submit"
+                  disabled={savingUser}
+                  className={primaryButtonClass(isDark, "px-5 py-2 text-xs font-bold")}
+                >
+                  {savingUser ? (lang === "tr" ? "Kaydediliyor..." : "Saving...") : (lang === "tr" ? "Güncelle" : "Update")}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -1650,4 +2266,20 @@ function RateRow({ isDark, label, value, tone }: { isDark: boolean; label: strin
 }
 function ErrorBox({ isDark, children }: { isDark: boolean; children: string }) {
   return <div className={["mt-3 rounded-md border px-3 py-2 text-xs", isDark ? "border-rose-500/30 bg-rose-500/10 text-rose-200" : "border-rose-300 bg-rose-50 text-rose-700"].join(" ")}>{children}</div>;
+}
+
+function splitClinicCity(value?: string | null) {
+  const raw = String(value || "").trim();
+  if (!raw) return { city: "", district: "" };
+  const parts = raw.split(/\s+(?:\/|-)\s+|,\s*/).map((part) => part.trim()).filter(Boolean);
+  return {
+    city: parts[0] || raw,
+    district: parts.slice(1).join(" / "),
+  };
+}
+
+function composeClinicCity(city: string, district: string) {
+  const cleanCity = city.trim();
+  const cleanDistrict = district.trim();
+  return cleanDistrict ? `${cleanCity} / ${cleanDistrict}` : cleanCity;
 }
