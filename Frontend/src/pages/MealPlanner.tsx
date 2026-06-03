@@ -182,25 +182,63 @@ export default function MealPlanner() {
   }, [clientIdFromUrl]);
 
   const handlePlanTypeChange = (type: string) => {
+    const oldType = planType;
     setPlanType(type);
+    
     if (type === 'weekly' || type === 'monthly') {
-      const defaultMeals: Meal[] = [];
       const daysCount = type === 'weekly' ? 7 : 30;
-      for (let day = 1; day <= daysCount; day++) {
-        defaultMeals.push(
-          { id: Math.random().toString(36).substr(2, 9), name: "Kahvaltı", time: "08:00", items: [], note: "", day_of_week: day },
-          { id: Math.random().toString(36).substr(2, 9), name: "Öğle Yemeği", time: "13:00", items: [], note: "", day_of_week: day },
-          { id: Math.random().toString(36).substr(2, 9), name: "Akşam Yemeği", time: "19:00", items: [], note: "", day_of_week: day }
-        );
+      const newMeals: Meal[] = [];
+      
+      // Eğer önceden 'daily' idiyse, daily öğünlerini 1. güne koyup diğer günlere çoğaltalım
+      if (oldType === 'daily') {
+        for (let day = 1; day <= daysCount; day++) {
+          meals.forEach(m => {
+            newMeals.push({
+              ...m,
+              id: Math.random().toString(36).substr(2, 9), // ID çakışmaması için yeni ID
+              day_of_week: day,
+              // Alt öğeleri (items) de derin kopyalayalım
+              items: m.items.map(item => ({ ...item, id: Math.random().toString(36).substr(2, 9) }))
+            });
+          });
+        }
+      } else {
+        // Zaten haftalık/aylık arasındaysa, mevcut günleri koruyup eksik günleri tamamlayalım veya fazlaları kırpalım
+        const currentMaxDay = oldType === 'weekly' ? 7 : 30;
+        
+        for (let day = 1; day <= daysCount; day++) {
+          if (day <= currentMaxDay) {
+            // Mevcut güne ait öğünleri koru
+            const dayMeals = meals.filter(m => m.day_of_week === day);
+            newMeals.push(...dayMeals);
+          } else {
+            // Eksik günler için 1. günün öğünlerini şablon olarak kopyala
+            const day1Meals = meals.filter(m => m.day_of_week === 1);
+            day1Meals.forEach(m => {
+              newMeals.push({
+                ...m,
+                id: Math.random().toString(36).substr(2, 9),
+                day_of_week: day,
+                items: m.items.map(item => ({ ...item, id: Math.random().toString(36).substr(2, 9) }))
+              });
+            });
+          }
+        }
       }
-      setMeals(defaultMeals);
+      setMeals(newMeals);
       setSelectedDay(1);
     } else {
-      setMeals([
-        { id: Math.random().toString(36).substr(2, 9), name: "Kahvaltı", time: "08:00", items: [], note: "" },
-        { id: Math.random().toString(36).substr(2, 9), name: "Öğle Yemeği", time: "13:00", items: [], note: "" },
-        { id: Math.random().toString(36).substr(2, 9), name: "Akşam Yemeği", time: "19:00", items: [], note: "" }
-      ]);
+      // 'daily' ye geçiyorsak, kullanıcının o an seçtiği günün (selectedDay) öğünlerini daily yapalım
+      const currentDayMeals = meals.filter(m => m.day_of_week === selectedDay);
+      const baseMeals = currentDayMeals.length > 0 ? currentDayMeals : meals.filter(m => m.day_of_week === 1);
+      
+      const dailyMeals = (baseMeals.length > 0 ? baseMeals : meals).map(m => ({
+        ...m,
+        id: Math.random().toString(36).substr(2, 9),
+        day_of_week: undefined,
+        items: m.items.map(item => ({ ...item, id: Math.random().toString(36).substr(2, 9) }))
+      }));
+      setMeals(dailyMeals);
     }
   };
 

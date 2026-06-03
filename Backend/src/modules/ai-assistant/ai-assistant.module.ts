@@ -4,13 +4,14 @@ import { AiAssistantController } from './ai-assistant.controller';
 import { AiAssistantService } from './ai-assistant.service';
 import { AiChatService } from './ai-chat.service';
 import { AiChatSession } from './entities/ai-chat-session.entity';
+import { AiSemanticCache } from './entities/ai-semantic-cache.entity';
 import { DietPlansModule } from '../diet-plans/diet-plans.module';
 import { FoodsModule } from '../foods/foods.module';
 import { UsersModule } from '../users/users.module';
 
 @Module({
   imports: [
-    TypeOrmModule.forFeature([AiChatSession]),
+    TypeOrmModule.forFeature([AiChatSession, AiSemanticCache]),
     DietPlansModule,
     FoodsModule,
     UsersModule,

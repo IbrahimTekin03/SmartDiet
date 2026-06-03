@@ -32,7 +32,7 @@ export default function AppEntry() {
   const { accessToken, userJson } = useAuthSession();
   const cachedProfile = useMemo(() => parseStoredUser<Profile>(userJson), [userJson]);
   const [loading, setLoading] = useState(Boolean(accessToken));
-  const { lang } = useAppSettings();
+  const { lang, isDark } = useAppSettings();
   const [profile, setProfile] = useState<Profile | null>(cachedProfile);
 
   useEffect(() => {
@@ -88,7 +88,7 @@ export default function AppEntry() {
 
   if (!accessToken) return <Home />;
   if (loading) {
-    return <DashboardLoadingScreen isDark={true} message={lang === "tr" ? "Hesabin hazirlaniyor" : "Preparing your workspace"} />;
+    return <DashboardLoadingScreen isDark={isDark} message={lang === "tr" ? "Hesabin hazirlaniyor" : "Preparing your workspace"} />;
   }
 
   if (!profile) return <Home />;

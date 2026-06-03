@@ -584,9 +584,13 @@ export default function DietPlanView() {
 
   const planTypeLabel = plan.plan_type === 'daily' ? (lang === 'tr' ? 'Günlük' : 'Daily') : plan.plan_type === 'monthly' ? (lang === 'tr' ? 'Aylık' : 'Monthly') : (lang === 'tr' ? 'Haftalık' : 'Weekly');
 
-  const displayedMeals = ['weekly', 'monthly'].includes(plan.plan_type)
+  const displayedMealsRaw = ['weekly', 'monthly'].includes(plan.plan_type)
     ? plan.meals?.filter((m: any) => m.day_of_week === selectedDay) 
     : plan.meals;
+
+  const displayedMeals = displayedMealsRaw
+    ? [...displayedMealsRaw].sort((a, b) => (a.time || '').localeCompare(b.time || ''))
+    : [];
 
   const consumedMacros = {
     calories: 0,

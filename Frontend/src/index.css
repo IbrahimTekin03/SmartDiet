@@ -72,23 +72,23 @@ a {
 }
 
 :root[data-theme="green"] {
-  --bg: #e6f1e8;
+  --bg: #050608;
 
-  --panel: rgba(247, 251, 246, 0.88);
-  --panel-2: rgba(239, 248, 241, 0.94);
+  --panel: rgba(13, 16, 21, 0.85);
+  --panel-2: rgba(18, 22, 28, 0.92);
 
-  --stroke: rgba(13, 82, 55, 0.16);
-  --stroke-2: rgba(13, 82, 55, 0.24);
+  --stroke: rgba(16, 185, 129, 0.15);
+  --stroke-2: rgba(16, 185, 129, 0.25);
 
-  --text: rgba(16, 47, 40, 0.94);
-  --muted: rgba(33, 70, 58, 0.66);
+  --text: rgba(244, 244, 245, 0.95);
+  --muted: rgba(161, 161, 170, 0.7);
 
-  --accent: #167d5a;
-  --accent-2: #0f8f78;
+  --accent: #10b981;
+  --accent-2: #14b8a6;
 
-  --shadow: 0 24px 70px rgba(8, 26, 22, 0.13);
-  --glow: 0 0 0 1px rgba(15, 143, 120, 0.22) inset,
-          0 26px 90px rgba(15, 143, 120, 0.15);
+  --shadow: 0 24px 70px rgba(0, 0, 0, 0.60);
+  --glow: 0 0 0 1px rgba(16, 185, 129, 0.20) inset,
+          0 28px 90px rgba(16, 185, 129, 0.10);
 }
 
 /* =======================================================
