@@ -16,6 +16,7 @@ type RegisterPayload = {
   email?: string;
   phone_number?: string;
   clinic_id?: string;
+  height?: string;
 };
 
 const PASSWORD_REGEX = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{8,}$/;
@@ -225,6 +226,7 @@ export default function Register() {
     account_type: "client",
     email: "",
     phone_number: "",
+    height: "",
   });
 
   const [showPass, setShowPass] = useState(false);
@@ -278,6 +280,15 @@ export default function Register() {
       e.clinic_id = t.selectClinic;
     }
 
+    if (form.account_type === "client") {
+      const heightVal = Number(form.height);
+      if (!form.height || !form.height.trim()) {
+        e.height = lang === "tr" ? "Boy alanı zorunludur." : "Height is required.";
+      } else if (isNaN(heightVal) || heightVal < 50 || heightVal > 250) {
+        e.height = lang === "tr" ? "Geçerli bir boy giriniz (50 - 250 cm)." : "Enter a valid height (50 - 250 cm).";
+      }
+    }
+
     setErrors(e);
     return Object.keys(e).length === 0;
   };
@@ -303,7 +314,7 @@ export default function Register() {
 
     setLoading(true);
     try {
-      const payload: RegisterPayload = {
+      const payload: any = {
         first_name: form.first_name.trim(),
         last_name: form.last_name.trim(),
         password: form.password,
@@ -313,6 +324,7 @@ export default function Register() {
         email: form.email?.trim() || undefined,
         phone_number: form.phone_number?.trim() || undefined,
         clinic_id: form.clinic_id || undefined,
+        height: (form.account_type === "client" && form.height) ? Number(form.height) : undefined,
       };
 
       const res = await fetch(REGISTER_URL, {
@@ -346,6 +358,7 @@ export default function Register() {
         account_type: "client",
         email: "",
         phone_number: "",
+        height: "",
       });
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : "";
@@ -506,6 +519,20 @@ export default function Register() {
                   {errors.gender ? <div className="mt-2 text-xs text-rose-200">{errors.gender}</div> : null}
                 </div>
               </div>
+
+              {form.account_type === "client" && (
+                <div className="animate-in fade-in slide-in-from-top-2 duration-300">
+                  <Field
+                    isDark={isDark}
+                    label={lang === "tr" ? "Boy (cm)" : "Height (cm)"}
+                    value={form.height || ""}
+                    onChange={(v) => setField("height", v)}
+                    placeholder={lang === "tr" ? "Örn. 175" : "e.g. 175"}
+                    error={errors.height}
+                    type="number"
+                  />
+                </div>
+              )}
 
               <div>
                 <label className={isDark ? "mb-2 block text-xs font-semibold text-zinc-200" : "mb-2 block text-xs font-semibold text-[#36544c]"}>{t.accountType}</label>

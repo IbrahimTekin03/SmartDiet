@@ -141,7 +141,7 @@ export default function DietPlanView() {
       // Ensure we fetch whenever plan, date OR selectedDay changes 
       // (important for monthly where date might not have changed yet or is shared)
       fetchTracking(controller.signal);
-      fetchAdherence(selectedDate);
+      fetchAdherence();
     }
     return () => controller.abort();
   }, [plan, selectedDate, selectedDay]);
@@ -163,11 +163,10 @@ export default function DietPlanView() {
     }
   };
 
-  const fetchAdherence = async (dateParam?: string) => {
+  const fetchAdherence = async () => {
     try {
       const token = localStorage.getItem("access_token");
-      const activeDate = dateParam || selectedDate;
-      const res = await fetch(`${API_BASE}/api/diet-plans/${id}/adherence?date=${activeDate}`, {
+      const res = await fetch(`${API_BASE}/api/diet-plans/${id}/adherence`, {
         headers: { Authorization: `Bearer ${token}` }
       });
       const data = await res.json();
@@ -434,7 +433,7 @@ export default function DietPlanView() {
 
   if (loading) {
     return (
-      <DashboardShell isDark={isDark} title={lang === "tr" ? "Yükleniyor..." : "Loading..."}>
+      <DashboardShell isDark={isDark} title={lang === "tr" ? "Yükleniyor..." : "Loading..."} backUrl="back">
         <div className="flex h-64 items-center justify-center">
           <div className="h-8 w-8 animate-spin rounded-full border-4 border-emerald-500 border-t-transparent" />
         </div>
@@ -444,7 +443,7 @@ export default function DietPlanView() {
 
   if (!plan) {
     return (
-      <DashboardShell isDark={isDark} title={lang === "tr" ? "Hata" : "Error"}>
+      <DashboardShell isDark={isDark} title={lang === "tr" ? "Hata" : "Error"} backUrl="back">
         <DashboardPanel isDark={isDark}>
           <div className="text-center py-10">Plan bulunamadı.</div>
         </DashboardPanel>
@@ -614,19 +613,11 @@ export default function DietPlanView() {
   });
 
   return (
-    <DashboardShell isDark={isDark} title={plan.title} subtitle={planTypeLabel + " Plan"}>
+    <DashboardShell isDark={isDark} title={plan.title} subtitle={planTypeLabel + " Plan"} backUrl="back">
       <div className={["min-h-screen transition-colors", isDark ? "bg-transparent text-white" : "bg-transparent text-[#0e2d27]"].join(" ")}>
         <div className="mx-auto max-w-5xl">
           <div className="mb-8 flex flex-col gap-6 md:flex-row md:items-center md:justify-between">
             <div className="flex items-center gap-4">
-              <button 
-                onClick={() => navigate(-1)}
-                className={["flex items-center gap-2 text-sm font-bold transition-colors", isDark ? "text-zinc-400 hover:text-white" : "text-[#4d6b62] hover:text-[#0e2d27]"].join(" ")}
-              >
-                <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" /></svg>
-                {lang === "tr" ? "Geri Dön" : "Go Back"}
-              </button>
-              
               <button
                 onClick={exportToExcel}
                 className={["flex items-center gap-2 text-sm font-bold transition-colors rounded-lg px-3 py-1.5", isDark ? "bg-emerald-500/20 text-emerald-400 hover:bg-emerald-500/30" : "bg-emerald-100 text-emerald-700 hover:bg-emerald-200"].join(" ")}

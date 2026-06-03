@@ -1,2 +1,5 @@
-Boy bilgisi 1 kere girilcek bunu başta alabiliriz.
-VKİ hesaplamıyor.
+VKİ Hesaplamıyor
+
+diyetisyen mesajlaşma kısmında ataç işlevsiz
+
+Boyu ilk kayıt olurken sormalı sonrasında sormamalı.

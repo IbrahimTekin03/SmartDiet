@@ -401,7 +401,7 @@ export default function Profile() {
   const weightPoints = useMemo(
     () =>
       measurements
-        .filter((m) => typeof m.weight === "number")
+        .filter((m) => m.weight !== null && m.weight !== undefined && !isNaN(Number(m.weight)))
         .map((m) => ({ x: m.date, y: Number(m.weight) })),
     [measurements],
   );
@@ -409,7 +409,7 @@ export default function Profile() {
   const fatPoints = useMemo(
     () =>
       measurements
-        .filter((m) => typeof m.body_fat === "number")
+        .filter((m) => m.body_fat !== null && m.body_fat !== undefined && !isNaN(Number(m.body_fat)))
         .map((m) => ({ x: m.date, y: Number(m.body_fat) })),
     [measurements],
   );
@@ -562,7 +562,8 @@ export default function Profile() {
 
   // BMI (Vucut Kitle Endeksi) Hesaplama
   const latestHeight = useMemo(() => {
-    return user?.height || [...measurements].reverse().find((m) => m.height)?.height || null;
+    const rawHeight = user?.height || [...measurements].reverse().find((m) => m.height)?.height || null;
+    return rawHeight ? Number(rawHeight) : null;
   }, [user, measurements]);
 
   const bmi = useMemo(() => {
@@ -573,11 +574,54 @@ export default function Profile() {
 
   const bmiCategory = useMemo(() => {
     if (!bmi) return null;
-    if (bmi < 18.5) return { name: lang === "tr" ? "Zayıf" : "Underweight", color: "text-sky-400", hex: "#38bdf8" };
-    if (bmi < 25) return { name: lang === "tr" ? "Sağlıklı" : "Healthy", color: "text-emerald-400", hex: "#10b981" };
-    if (bmi < 30) return { name: lang === "tr" ? "Şişman" : "Overweight", color: "text-amber-400", hex: "#f59e0b" };
-    if (bmi < 40) return { name: lang === "tr" ? "Obez" : "Obese", color: "text-orange-400", hex: "#f97316" };
-    return { name: lang === "tr" ? "Aşırı Obez" : "Severely Obese", color: "text-rose-500", hex: "#f43f5e" };
+    if (bmi < 18.5) {
+      return {
+        name: lang === "tr" ? "Zayıf" : "Underweight",
+        color: "text-sky-400",
+        hex: "#38bdf8",
+        emoji: "😐",
+        feedback: lang === "tr" ? "Kilonuz boyunuza göre az. Düzenli beslenerek ideal kilonuza ulaşabilirsiniz." : "Underweight. You can reach your ideal weight by eating regularly.",
+        glowClass: "border-sky-500/20 bg-sky-500/5 shadow-[0_0_24px_rgba(56,189,248,0.25)]"
+      };
+    }
+    if (bmi < 25) {
+      return {
+        name: lang === "tr" ? "Sağlıklı" : "Healthy",
+        color: "text-emerald-400",
+        hex: "#10b981",
+        emoji: "😊",
+        feedback: lang === "tr" ? "Harika! Kilonuz boyunuza göre mükemmel dengede. Böyle devam edin!" : "Great! Your weight is perfectly balanced. Keep it up!",
+        glowClass: "border-emerald-500/20 bg-emerald-500/5 shadow-[0_0_24px_rgba(16,185,129,0.3)]"
+      };
+    }
+    if (bmi < 30) {
+      return {
+        name: lang === "tr" ? "Şişman" : "Overweight",
+        color: "text-amber-400",
+        hex: "#f59e0b",
+        emoji: "😕",
+        feedback: lang === "tr" ? "Kilonuz ideal aralığın biraz üzerinde. Aktif yaşam ve sağlıklı beslenme yardımcı olabilir." : "Slightly above ideal. Active lifestyle and healthy eating can help.",
+        glowClass: "border-amber-500/20 bg-amber-500/5 shadow-[0_0_24px_rgba(245,158,11,0.25)]"
+      };
+    }
+    if (bmi < 40) {
+      return {
+        name: lang === "tr" ? "Obez" : "Obese",
+        color: "text-orange-400",
+        hex: "#f97316",
+        emoji: "😢",
+        feedback: lang === "tr" ? "Kilonuz boyunuza göre fazla. Diyetisyeninizle birlikte hedefinize odaklanın." : "Obese. Work with your dietitian to reach a healthier weight.",
+        glowClass: "border-orange-500/20 bg-orange-500/5 shadow-[0_0_24px_rgba(249,115,22,0.25)]"
+      };
+    }
+    return {
+      name: lang === "tr" ? "Aşırı Obez" : "Severely Obese",
+      color: "text-rose-500",
+      hex: "#f43f5e",
+      emoji: "😭",
+      feedback: lang === "tr" ? "Kilonuz sağlık riski oluşturabilir. Diyetisyeniniz rehberliğinde adım adım ilerleyin." : "Severely Obese. Take step-by-step progress with your dietitian.",
+      glowClass: "border-rose-500/20 bg-rose-500/5 shadow-[0_0_24px_rgba(244,63,94,0.3)]"
+    };
   }, [bmi, lang]);
 
   const needleAngle = useMemo(() => {
@@ -881,7 +925,14 @@ export default function Profile() {
             <InputField label={t.date} type="date" value={measurementForm.date} onChange={(v) => setMeasurementForm((p) => ({ ...p, date: v }))} isDark={isDark} />
             <InputField label={t.weight} type="number" value={measurementForm.weight} onChange={(v) => setMeasurementForm((p) => ({ ...p, weight: v }))} isDark={isDark} />
             <InputField label={t.bodyFat} type="number" value={measurementForm.body_fat} onChange={(v) => setMeasurementForm((p) => ({ ...p, body_fat: v }))} isDark={isDark} />
-            <InputField label={lang === "tr" ? "Boy (cm)" : "Height (cm)"} type="number" value={measurementForm.height} onChange={(v) => setMeasurementForm((p) => ({ ...p, height: v }))} isDark={isDark} />
+            <InputField
+              label={lang === "tr" ? "Boy (cm)" : "Height (cm)"}
+              type="number"
+              value={measurementForm.height}
+              onChange={(v) => setMeasurementForm((p) => ({ ...p, height: v }))}
+              isDark={isDark}
+              placeholder={latestHeight ? `${latestHeight} cm` : (lang === "tr" ? "Boy girin" : "Enter height")}
+            />
             <div className="flex items-end">
               <button
                 onClick={addMeasurement}
@@ -986,6 +1037,23 @@ export default function Profile() {
                     <div className="mt-2 text-2xl font-black">{bmi}</div>
                     <div className={["text-xs font-black px-3 py-0.5 rounded-full inline-block mt-1", bmiCategory?.color, isDark ? "bg-white/5" : "bg-black/5"].join(" ")}>
                       {bmiCategory?.name}
+                    </div>
+
+                    {/* Premium Emoji ve Durum Geri Bildirim Kartı */}
+                    <div className={[
+                      "mt-5 flex flex-col items-center justify-center p-5 rounded-2xl border transition-all duration-500 transform hover:scale-[1.02]",
+                      bmiCategory?.glowClass,
+                      isDark ? "backdrop-blur-md" : "backdrop-blur-sm"
+                    ].join(" ")}>
+                      <span className="text-6xl mb-3 filter drop-shadow-[0_8px_16px_rgba(0,0,0,0.2)] animate-bounce select-none">
+                        {bmiCategory?.emoji}
+                      </span>
+                      <p className={[
+                        "text-xs font-bold leading-relaxed text-center px-1 max-w-[240px]",
+                        isDark ? "text-zinc-200" : "text-[#1d5244]"
+                      ].join(" ")}>
+                        {bmiCategory?.feedback}
+                      </p>
                     </div>
 
                     {/* Legend */}
@@ -1126,12 +1194,14 @@ function InputField({
   onChange,
   isDark,
   type = "text",
+  placeholder,
 }: {
   label: string;
   value: string;
   onChange: (v: string) => void;
   isDark: boolean;
   type?: string;
+  placeholder?: string;
 }) {
   const darkInputFix = isDark ? "neon-input-dark [color-scheme:dark]" : "";
   const darkDateIconFix = isDark && type === "date" ? "neon-date-dark" : "";
@@ -1145,6 +1215,7 @@ function InputField({
         value={value}
         type={type}
         onChange={(e) => onChange(e.target.value)}
+        placeholder={placeholder}
         className={[
           "w-full rounded-xl border px-3 py-2.5 text-sm font-semibold outline-none transition",
           isDark

@@ -285,7 +285,14 @@ export default function Messages() {
     setPlans([]);
 
     try {
-      const isClient = currentUser?.role !== "diyetisyen";
+      const roleNames = [
+        ...(currentUser?.roles || []).map((r: any) => String(r?.name || "").trim().toLowerCase()),
+        String(currentUser?.role || "").trim().toLowerCase(),
+        String(currentUser?.account_type || "").trim().toLowerCase(),
+      ].filter(Boolean);
+      const isDietitian = roleNames.includes("diyetisyen") || roleNames.includes("dietitian");
+      const isClient = !isDietitian;
+
       const url = isClient
         ? `${API_BASE}/api/diet-plans/client`
         : `${API_BASE}/api/diet-plans/client?clientId=${selectedContact.user_id}`;
@@ -403,7 +410,7 @@ export default function Messages() {
   };
 
   return (
-    <DashboardShell isDark={isDark} title={t.title} subtitle={t.subtitle}>
+    <DashboardShell isDark={isDark} title={t.title} subtitle={t.subtitle} backUrl="/">
       <div className={["flex h-[calc(100vh-12rem)] min-h-[480px] w-full overflow-hidden border", isDark ? "rounded-2xl border-white/10 bg-white/5" : "rounded-lg border-[#dfd0b9] bg-[#fffaf0]"].join(" ")}>
         
         {/* Left Contacts Sidebar */}

@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback } from "react";
 import { useAppSettings } from "../context/AppSettingsContext";
-import { Link, useSearchParams } from "react-router-dom";
+import { Link, useSearchParams, useNavigate } from "react-router-dom";
 
 type Client = {
   user_id: string;
@@ -128,6 +128,7 @@ const MealFoodSearch = React.memo(function MealFoodSearch({ mealId, isDark, lang
 
 export default function MealPlanner() {
   const { isDark, lang } = useAppSettings();
+  const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const clientIdFromUrl = searchParams.get("clientId");
 
@@ -406,6 +407,21 @@ export default function MealPlanner() {
         {/* Header */}
         <header className="flex h-16 items-center justify-between border-b border-white/5 bg-white/5 px-6">
           <div className="flex items-center gap-4">
+            <button
+              type="button"
+              onClick={() => navigate(-1)}
+              className={[
+                "inline-flex items-center gap-1.5 text-[11px] font-black transition rounded-full px-3 py-1.5 mr-2",
+                isDark
+                  ? "border border-transparent bg-emerald-950/40 text-emerald-300 hover:bg-emerald-900/40 shadow-[0_4px_16px_rgba(0,0,0,0.2)]"
+                  : "border border-[#2f6154]/25 bg-[#edf6ec] text-[#285743] hover:bg-white shadow-sm",
+              ].join(" ")}
+            >
+              <svg className="h-3 w-3 shrink-0 stroke-current" viewBox="0 0 24 24" fill="none" strokeWidth="2.5">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" />
+              </svg>
+              {lang === "tr" ? "Geri" : "Back"}
+            </button>
             <Link to="/" className="flex items-center gap-2">
               <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-emerald-500 font-bold text-white text-xs">SD</div>
               <span className={isDark ? "font-bold text-white" : "font-bold text-[#0e2d27]"}>SmartDiet</span>

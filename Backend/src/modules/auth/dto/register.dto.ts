@@ -98,4 +98,8 @@ export class RegisterDto {
   @IsOptional()
   @IsString()
   clinic_id?: string;
+
+  @ApiPropertyOptional({ description: 'Boy (cm)', example: 175 })
+  @IsOptional()
+  height?: number;
 }

@@ -1,5 +1,5 @@
 import { type ReactNode, useCallback, useEffect, useState, useRef } from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { useAppSettings } from "../context/AppSettingsContext";
 import { parseStoredUser, useAuthSession } from "../lib/authSession";
 
@@ -10,6 +10,7 @@ export function DashboardShell({
   subtitle,
   actions,
   children,
+  backUrl,
 }: {
   isDark: boolean;
   badge?: string;
@@ -17,7 +18,11 @@ export function DashboardShell({
   subtitle?: string;
   actions?: ReactNode;
   children: ReactNode;
+  backUrl?: string;
 }) {
+  const { lang } = useAppSettings();
+  const navigate = useNavigate();
+
   return (
     <div className={["relative min-h-screen w-screen overflow-x-hidden", isDark ? "text-white" : "bg-[#f7f1e7] text-[#2f2b22]"].join(" ")}>
       <div className="pointer-events-none absolute inset-0">
@@ -31,6 +36,42 @@ export function DashboardShell({
         <header className={panelClass(isDark, "px-4 py-3.5")}>
           <div className="flex flex-wrap items-center justify-between gap-3">
             <div className="max-w-3xl">
+              {backUrl ? (
+                <div className="mb-2">
+                  {backUrl === "back" ? (
+                    <button
+                      type="button"
+                      onClick={() => navigate(-1)}
+                      className={[
+                        "inline-flex items-center gap-1.5 text-[11px] font-black transition rounded-full px-3 py-1.5",
+                        isDark
+                          ? "border border-transparent bg-emerald-950/40 text-emerald-300 hover:bg-emerald-900/40 shadow-[0_4px_16px_rgba(0,0,0,0.2)]"
+                          : "border border-[#2f6154]/25 bg-[#edf6ec] text-[#285743] hover:bg-white shadow-sm",
+                      ].join(" ")}
+                    >
+                      <svg className="h-3 w-3 shrink-0 stroke-current" viewBox="0 0 24 24" fill="none" strokeWidth="2.5">
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" />
+                      </svg>
+                      {lang === "tr" ? "Geri" : "Back"}
+                    </button>
+                  ) : (
+                    <Link
+                      to={backUrl}
+                      className={[
+                        "inline-flex items-center gap-1.5 text-[11px] font-black transition rounded-full px-3 py-1.5",
+                        isDark
+                          ? "border border-transparent bg-emerald-950/40 text-emerald-300 hover:bg-emerald-900/40 shadow-[0_4px_16px_rgba(0,0,0,0.2)]"
+                          : "border border-[#2f6154]/25 bg-[#edf6ec] text-[#285743] hover:bg-white shadow-sm",
+                      ].join(" ")}
+                    >
+                      <svg className="h-3 w-3 shrink-0 stroke-current" viewBox="0 0 24 24" fill="none" strokeWidth="2.5">
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" />
+                      </svg>
+                      {lang === "tr" ? "Geri" : "Back"}
+                    </Link>
+                  )}
+                </div>
+              ) : null}
               {badge ? (
                 <div className={isDark ? "inline-flex rounded-full bg-emerald-500/10 px-3 py-1 text-[11px] font-black uppercase text-emerald-100" : "inline-flex rounded-xl border border-[#e4dbc9] bg-[#edf6ec] px-3 py-1 text-[11px] font-black uppercase text-[#285743]"}>
                   {badge}

@@ -274,10 +274,34 @@ export class DietPlansService {
       where: { plan_id: plan.id, is_consumed: true },
     });
 
+    const formatToYYYYMMDD = (dateVal: any): string => {
+      if (!dateVal) return '';
+      if (typeof dateVal === 'string') {
+        if (/^\d{4}-\d{2}-\d{2}$/.test(dateVal)) {
+          return dateVal;
+        }
+        const d = new Date(dateVal);
+        if (!isNaN(d.getTime())) {
+          const year = d.getFullYear();
+          const month = String(d.getMonth() + 1).padStart(2, '0');
+          const day = String(d.getDate()).padStart(2, '0');
+          return `${year}-${month}-${day}`;
+        }
+        return dateVal.split('T')[0];
+      }
+      if (dateVal instanceof Date && !isNaN(dateVal.getTime())) {
+        const year = dateVal.getFullYear();
+        const month = String(dateVal.getMonth() + 1).padStart(2, '0');
+        const day = String(dateVal.getDate()).padStart(2, '0');
+        return `${year}-${month}-${day}`;
+      }
+      return String(dateVal).split('T')[0];
+    };
+
     const expectedKeys = new Set(expectedItems.map(item => `${item.date}_${item.meal_item_id}`));
     let consumedCount = 0;
     for (const t of trackings) {
-      const key = `${t.date}_${t.meal_item_id}`;
+      const key = `${formatToYYYYMMDD(t.date)}_${t.meal_item_id}`;
       if (expectedKeys.has(key)) {
         consumedCount++;
       }
