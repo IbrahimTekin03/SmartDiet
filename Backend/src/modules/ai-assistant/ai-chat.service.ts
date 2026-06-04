@@ -665,9 +665,41 @@ ${dbSchemaInfo}`;
             sessionId: session.session_id,
             reply: geminiReply
           };
-        } catch (geminiError) {
-          console.error('Gemini call failed:', geminiError.message || geminiError);
-          throw new Error('Yapay zeka asistanı şu anda yanıt veremiyor.');
+        } catch (geminiError: any) {
+          console.warn('Gemini call failed, falling back to Claude:', geminiError.message || geminiError);
+          
+          if (process.env.ANTHROPIC_API_KEY) {
+            try {
+              console.log('Falling back to Claude...');
+              const response = await this.anthropic.messages.create({
+                model: this.model,
+                max_tokens: 8192,
+                temperature: 0.7,
+                system: [
+                  {
+                    type: 'text',
+                    text: systemPrompt,
+                    cache_control: { type: 'ephemeral' }
+                  }
+                ],
+                messages: session.messages,
+                tools: tools,
+              });
+
+              // Claude Tool Loop tetikle
+              const replyData = await this.handleClaudeToolLoop(response, session, systemPrompt, tools, user);
+              
+              // Sonucu önbelleğe kaydet
+              await this.saveToSemanticCache(prompt, replyData.reply, userRole);
+
+              return replyData;
+            } catch (claudeError: any) {
+              console.error('Claude Fallback also failed:', claudeError.message || claudeError);
+              throw new InternalServerErrorException('Yapay zeka asistanı şu anda yanıt veremiyor. Lütfen daha sonra tekrar deneyin.');
+            }
+          } else {
+            throw new InternalServerErrorException('Gemini başarısız oldu ve yedek Claude API anahtarı yapılandırılmamış.');
+          }
         }
       } else {
         throw new Error('Gemini API anahtarı yapılandırılmamış.');
@@ -928,6 +960,8 @@ ${dbSchemaInfo}`;
         }
       };
 
+      console.log("GEMINI REQUEST PAYLOAD:", JSON.stringify(payload, null, 2));
+
       let retries = 3;
       let delay = 2000;
 
@@ -941,6 +975,8 @@ ${dbSchemaInfo}`;
         });
 
         const data = await res.json();
+        console.log("GEMINI RESPONSE DATA:", JSON.stringify(data, null, 2));
+
         if (data.error) {
           // If rate limited or quota exceeded that is retryable
           if (res.status === 429 || (data.error.message && data.error.message.includes('Quota exceeded'))) {
