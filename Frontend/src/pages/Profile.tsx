@@ -1018,15 +1018,9 @@ export default function Profile() {
                         />
                         {/* Needle group */}
                         <g transform={`translate(100, 100) rotate(${needleAngle})`}>
-                          <line
-                            x1="0"
-                            y1="0"
-                            x2="0"
-                            y2="-75"
-                            stroke={isDark ? "#ffffff" : "#18181b"}
-                            strokeWidth="3"
-                            strokeLinecap="round"
-                            filter="url(#needle-glow)"
+                          <polygon
+                            points="-3,0 3,0 0,-75"
+                            fill={isDark ? "#ffffff" : "#18181b"}
                           />
                           <circle r="6" fill={isDark ? "#ffffff" : "#18181b"} />
                           <circle r="2.5" fill="#10b981" />

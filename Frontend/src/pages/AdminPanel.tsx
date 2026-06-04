@@ -122,7 +122,7 @@ const API_BASE = "http://localhost:3000";
 
 const COPY = {
   tr: {
-    tag: "Admin",
+    tag: "Klinik Yöneticisi",
     title: "Yönetim Paneli",
     subtitle: "Başvuruları, klinikleri ve kullanıcı eşleşmelerini temiz bir yönetim akışında takip et.",
     welcome: "Hoş geldin",
@@ -196,7 +196,7 @@ const COPY = {
     detailCity: "Şehir",
     detailAddress: "Adres",
     unknownCity: "Belirsiz",
-    fallbackAdmin: "Yönetici",
+    fallbackAdmin: "Klinik Yöneticisi",
     summaryErr: "Özet verisi alınamadı.",
     appErr: "Başvurular alınamadı.",
     approveErr: "Onay işlemi tamamlanamadı.",
@@ -1906,7 +1906,7 @@ export default function AdminPanel() {
                   >
                     <option value="client">{lang === "tr" ? "Danışan" : "Client"}</option>
                     <option value="dietitian">{lang === "tr" ? "Diyetisyen" : "Dietitian"}</option>
-                    <option value="admin">{lang === "tr" ? "Yönetici (Admin)" : "Administrator (Admin)"}</option>
+                    <option value="admin">{lang === "tr" ? "Klinik Yöneticisi" : "Clinic Manager"}</option>
                   </select>
                 </label>
 
@@ -2183,14 +2183,8 @@ function mergeCurrentAdminSignal(item: UserOverviewItem, user?: SessionUser | nu
 }
 
 function hasAdminSignal(item: UserOverviewItem) {
-  const email = normalizeText(item.email);
-  const name = normalizeText(personName(item));
   const roles = roleNames(item);
-  return (
-    email === "mertb2627@gmail.com" ||
-    name === "mert bulbul" ||
-    roles.some((role) => ["admin", "administrator", "yonetici"].includes(role))
-  );
+  return roles.some((role) => ["admin", "administrator", "yonetici"].includes(role));
 }
 
 function accountKind(item: UserOverviewItem): AccountKind {
@@ -2208,7 +2202,7 @@ function accountKind(item: UserOverviewItem): AccountKind {
 
 function recordKind(item: UserOverviewItem, lang: Lang) {
   const kind = accountKind(item);
-  if (kind === "admin") return "Admin";
+  if (kind === "admin") return lang === "tr" ? "Klinik Yöneticisi" : "Clinic Manager";
   if (kind === "dietitian") return lang === "tr" ? "Diyetisyen" : "Dietitian";
   if (kind === "client") return lang === "tr" ? "Danışan" : "Client";
   return lang === "tr" ? "Kullanıcı" : "User";
@@ -2216,7 +2210,7 @@ function recordKind(item: UserOverviewItem, lang: Lang) {
 
 function recordSubtitle(item: UserOverviewItem, lang: Lang) {
   const kind = accountKind(item);
-  if (kind === "admin") return lang === "tr" ? "Yönetici hesabı" : "Admin account";
+  if (kind === "admin") return lang === "tr" ? "Klinik Yöneticisi hesabı" : "Clinic Manager account";
   if (kind === "dietitian") return item.clinic_name || item.clinic_city || (lang === "tr" ? "Klinik yok" : "No clinic");
   if (kind === "client") return item.assigned_dietitian_name || (lang === "tr" ? "Atama yok" : "No assignment");
   return item.email || item.phone_number || "-";

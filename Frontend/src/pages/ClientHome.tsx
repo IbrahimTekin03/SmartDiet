@@ -211,6 +211,7 @@ export default function ClientHome({ profile }: { profile: Profile }) {
   const [summaryError, setSummaryError] = useState("");
   const [measurementError, setMeasurementError] = useState("");
   const [dietPlans, setDietPlans] = useState<any[]>([]);
+  const [showPastPlans, setShowPastPlans] = useState(false);
   const [network, setNetwork] = useState<WorkspaceNetwork>({});
   const clinicPromptSkipKey = useMemo(
     () => `sd-skip-clinic-prompt:${profile.email || profile.phone_number || profile.display_name || "default"}`,
@@ -435,50 +436,106 @@ export default function ClientHome({ profile }: { profile: Profile }) {
         <DashboardPanel isDark={isDark}>
           <DashboardSectionHeader isDark={isDark} title={t.planSection} subtitle={t.planSectionSub} />
           {dietPlans.length > 0 ? (
-            <div className="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-              {dietPlans.map((plan: any) => {
-                const planTypeLabel = plan.plan_type === 'daily' ? (lang === 'tr' ? 'Günlük' : 'Daily') : plan.plan_type === 'monthly' ? (lang === 'tr' ? 'Aylık' : 'Monthly') : (lang === 'tr' ? 'Haftalık' : 'Weekly');
-                
-                return (
-                  <Link key={plan.id} to={`/plan/${plan.id}`} className={["group flex flex-col justify-between border p-3 transition hover:-translate-y-0.5", isDark ? "rounded-2xl border-transparent bg-black/20 shadow-[inset_0_1px_0_rgba(16,185,129,0.08)] hover:border-transparent hover:bg-white/[0.07]" : "rounded-2xl border-[#e4dbc9] bg-[#fffaf2] hover:border-[#d4c9b5] hover:bg-white"].join(" ")}>
-                    <div>
-                      <div className="mb-3 flex items-center justify-between gap-3">
-                        <div className={["inline-flex items-center gap-1.5 rounded-full border px-2 py-1 text-[10px] font-black uppercase", isDark ? "border-emerald-300/20 bg-emerald-500/10 text-emerald-100" : "border-[#dce8dc] bg-[#edf6ec] text-[#285743]"].join(" ")}>
-                          {planTypeLabel} Plan
+            <div className="mt-3">
+              {(() => {
+                const isPastPlan = (plan: any) => {
+                  let startStr = "";
+                  const m = plan.description?.match(/Başlangıç Tarihi:\s*(\d{4}-\d{2}-\d{2})/);
+                  if (m) startStr = m[1];
+                  else startStr = plan.created_at?.split('T')[0];
+
+                  if (!startStr) return false;
+
+                  const startDate = new Date(startStr);
+                  let days = 7;
+                  if (plan.plan_type === 'daily') days = 1;
+                  else if (plan.plan_type === 'monthly') days = 30;
+
+                  const endDate = new Date(startDate.getTime() + (days * 24 * 60 * 60 * 1000));
+                  const today = new Date();
+                  today.setHours(0,0,0,0);
+                  
+                  return endDate < today;
+                };
+
+                const currentPlans = dietPlans.filter(p => !isPastPlan(p));
+                const pastPlans = dietPlans.filter(p => isPastPlan(p));
+
+                const renderPlan = (plan: any) => {
+                  const planTypeLabel = plan.plan_type === 'daily' ? (lang === 'tr' ? 'Günlük' : 'Daily') : plan.plan_type === 'monthly' ? (lang === 'tr' ? 'Aylık' : 'Monthly') : (lang === 'tr' ? 'Haftalık' : 'Weekly');
+                  return (
+                    <Link key={plan.id} to={`/plan/${plan.id}`} className={["group flex flex-col justify-between border p-3 transition hover:-translate-y-0.5", isDark ? "rounded-2xl border-transparent bg-black/20 shadow-[inset_0_1px_0_rgba(16,185,129,0.08)] hover:border-transparent hover:bg-white/[0.07]" : "rounded-2xl border-[#e4dbc9] bg-[#fffaf2] hover:border-[#d4c9b5] hover:bg-white"].join(" ")}>
+                      <div>
+                        <div className="mb-3 flex items-center justify-between gap-3">
+                          <div className={["inline-flex items-center gap-1.5 rounded-full border px-2 py-1 text-[10px] font-black uppercase", isDark ? "border-emerald-300/20 bg-emerald-500/10 text-emerald-100" : "border-[#dce8dc] bg-[#edf6ec] text-[#285743]"].join(" ")}>
+                            {planTypeLabel} Plan
+                          </div>
+                          <div className={isDark ? "text-[11px] text-zinc-500" : "text-[11px] text-[#7a7160]"}>
+                            {new Date(plan.created_at || new Date()).toLocaleDateString(lang === "tr" ? "tr-TR" : "en-US")}
+                          </div>
                         </div>
-                        <div className={isDark ? "text-[11px] text-zinc-500" : "text-[11px] text-[#7a7160]"}>
-                          {new Date(plan.created_at || new Date()).toLocaleDateString(lang === "tr" ? "tr-TR" : "en-US")}
+                        <h3 className={["mb-1 text-sm font-black tracking-tight", isDark ? "text-white" : "text-[#123a32]"].join(" ")}>
+                          {plan.title}
+                        </h3>
+                        {plan.description && (
+                          <p className={["line-clamp-2 text-xs leading-5", isDark ? "text-zinc-400" : "text-[#4d6b62]"].join(" ")}>
+                            {plan.description}
+                          </p>
+                        )}
+                      </div>
+                      
+                      <div className={["mt-3 flex items-center justify-between border-t pt-2", isDark ? "border-emerald-400/10" : "border-[#d8e5d8]"].join(" ")}>
+                        <div className="flex -space-x-2">
+                          <div className={["flex h-8 w-8 items-center justify-center rounded-xl text-xs font-black", isDark ? "bg-emerald-500/15 text-emerald-200" : "bg-[#edf6ec] text-[#285743]"].join(" ")}>
+                            {plan.meals?.length || 0}
+                          </div>
+                          <div className={["flex h-8 pl-4 items-center rounded-full text-[10px] font-black uppercase", isDark ? "text-zinc-500" : "text-[#7a7160]"].join(" ")}>
+                            {lang === "tr" ? "Öğün" : "Meals"}
+                          </div>
+                        </div>
+                        <div className={["flex h-9 w-9 items-center justify-center transition", isDark ? "rounded-xl bg-emerald-400 text-zinc-950 group-hover:brightness-110" : "rounded-xl bg-[#2f6154] text-white group-hover:bg-[#244f44]"].join(" ")}>
+                          <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" /></svg>
                         </div>
                       </div>
-                      <h3 className={["mb-1 text-sm font-black tracking-tight", isDark ? "text-white" : "text-[#123a32]"].join(" ")}>
-                        {plan.title}
-                      </h3>
-                      {plan.description && (
-                        <p className={["line-clamp-2 text-xs leading-5", isDark ? "text-zinc-400" : "text-[#4d6b62]"].join(" ")}>
-                          {plan.description}
-                        </p>
+                      <div className={["mt-2 text-right text-[11px] font-black", isDark ? "text-emerald-300" : "text-[#285743]"].join(" ")}>
+                        {t.planOpen}
+                      </div>
+                    </Link>
+                  );
+                };
+
+                return (
+                  <>
+                    <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                      {currentPlans.length > 0 ? currentPlans.map(renderPlan) : (
+                        <div className={["col-span-full text-xs font-semibold text-center py-4 rounded-xl", isDark ? "text-zinc-500 bg-black/20" : "text-[#7a7160] bg-white"].join(" ")}>
+                          {lang === "tr" ? "Güncel veya gelecek plan bulunmuyor." : "No current or future plans found."}
+                        </div>
                       )}
                     </div>
-                    
-                    <div className={["mt-3 flex items-center justify-between border-t pt-2", isDark ? "border-emerald-400/10" : "border-[#d8e5d8]"].join(" ")}>
-                      <div className="flex -space-x-2">
-                        <div className={["flex h-8 w-8 items-center justify-center rounded-xl text-xs font-black", isDark ? "bg-emerald-500/15 text-emerald-200" : "bg-[#edf6ec] text-[#285743]"].join(" ")}>
-                          {plan.meals?.length || 0}
-                        </div>
-                        <div className={["flex h-8 pl-4 items-center rounded-full text-[10px] font-black uppercase", isDark ? "text-zinc-500" : "text-[#7a7160]"].join(" ")}>
-                          {lang === "tr" ? "Öğün" : "Meals"}
-                        </div>
+
+                    {pastPlans.length > 0 && (
+                      <div className="mt-6">
+                        <button
+                          onClick={() => setShowPastPlans(!showPastPlans)}
+                          className={["w-full flex items-center justify-between px-4 py-3 rounded-xl border text-xs font-black transition", isDark ? "border-white/10 bg-black/40 text-zinc-300 hover:bg-white/5" : "border-[#e4dbc9] bg-white text-[#2b574b] hover:bg-gray-50"].join(" ")}
+                        >
+                          <span>{lang === "tr" ? "Geçmiş Programlar" : "Past Plans"} ({pastPlans.length})</span>
+                          <svg className={["w-4 h-4 transition-transform", showPastPlans ? "rotate-180" : ""].join(" ")} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                          </svg>
+                        </button>
+                        
+                        {showPastPlans && (
+                          <div className="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                            {pastPlans.map(renderPlan)}
+                          </div>
+                        )}
                       </div>
-                      <div className={["flex h-9 w-9 items-center justify-center transition", isDark ? "rounded-xl bg-emerald-400 text-zinc-950 group-hover:brightness-110" : "rounded-xl bg-[#2f6154] text-white group-hover:bg-[#244f44]"].join(" ")}>
-                        <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" /></svg>
-                      </div>
-                    </div>
-                    <div className={["mt-2 text-right text-[11px] font-black", isDark ? "text-emerald-300" : "text-[#285743]"].join(" ")}>
-                      {t.planOpen}
-                    </div>
-                  </Link>
+                    )}
+                  </>
                 );
-              })}
+              })()}
             </div>
           ) : (
             <div className={isDark ? "rounded-2xl border border-dashed border-transparent bg-black/20 p-6 text-center text-sm text-zinc-400 shadow-[inset_0_1px_0_rgba(16,185,129,0.08)]" : "rounded-2xl border border-dashed border-[#e4dbc9] bg-[#fffaf2] p-6 text-center text-sm text-[#5e776e]"}>

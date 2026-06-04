@@ -209,6 +209,7 @@ export default function DietitianHome({ profile, isAdmin }: { profile: Profile; 
   const [selectedClient, setSelectedClient] = useState<any | null>(null);
   const [clientPlans, setClientPlans] = useState<any[]>([]);
   const [loadingPlans, setLoadingPlans] = useState(false);
+  const [showPastPlans, setShowPastPlans] = useState(false);
 
   // Tracking and appointments states
   const [activeTab, setActiveTab] = useState<'plans' | 'tracking'>('plans');
@@ -312,6 +313,7 @@ export default function DietitianHome({ profile, isAdmin }: { profile: Profile; 
     setClientPlans([]);
     setClientMeasurements([]);
     setClientWaterLogs([]);
+    setShowPastPlans(false);
 
     try {
       const res = await fetch(`${API_BASE}/api/diet-plans/client?clientId=${client.user_id}`, {
@@ -681,31 +683,88 @@ export default function DietitianHome({ profile, isAdmin }: { profile: Profile; 
                     </div>
                   ) : (
                     <div className="space-y-3">
-                      {clientPlans.map((plan) => (
-                        <div key={plan.id} className={["flex flex-col gap-3 border p-3 transition sm:flex-row sm:items-center sm:justify-between", isDark ? "rounded-2xl border-transparent bg-black/20 shadow-[inset_0_1px_0_rgba(16,185,129,0.08)] hover:border-transparent" : "rounded-2xl border-[#e4dbc9] bg-[#fffaf2] hover:border-[#d4c9b5]"].join(" ")}>
-                          <div className="min-w-0">
-                            <div className="flex flex-wrap items-center gap-2">
-                              <h4 className={["truncate text-sm font-black", isDark ? "text-white" : "text-[#123a32]"].join(" ")}>{plan.title}</h4>
-                              {plan.is_active && (
-                                <span className={["rounded-full border px-2 py-0.5 text-[10px] font-black uppercase", isDark ? "border-emerald-300/20 bg-emerald-500/10 text-emerald-100" : "border-[#dce8dc] bg-[#edf6ec] text-[#285743]"].join(" ")}>{t.active}</span>
-                              )}
-                            </div>
-                            <p className={["mt-1 text-[11px] font-black uppercase", isDark ? "text-zinc-500" : "text-[#4d6b62]"].join(" ")}>
-                              {planTypeLabel(plan.plan_type)} Plan
-                            </p>
-                            <p className={["mt-1 text-[11px]", isDark ? "text-zinc-600" : "text-[#7a7160]"].join(" ")}>
-                              {t.createdAt}: {new Date(plan.created_at).toLocaleDateString(lang === "tr" ? "tr-TR" : "en-US")}
-                            </p>
-                          </div>
+                    <div className="space-y-3">
+                      {(() => {
+                        const isPastPlan = (plan: any) => {
+                          let startStr = "";
+                          const m = plan.description?.match(/Başlangıç Tarihi:\s*(\d{4}-\d{2}-\d{2})/);
+                          if (m) startStr = m[1];
+                          else startStr = plan.created_at?.split('T')[0];
+
+                          if (!startStr) return false;
+
+                          const startDate = new Date(startStr);
+                          let days = 7;
+                          if (plan.plan_type === 'daily') days = 1;
+                          else if (plan.plan_type === 'monthly') days = 30;
+
+                          const endDate = new Date(startDate.getTime() + (days * 24 * 60 * 60 * 1000));
+                          const today = new Date();
+                          today.setHours(0,0,0,0);
                           
-                          <button 
-                            onClick={() => navigate(`/plan/${plan.id}`)}
-                            className={["flex h-9 shrink-0 items-center justify-center px-4 text-xs font-black transition", isDark ? "rounded-xl bg-emerald-400 text-zinc-950 hover:brightness-110" : "rounded-xl bg-[#2f6154] text-white hover:bg-[#244f44]"].join(" ")}
-                          >
-                            {t.viewPlan}
-                          </button>
-                        </div>
-                      ))}
+                          return endDate < today;
+                        };
+
+                        const currentPlans = clientPlans.filter(p => !isPastPlan(p));
+                        const pastPlans = clientPlans.filter(p => isPastPlan(p));
+
+                        const renderPlan = (plan: any) => (
+                          <div key={plan.id} className={["flex flex-col gap-3 border p-3 transition sm:flex-row sm:items-center sm:justify-between", isDark ? "rounded-2xl border-transparent bg-black/20 shadow-[inset_0_1px_0_rgba(16,185,129,0.08)] hover:border-transparent" : "rounded-2xl border-[#e4dbc9] bg-[#fffaf2] hover:border-[#d4c9b5]"].join(" ")}>
+                            <div className="min-w-0">
+                              <div className="flex flex-wrap items-center gap-2">
+                                <h4 className={["truncate text-sm font-black", isDark ? "text-white" : "text-[#123a32]"].join(" ")}>{plan.title}</h4>
+                                {plan.is_active && (
+                                  <span className={["rounded-full border px-2 py-0.5 text-[10px] font-black uppercase", isDark ? "border-emerald-300/20 bg-emerald-500/10 text-emerald-100" : "border-[#dce8dc] bg-[#edf6ec] text-[#285743]"].join(" ")}>{t.active}</span>
+                                )}
+                              </div>
+                              <p className={["mt-1 text-[11px] font-black uppercase", isDark ? "text-zinc-500" : "text-[#4d6b62]"].join(" ")}>
+                                {planTypeLabel(plan.plan_type)} Plan
+                              </p>
+                              <p className={["mt-1 text-[11px]", isDark ? "text-zinc-600" : "text-[#7a7160]"].join(" ")}>
+                                {t.createdAt}: {new Date(plan.created_at).toLocaleDateString(lang === "tr" ? "tr-TR" : "en-US")}
+                              </p>
+                            </div>
+                            
+                            <button 
+                              onClick={() => navigate(`/plan/${plan.id}`)}
+                              className={["flex h-9 shrink-0 items-center justify-center px-4 text-xs font-black transition", isDark ? "rounded-xl bg-emerald-400 text-zinc-950 hover:brightness-110" : "rounded-xl bg-[#2f6154] text-white hover:bg-[#244f44]"].join(" ")}
+                            >
+                              {t.viewPlan}
+                            </button>
+                          </div>
+                        );
+
+                        return (
+                          <>
+                            {currentPlans.length > 0 ? currentPlans.map(renderPlan) : (
+                              <div className={["text-xs font-semibold text-center py-4 rounded-xl", isDark ? "text-zinc-500 bg-black/20" : "text-[#7a7160] bg-white"].join(" ")}>
+                                {lang === "tr" ? "Güncel veya gelecek plan bulunmuyor." : "No current or future plans found."}
+                              </div>
+                            )}
+
+                            {pastPlans.length > 0 && (
+                              <div className="mt-6">
+                                <button
+                                  onClick={() => setShowPastPlans(!showPastPlans)}
+                                  className={["w-full flex items-center justify-between px-4 py-3 rounded-xl border text-xs font-black transition", isDark ? "border-white/10 bg-black/40 text-zinc-300 hover:bg-white/5" : "border-[#e4dbc9] bg-white text-[#2b574b] hover:bg-gray-50"].join(" ")}
+                                >
+                                  <span>{lang === "tr" ? "Geçmiş Programlar" : "Past Plans"} ({pastPlans.length})</span>
+                                  <svg className={["w-4 h-4 transition-transform", showPastPlans ? "rotate-180" : ""].join(" ")} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                                  </svg>
+                                </button>
+                                
+                                {showPastPlans && (
+                                  <div className="mt-3 space-y-3">
+                                    {pastPlans.map(renderPlan)}
+                                  </div>
+                                )}
+                              </div>
+                            )}
+                          </>
+                        );
+                      })()}
+                    </div>
                     </div>
                   )}
                 </>

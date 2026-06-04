@@ -82,4 +82,11 @@ export class ChatRequestDto {
   @IsOptional()
   @IsString()
   sessionId?: string;
+
+  @IsOptional()
+  @IsObject()
+  uiContext?: {
+    planId?: string;
+    date?: string;
+  };
 }

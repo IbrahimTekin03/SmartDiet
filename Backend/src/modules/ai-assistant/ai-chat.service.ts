@@ -180,6 +180,8 @@ export class AiChatService {
 
   // Bellek düzeyinde benzer sorguları arama
   private async checkSemanticCache(queryText: string, role: string): Promise<string | null> {
+    if (role === 'Diyetisyen') return null; // Diyetisyen ajanı action-oriented çalıştığı için ASLA önbellek kullanmaz
+
     if (this.shouldSkipCache(queryText)) {
       console.log('Skipping semantic cache check for action-oriented or personalized query.');
       return null;
@@ -237,6 +239,8 @@ export class AiChatService {
 
   // Yeni yanıtı önbelleğe kaydetme (Embedding JSON string olarak saklanır)
   private async saveToSemanticCache(queryText: string, responseText: string, role: string) {
+    if (role === 'Diyetisyen') return; // Diyetisyen ajanı ASLA önbellek kaydetmez
+
     if (this.shouldSkipCache(queryText)) {
       console.log('Skipping semantic cache save for action-oriented or personalized query.');
       return;
@@ -264,7 +268,7 @@ export class AiChatService {
     }
   }
 
-  async processChat(user: any, prompt: string, sessionId?: string) {
+  async processChat(user: any, prompt: string, sessionId?: string, uiContext?: { planId?: string; date?: string }) {
     const isDietitian = this.hasRole(user, 'Diyetisyen');
     const isClient = this.hasRole(user, 'client') || this.hasRole(user, 'Danışan');
 
@@ -327,16 +331,19 @@ Kullanılabilir Tablolar ve Şemalar:
 3. UPDATE ve DELETE işlemlerinde MUTLAKA "WHERE" koşulunu doğru kullandığından emin ol.
 `;
 
+    const todayStr = new Date().toISOString().split('T')[0];
     const systemPrompt = isDietitian
       ? `Sen uzman bir diyetisyenin asistanısın. Görevin diyetisyenin komutlarına göre veritabanında işlemler yapmak (danışan aramak, diyet planı oluşturmak ve veritabanına kaydetmek).
+Bugünün Tarihi: ${todayStr} (Kullanıcının verdiği tarihleri, örneğin "12 Haziran", "yarın" gibi ifadeleri, daima bu tarihe göre YYYY-MM-DD formatına dönüştürerek algıla. Asla "Anlamadım" veya "Tarihi bu formatta verin" deme, kendin çevir).
 Araçları (tools) kullanarak veritabanına erişebilir ve kayıt yapabilirsin. Gelişmiş veri okuma, yazma ve silme işlemleri için "database_query" aracını kullanarak SQL yazabilirsin.
 
 ÇOK KRİTİK KURALLAR (SOHBET/ONAY BEKLEME VE ALET ÇAĞIRMAYI ERTELEME KESİNLİKLE YASAKTIR):
-1. Kullanıcı senden bir plan hazırlamanı istediğinde, 'Hazırlıyorum', 'Planı oluşturup kaydediyorum' gibi geçici/ara veya sohbet mesajları yazıp turn'ü KESİNLİKLE sonlandırma!
-2. Boy, kilo, yaş ve hedef bilgilerini aldıktan sonra, kullanıcıdan onay beklemeden veya metin açıklaması yazmadan doğrudan aynı adımda "create_diet_plan" aracını (tool) MUTLAKA çağır.
+1. YASAK KELİMELER: "Planı hazırlıyorum", "Kaydediyorum", "İşlem tamamlandı" gibi ifadeleri SADECE VE SADECE 'create_diet_plan' aracını (tool) o anki mesajda çağırıyorsan veya geçmişte başarılı bir şekilde çağırdıysan kullan. Araç çağırmadan bu kelimeleri kullanırsan sistem kilitlenir!
+2. Boy, kilo, yaş, HEDEF ve BAŞLANGIÇ TARİHİ bilgilerini tamamen aldıktan sonra, "Tamam hazırlıyorum" deyip mesajı bitirmek YASAKTIR. Doğrudan aynı adımda "create_diet_plan" aracını (tool) MUTLAKA çağır.
 3. ÖNEMLİ: "create_diet_plan" aracı çağrılmadan plan veritabanına KAYDEDİLMİŞ OLMAZ. Konuşma geçmişinde "create_diet_plan" aracının başarıyla çalıştırıldığına dair bir "tool_result" kaydı görmediğin sürece planın kaydedildiğini varsayma!
-4. Eğer kullanıcı onay ifadesi söylerse ("tamam yap", "tamam oluştur", "onaylıyorum", "tamam" vb.) ve konuşma geçmişinde "create_diet_plan" aracının başarılı bir şekilde çalıştırıldığına dair bir "tool_result" yoksa, create_diet_plan aracını MUTLAKA ve KESİNLİKLE şimdi çağır. Asla planı kaydetmeden "İşlem tamamlandı" diyerek geçiştirme!
-5. ÖZET VE KISA ANLATIM: Kullanıcıya danışanın kilo, yaş, yağ oranı gibi fiziksel özelliklerini veya uzun uzun makro hesaplamalarını KESİNLİKLE ayrıntılı yazma! Çok kısa ve net bir şekilde 'Hakan Mert için diyet planını başarıyla hazırladım ve kaydettim.' diyerek doğrudan sonuca geç.
+4. Eğer kullanıcı onay ifadesi söylerse ("tamam yap", "17 hazirandan başlat", "onaylıyorum" vb.) ve "create_diet_plan" henüz çalışmadıysa, hemen ARACI ÇALIŞTIR. Asla planı kaydetmeden "İşlem tamamlandı" diyerek geçiştirme!
+5. ÖZET VE KISA ANLATIM: Kullanıcıya danışanın kilo, yaş, yağ oranı gibi fiziksel özelliklerini veya BMR, TDEE, formüller gibi uzun uzun makro hesaplama adımlarını KESİNLİKLE EKRANA YAZMA (Kullanıcı özel olarak sormadığı sürece). Arka planda kendin hesapla ve aynı mesaj içinde doğrudan 'create_diet_plan' aracını (tool) çağır. Çok kısa ve net bir şekilde 'Hakan Mert için diyet planını başarıyla hazırladım ve kaydettim.' diyerek doğrudan sonuca geç.
+6. GELECEKTEKİ PLANLAR (AKTİFLİK SORGUSU YASAK): Bir danışanın gelecekte başlayacak yeni bir planı (örneğin haftaya) olabilir. "Mevcut plan hala aktif, lütfen onu silin veya pasif hale getirin" diyerek plan oluşturmayı reddetmek, diyetisyenden plan silmesini istemek veya veritabanına 'is_active' sorgusu atmak KESİNLİKLE YASAKTIR. Diyetisyen bir tarih için onay vermişse, hiçbir şeyi sorgulamadan doğrudan o tarihle create_diet_plan aracını çalıştır.
 
 ÖĞÜN TİPİNE GÖRE YİYECEK ÖNERİ VE OLUŞTURMA KURALLARI (KAHVALTIDA ET/BALIK/ÇİĞ KÖFTE YASAKTIR):
 1. Kahvaltı (Breakfast): Sadece kahvaltıda yenebilecek yiyecekler ekleyebilir/önerebilirsin.
@@ -354,13 +361,12 @@ Kullanıcı "küçük ekmek arası sandviç" veya "tost" gibi birleşik veya yen
 FORMAT VE YAZIM KURALI (YILDIZ KULLANIMI YASAKTIR):
 Yazdığın tüm metinlerde KESİNLİKLE kalın yazmak için kullanılan '**' (çift yıldız) veya '*' (tek yıldız) gibi markdown işaretlerini kullanma. Tüm çıktılarını sade, düz yazı olarak yaz.
 
-EKSİK BİLGİ İSTEME VE ÇALIŞMA SIRASI KURALLARI (BOY, KİLO VE BESLENME TERCİHİ SORMAK KESİNLİKLE YASAKTIR):
-1. İLK ÖNCE MUTLAKA ARAÇLARI ÇALIŞTIR: Kullanıcı bir danışanın adını belirttiğinde (örn: "Ali", "Ali Demir" vb.), diyetisyene hiçbir soru sormadan veya hedef/tarih sorgulamadan önce MUTLAKA İLK İŞ OLARAK "find_client_by_name" aracını çağırıp danışanı bul.
-2. TEK DANIŞAN EŞLEŞMESİ: Eğer "find_client_by_name" sonucunda bu isimde diyetisyene atanmış sadece 1 (tek) danışan bulunursa, ona soyadını, tam adını veya kimliğini doğrulamak için KESİNLİKLE başka bir şey sorma! Doğrudan o danışan ile işleme devam et. Sadece ve sadece aynı isimde birden fazla atanmış danışan varsa soyadını veya hangisi olduğunu sor.
-3. BOY, KİLO VE KISITLAMALARI SORMAK YASAKTIR: Danışanın boyunu, kilosunu, beslenme alışkanlıklarını veya alerjilerini KESİNLİKLE diyetisyene sorma! Bunları veritabanındaki "measurements" ve "user_profiles" tablolarından sorgulayarak kendin almalısın. Eğer veritabanında bu bilgiler hiç yoksa, diyetisyene sormak yerine varsayılan mantıklı değerler kabul et (Erkekler için: 80 kg ve 180 cm, Kadınlar için: 65 kg ve 165 cm) ve bu varsayılan değerleri kullanarak günlük kalori/makroları hesaplayıp planı kaydet.
-4. SADECE HEDEF VE TARİH EKSİKSE SOR: Diyetisyen plan hazırlama isteğinde planın başlangıç tarihini veya danışanın hedefini (kilo vermek, kilo almak, korumak vb.) belirtmemişse, diyetisyene SADECE ve SADECE şu iki eksik bilgiyi sor (bunun dışındaki boy, kilo vb. hiçbir şeyi sorma):
-   - Danışanın hedefi nedir? (Kilo vermek, kilo almak veya kilosunu korumak)
-   - Diyet planının başlangıç tarihi ne olsun? (YYYY-MM-DD formatında)
+EKSİK BİLGİ İSTEME VE ÇALIŞMA SIRASI KURALLARI (BU SIRAYA KESİNLİKLE UY):
+1. DANIŞANI BUL: Kullanıcı bir danışanın adını belirttiğinde, İLK İŞ OLARAK "find_client_by_name" aracını çağırıp danışanı bul. (Başka isim yoksa teyit isteme).
+2. EKSİK BİLGİLERİ SOR: Diyetisyen plan hazırlama isteğinde "Hedef" (kilo almak, vermek, korumak) veya "Başlangıç Tarihi" (örn: 12 Haziran) belirtmemişse, ÇAKIŞMA KONTROLÜ YAPMADAN ÖNCE SADECE bu eksik olanları sor. (Eğer sadece '12 Haziran' gibi bir metin verdiyse, bunu kendin YYYY-MM-DD'ye çevir). Boy/kilo sorma, onları veritabanından alacaksın. HEDEF VE BAŞLANGIÇ TARİHİ EKSİKSE BAŞKA HİÇBİR İŞLEM VEYA KONTROL YAPMA, DİREKT SOR.
+3. MEVCUT PLAN ÇAKIŞMA KONTROLÜ (YAPMA!): Danışanın mevcut planıyla tarihlerin çakışıp çakışmadığını KENDİN HESAPLAMAYA ÇALIŞMA. Doğrudan kullanıcının verdiği tarihle "create_diet_plan" aracını çalıştır. Eğer o tarihte çakışma varsa sistem sana "Çakışma Hatası: Yeni plan en erken X tarihinde başlayabilir" şeklinde bir hata dönecektir.
+4. ÇAKIŞMA HATASI ALIRSAN: Eğer "create_diet_plan" aracı çakışma hatası dönerse, bu hatayı aynen diyetisyene ilet ve "İsterseniz X tarihinden başlatalım mı?" diye sor. Diyetisyen onay verirse X tarihiyle aracı tekrar çalıştır.
+5. BOY VE KİLO SORMAK KESİNLİKLE YASAKTIR (KRİTİK İHLAL): Danışanın boyunu veya kilosunu eksikse DİYETİSYENE ASLA SORMA! Veritabanında yoksa erkekse 180cm/80kg, kadınsa 165cm/65kg olduğunu KENDİN KABUL ET ve hesaplamalara devam et. Yalnızca hedef veya tarih eksikse soru sor!
 
 HEDEF VE KALORİ/MAKRO HESAPLAMA METODOLOJİSİ (BİLİMSEL HESAPLAMA):
 1. Bazal Metabolizma Hızı (BMR) Mifflin-St Jeor Formülü:
@@ -372,32 +378,33 @@ HEDEF VE KALORİ/MAKRO HESAPLAMA METODOLOJİSİ (BİLİMSEL HESAPLAMA):
    - Kilosunu Korumak (Maintain Weight): TDEE kalori.
    - Kilo Vermek (Lose Weight / Yağ Yakmak): TDEE - 500 kalori.
    - Kilo Almak (Gain Weight / Kas Kazanmak): TDEE + 500 kalori.
-4. Makro Besin Dağılımı:
-   - Protein: Kilo * 1.8 gram (Kilo vermek için Kilo * 2.0 gram, Kilo almak için Kilo * 2.2 gram). Protein kalorisi = Protein (g) * 4.
+4. Makro Besin Dağılımı (KESİN SINIRLAR):
+   - Protein: Kilo * 1.8 gram (Kilo vermek için Kilo * 2.0 gram, Kilo almak/kas kazanmak için Kilo * 2.2 gram). Protein kalorisi = Protein (g) * 4. ÖNEMLİ: Her bir günün toplam protein gramı, hedeflenen değere KESİNLİKLE EŞİT (maksimum +/- 10g hata payı) olmalıdır! Kas kazanımı için 160g hedeflenmişse bir güne 110g protein koyamazsın! STRATEJİ: Protein hedefini tutturmak için günlük toplam protein hedefini 3 ana öğüne böl (örn: 150g hedef varsa her öğüne 50g protein sağlayacak kadar Et/Tavuk/Balık/Yumurta ekle).
    - Yağ: Kilo * 0.9 gram (Kilo vermek için Kilo * 0.7 gram, Kilo almak için Kilo * 1.1 gram). Yağ kalorisi = Yağ (g) * 9.
    - Karbonhidrat: (Hedef Kalori - Protein kalorisi - Yağ kalorisi) / 4 gram.
 
 ÇOK ÖNEMLİ - GÜNLÜK KALORİ VE PORSİYON HESAPLAMA KURALLARI:
-1. Planda oluşturduğun HER GÜNÜN (Pazartesi, Salı, Çarşamba vb. tüm günlerin ayrı ayrı) toplam kalorisinin, yukarıda hesapladığın günlük hedef kalori miktarına (kilo almak için TDEE + 500 kcal, kilo vermek için TDEE - 500 kcal, kilosunu korumak için TDEE kcal) KESİNLİKLE EŞİT (HER BİR GÜN için hata payı maksimum +/- 50 kcal) olmasını sağla!
-2. Günleri ortalama üzerinden KESİNLİKLE hesaplama! Bir güne 4000 kcal, diğer güne 2500 kcal koyup ortalamayı tutturmaya çalışmak KESİNLİKLE YASAKTIR. Her bir günün kendi içindeki öğünlerin kalori toplamı hesaplanan hedef kaloriye (örn: 2822 kcal ise her gün ~2822 kcal olmalı) tam olarak eşit olmalıdır.
+1. Planda oluşturduğun HER GÜNÜN toplam kalorisinin hedef kaloriye yaklaşık olarak eşit olmasını sağla (HER BİR GÜN için hata payı maksimum +/- 100 kcal). Kaloriyi milimetrik tutturmak uğruna besinlere 1g, 5g gibi saçma sapan miktarlar atama! Hedef kaloriden 50-100 kcal sapmak, 1g tavuk veya domates yazmaktan çok daha iyidir.
+2. Günleri ortalama üzerinden KESİNLİKLE hesaplama! Her bir gün kendi içinde hedef kaloriye ve hedef protein miktarına tam olarak uygun olmalıdır.
 3. Ekmek miktarlarını belirlerken:
    - Eğer "Beyaz Ekmek" veya "Tam Buğday Ekmek" (dilim bazlı, unit: 'dilim') kullanıyorsan, miktar (amount) sadece 2, 3 veya 4 (dilim) olmalıdır. 1 dilim beyaz ekmek 65 kcal'dir.
    - Eğer "Ekmek (Beyaz)" veya "Ekmek (Tam Buğday)" (gram bazlı, unit: 'gram') kullanıyorsan, miktar (amount) 50, 80 veya 100 (gram) olmalıdır. 100g ekmek 265 kcal'dir.
    - KESİNLİKLE 'dilim' bazlı ekmeğe '100g' veya 'gram' bazlı ekmeğe '4 adet' gibi çelişkili veya çok yüksek kalori hesaplamalarına sebep olacak değerler yazma!
-4. Toplam kalori hedefine yiyeceklerin porsiyonlarını yukarıdaki kurallara göre gerçekçi büyüterek ve dengeli öğünler ekleyerek ulaş.
+4. GRAM BAZLI HESAPLAMA: Veritabanından (veya aklından) aldığın kalori değeri 100 gram için geçerliyse, planına ekleyeceğin porsiyon kalorisini hesaplarken MUTLAKA bu formülü kullan: Porsiyon Kalorisi = (Miktar / 100) * 100g_Kalorisi. Örnek: 100g tavuk 165 kcal ise, 200g tavuk yazdığında kalorisini (200/100)*165 = 330 kcal olarak yaz.
+5. Toplam kalori hedefine yiyeceklerin porsiyonlarını yukarıdaki kurallara göre gerçekçi büyüterek ve dengeli öğünler ekleyerek ulaş.
 
 KULLANICI BİR PLAN OLUŞTURMANI İSTEDİĞİNDE AŞAĞIDAKİ ADIMLARI KESİNLİKLE UYGULA:
 1. Önce find_client_by_name aracıyla danışanı bul ve user ID'sini al.
 2. Ardından KESİNLİKLE database_query aracını kullanarak:
    a. "user_profiles" tablosundan danışanın doğum tarihini (birth_date) ve cinsiyetini (gender) sorgula (SELECT birth_date, gender FROM user_profiles WHERE user_id = 'bulunan_id').
    b. "measurements" tablosundan danışanın en güncel kilo (weight) ve boy (height) verilerini sorgula (SELECT weight, height FROM measurements WHERE client_id = 'bulunan_id' ORDER BY date DESC, created_at DESC LIMIT 1).
-3. Veritabanından aldığın bu fiziksel özelliklere (kilo vb.) ve danışanın hedefine göre, yukarıdaki BİLİMSEL HESAPLAMA KURALLARINI kullanarak protein, karbonhidrat, yağ ve günlük kalori ihtiyacını hesapla. Eğer veritabanında boy/kilo bulunamazsa, varsayılan mantıklı değerler kabul et (örn: erkekler için 80 kg/180 cm, kadınlar için 65 kg/165 cm) ama kullanıcıya boy/kilo sorma.
-4. ÖĞÜN ÇEŞİTLİLİĞİ VE KOPYALAMA: Diyetisyen haftalık plan için 7 günün de ayrı/farklı olmasını isterse 7 günü de (day_of_week: 1, 2, 3, 4, 5, 6, 7) ayrı ayrı oluşturup 'create_diet_plan' aracına gönder. Eğer özellikle 'her gün ayrı olsun' veya '7 farklı program' diye belirtmemişse, JSON boyutunu optimize etmek için sadece 3 günlük (day_of_week: 1, 2, 3) şablon gönder, sistem bunu haftaya otomatik kopyalayacaktır.
+3. Veritabanından aldığın bu fiziksel özelliklere (kilo vb.) ve danışanın hedefine göre, yukarıdaki BİLİMSEL HESAPLAMA KURALLARINI kullanarak protein, karbonhidrat, yağ ve günlük kalori ihtiyacını hesapla. Eğer veritabanında boy/kilo bulunamazsa, varsayılan mantıklı değerler kabul et (örn: erkekler için 80 kg/180 cm, kadınsa 65 kg/165 cm) ama kullanıcıya boy/kilo sorma.
+4. JSON BOYUT LİMİTİ VE ÖĞÜN ÇEŞİTLİLİĞİ: LLM token sınırına takılmamak ve sistemin kilitlenmesini önlemek için, 1 haftalık (7 günlük) plan oluştururken araca (tool) SADECE 3 GÜNLÜK (day_of_week: 1, 2, 3) DİKKATLE TASARLANMIŞ ve birbirinden TAMAMEN FARKLI şablon günler gönder. 4, 5, 6 ve 7. günleri KESİNLİKLE OLUŞTURMA! Arka planda sistem bu 3 günün öğünlerini akıllı bir şekilde karıştırarak 7 güne tamamlayacak ve hiçbir gün birbiriyle aynı olmayacaktır. Senin görevin sadece çok zengin ve birbirinden farklı 3 gün (day_of_week: 1,2,3) üretmektir. Aynı danışana art arda birden fazla günlük program oluşturduğunda da KESİNLİKLE ÇEŞİTLİLİK SAĞLA. Hep aynı yulaf, tavuk gibi şablonları kopyalayıp yapıştırma. Yemekleri rastgele seç!
 5. BESİN DEĞERLERİ, BİRİM VE MİKTAR KESİN KURAL TABLOSU (ÇOK ÖNEMLİ):
-Sistemin hatalı miktarlar (örn: 1g domates, 100 adet muz) oluşturmasını engellemek için, yiyecek kategorilerine göre birim (unit) ve miktar (amount) değerlerini KESİNLİKLE şu kurallara göre belirle:
+Sistemin hatalı miktarlar (örn: 1g domates, 1g tavuk) oluşturmasını engellemek için, yiyecek kategorilerine göre birim (unit) ve miktar (amount) değerlerini KESİNLİKLE şu kurallara göre belirle. (Kaloriyi dengelemek uğruna 1g, 2g, 5g gibi saçma değerler KESİNLİKLE YAZILAMAZ. Kalori eksik kalsa bile 1g yazma!):
 - Sebze ve Meyveler (Domates, Salatalık, Elma, Muz, Portakal vb.):
   * Birim (unit) 'adet' seçilirse: Miktar (amount) sadece 1, 2 veya 3 olmalıdır. KESİNLİKLE '100 adet' veya '150 adet' yazma!
-  * Birim (unit) 'gram' seçilirse: Miktar (amount) 100, 150, 200, 250 gibi mantıklı ve doyurucu gramajlar olmalıdır.
+  * Birim (unit) 'gram' seçilirse: Miktar (amount) 100, 150, 200, 250 gibi mantıklı ve doyurucu gramajlar olmalıdır. KESİNLİKLE 1g veya 10g domates yazma!
 - Yumurta ve Zeytin:
   * Yumurta için birim (unit) her zaman 'adet' olmalı, miktar (amount) 2, 3 veya 4 olmalıdır. KESİNLİKLE 1g veya 2g yumurta yazma!
   * Zeytin için birim (unit) her zaman 'adet' olmalı, miktar (amount) 5, 8 veya 10 olmalıdır. KESİNLİKLE 1g veya 2g zeytin yazma!
@@ -449,9 +456,10 @@ Eğer danışan bir besini değiştirmek isterse (örn: "X yerine ne yiyebilirim
 Danışan size diyetindeki bir yiyeceğin (örneğin "somon balığı") yerine eldeki başka malzemelerle (örneğin "tavuk, mantar") ne yapabileceğini sorduğunda veya alternatif bir sağlıklı tarif istediğinde:
 1. Önce "get_my_active_plan" aracını kullanarak danışanın diyet planını oku. Değiştirilmek istenen yiyeceğin (Somon) kalori, protein, karbonhidrat ve yağ değerlerini veritabanından sorgulayarak belirle.
 2. Danışanın elindeki malzemeleri (Tavuk vb.) kullanarak, orijinal yiyeceğin kalori ve makro değerlerine (özellikle protein ve yağ) EN YAKIN veya TAM UYUMLU sağlıklı ve lezzetli bir tarif öner (örn: "Tavuk Sote") ve pişirme adımlarını detaylıca yaz.
-3. ÖNEMLİ VERİTABANI KISIT KURALI: Veritabanımızdaki besin listesi kısıtlı olduğundan, eğer önerdiğin yiyecek (örn: "Tavuk Sote") veritabanında yoksa veya değerleri eksikse, KENDİ ZENGİN BİLGİ DAĞARCIĞINI kullanarak bu yemeğin/tarifin kalori, protein, karbonhidrat ve yağ değerlerini kendin belirle. Ardından "create_food" aracıyla veritabanında bu besini yeni bir besin olarak oluştur ve oluşan ID'yi kullan!
+3. ÖNEMLİ VERİTABANI KISIT KURALI: Veritabanımızdaki besin listesi kısıtlı olduğundan, eğer önerdiğin yiyecek (örn: "Tavuk Sote") veritabanında yoksa veya değerleri eksikse, KENDİ ZENGİN BİLGİ DAĞARCIĞINI kullanarak bu yemeğin/tarifin kalori, protein, karbonhidrat ve yağ değerlerini kendin belirle. Ardından "create_food" aracıyla veritabanında bu besini yeni bir besin olarak oluştur ve oluşan ID'sini kullan!
 4. Danışana bu tarifi, malzemelerini, yapılışını, pişirme adımlarını ve besin değerlerini sunarak ONAY iste.
 5. Danışan "evet uygun, değiştir" veya "onaylıyorum" şeklinde onay verirse, veritabanındaki eski meal_item'ı "update_meal_item" aracını kullanarak yeni oluşturduğun veya bulduğun yiyecek (örn: Tavuk Sote) ile otomatik olarak anında güncelle ve "Diyet planınızdaki yiyeceği başarıyla yeni tarifinizle güncelledim!" şeklinde onay mesajı ver.
+6. KOMPLE ÖĞÜN DEĞİŞİMİ: Eğer danışan "Öğle yemeğim yerine 1 tabak tavuk ızgara yedim" diyorsa, yani 3-4 kalemlik eski yemeğin TAMAMINI tek/yeni bir yemekle değiştirmek istiyorsa `update_meal_item` YERİNE KESİNLİKLE `replace_meal_items` aracını kullan! Bu araç, o öğündeki (meal_id) tüm eski yemekleri silip sadece senin gönderdiğin yeni yemekleri ekler.
 
 FOTOĞRAFTAN TARANAN YEMEĞİ DİYET PLANINA EKLEME:
 Danışan "Az önce analiz ettiğin X yemeğini bugünkü planıma ekle" gibi bir istekte bulunursa:
@@ -462,6 +470,10 @@ Danışan "Az önce analiz ettiğin X yemeğini bugünkü planıma ekle" gibi bi
 
 Danışanın ID'si: ${user.id}
 ${dbSchemaInfo}`;
+
+    if (uiContext?.planId) {
+      systemPrompt += `\n\n--- ÖNEMLİ ARAYÜZ BAĞLAMI ---\nDanışan şu anda ekranda plan detaylarına bakıyor.\nAçık Olan Planın ID'si: ${uiContext.planId}\n${uiContext.date ? `Seçili Tarih: ${uiContext.date}` : ''}\nKullanıcı planında bir yemeği değiştirmek istediğinde, mutlaka bu Plan ID'sini ve tarihi baz alarak işlem yap. "get_my_active_plan" aracını çağırırken 'plan_id' parametresine mutlaka bu ID'yi yaz! Plan ID'sini KULLANICIYA SÖYLEME!`;
+    }
 
     // Define tools
     const tools: Anthropic.Tool[] = [
@@ -558,10 +570,12 @@ ${dbSchemaInfo}`;
       },
       {
         name: 'get_my_active_plan',
-        description: 'Danışanın sistemdeki mevcut diyet planını getirir.',
+        description: 'Danışanın diyet planını getirir. Eğer promptta belirli bir Plan ID belirtilmişse (Arayüz Bağlamı), mutlaka bu plan_id argümanını doldur.',
         input_schema: {
           type: 'object',
-          properties: {}
+          properties: {
+            plan_id: { type: 'string', description: 'Görüntülenmek istenen spesifik planın IDsi (opsiyonel)' }
+          }
         }
       },
       {
@@ -575,6 +589,39 @@ ${dbSchemaInfo}`;
             amount: { type: 'number', description: 'Yeni besinin miktarı' }
           },
           required: ['meal_item_id', 'new_food_id', 'amount']
+        }
+      },
+      {
+        name: 'replace_meal_items',
+        description: 'Danışanın belirli bir öğünündeki (meal_id) tüm yiyecekleri SİLER ve yerine yeni yiyecekleri (food_id listesi) ekler. Kullanıcı "tüm öğle yemeği yerine şunu yedim" dediğinde bu aracı kullan.',
+        input_schema: {
+          type: 'object',
+          properties: {
+            meal_id: { type: 'string', description: 'Değiştirilecek öğünün IDsi (meal_id)' },
+            new_items: {
+              type: 'array',
+              items: {
+                type: 'object',
+                properties: {
+                  food_id: { type: 'string' },
+                  amount: { type: 'number' }
+                },
+                required: ['food_id', 'amount']
+              }
+            }
+          },
+          required: ['meal_id', 'new_items']
+        }
+      },
+      {
+        name: 'delete_diet_plan',
+        description: 'Diyetisyenin isteği üzerine bir diyet planını sistemden siler.',
+        input_schema: {
+          type: 'object',
+          properties: {
+            plan_id: { type: 'string', description: 'Silinecek diyet planının IDsi' }
+          },
+          required: ['plan_id']
         }
       }
     ];
@@ -645,6 +692,7 @@ ${dbSchemaInfo}`;
     user: any
   ) {
     let currentResponse = response;
+    console.log("CLAUDE RAW RESPONSE:", JSON.stringify(currentResponse, null, 2));
 
     while (currentResponse.stop_reason === 'tool_use') {
       const toolUseBlocks = currentResponse.content.filter((c) => c.type === 'tool_use') as Anthropic.ToolUseBlock[];
@@ -691,6 +739,7 @@ ${dbSchemaInfo}`;
         messages: session.messages,
         tools: tools,
       });
+      console.log("CLAUDE RAW RESPONSE (AFTER TOOL):", JSON.stringify(currentResponse, null, 2));
     }
 
     const finalContent = currentResponse.content.find((c) => c.type === 'text') as Anthropic.TextBlock;
@@ -977,7 +1026,7 @@ ${dbSchemaInfo}`;
 
       case 'search_foods':
         const foods = await this.foodsService.findAll(input.query);
-        return JSON.stringify(foods.map(f => ({ id: f.id, name: f.name, calories: f.calories, protein: f.protein, carbs: f.carbohydrates, fat: f.fat })));
+        return JSON.stringify(foods.map(f => ({ id: f.id, name: f.name, calories: f.calories, protein: f.protein, carbs: f.carbohydrates, fat: f.fat, unit: f.unit })));
 
       case 'create_food':
         const foodCalories = (input.calories && input.calories > 0) ? input.calories : 350;
@@ -1003,10 +1052,10 @@ ${dbSchemaInfo}`;
           const resolvedItems = [];
           for (const item of meal.items) {
             let foodId = null;
+            let matchedFood: any = null;
             const searchResults = await this.foodsService.findAll(item.food_name);
             const exactMatch = searchResults.find(f => f.name.toLowerCase() === item.food_name.toLowerCase());
             
-            // Check if there is a very close match (e.g. name contains all words, or is a prefix/suffix)
             const closeMatch = exactMatch || searchResults.find(f => {
               const nameA = f.name.toLowerCase();
               const nameB = item.food_name.toLowerCase();
@@ -1015,6 +1064,7 @@ ${dbSchemaInfo}`;
 
             if (exactMatch) {
               foodId = exactMatch.id;
+              matchedFood = exactMatch;
               const needsFix = Number(exactMatch.calories) === 0 || exactMatch.unit === '100g' || exactMatch.unit === '100 g';
               if (needsFix) {
                  const newCal = (item.calories && item.calories > 0) ? item.calories : exactMatch.calories;
@@ -1023,6 +1073,8 @@ ${dbSchemaInfo}`;
                     `UPDATE foods SET calories = $1, unit = $2 WHERE id = $3`,
                     [newCal, newUnit, exactMatch.id]
                  );
+                 matchedFood.unit = newUnit;
+                 matchedFood.calories = newCal;
               }
             } else if (closeMatch) {
               const nameA = closeMatch.name.toLowerCase();
@@ -1036,13 +1088,14 @@ ${dbSchemaInfo}`;
 
               if (isVeryClose) {
                 foodId = closeMatch.id;
+                matchedFood = closeMatch;
               } else {
                 const itemCalories = (item.calories && item.calories > 0) ? item.calories : 350;
                 const itemProtein = (item.protein && item.protein > 0) ? item.protein : 10;
                 const itemCarbs = (item.carbs && item.carbs > 0) ? item.carbs : 45;
                 const itemFat = (item.fat && item.fat > 0) ? item.fat : 12;
 
-                const newFood = await this.foodsService.create({
+                matchedFood = await this.foodsService.create({
                   name: item.food_name,
                   calories: itemCalories,
                   protein: itemProtein,
@@ -1050,7 +1103,7 @@ ${dbSchemaInfo}`;
                   fat: itemFat,
                   unit: item.unit || 'gram'
                 });
-                foodId = newFood.id;
+                foodId = matchedFood.id;
               }
             } else {
               const itemCalories = (item.calories && item.calories > 0) ? item.calories : 350;
@@ -1058,7 +1111,7 @@ ${dbSchemaInfo}`;
               const itemCarbs = (item.carbs && item.carbs > 0) ? item.carbs : 45;
               const itemFat = (item.fat && item.fat > 0) ? item.fat : 12;
 
-              const newFood = await this.foodsService.create({
+              matchedFood = await this.foodsService.create({
                 name: item.food_name,
                 calories: itemCalories,
                 protein: itemProtein,
@@ -1066,12 +1119,37 @@ ${dbSchemaInfo}`;
                 fat: itemFat,
                 unit: item.unit || 'gram'
               });
-              foodId = newFood.id;
+              foodId = matchedFood.id;
             }
             
+            let safeAmount = item.amount;
+            const aiUnit = (item.unit || 'gram').toLowerCase();
+            const dbUnit = (matchedFood?.unit || 'gram').toLowerCase();
+
+            // Eğer LLM "adet/dilim/porsiyon" gibi bir birim verdiyse ama DB'deki yiyecek "gram" tabanlıysa, 
+            // miktarı mantıklı bir gramaja (adet başına 100g gibi) çevirmeliyiz. Aksi takdirde UI "1 gram" olarak gösterir.
+            if ((aiUnit === 'adet' || aiUnit === 'dilim' || aiUnit === 'porsiyon' || aiUnit === 'kase') && 
+                (dbUnit === 'gram' || dbUnit === 'gr' || dbUnit === 'g')) {
+               if (safeAmount < 10) {
+                 safeAmount = safeAmount * 100; // Örn: 1 adet domates = 100 gram
+               }
+            }
+
+            const isGramDb = dbUnit === 'gram' || dbUnit === 'gr' || dbUnit === 'g';
+            const lowerName = item.food_name.toLowerCase();
+            const isSmallPortionAllowed = lowerName.includes('yağ') || lowerName.includes('ceviz') || lowerName.includes('badem') || lowerName.includes('fındık') || lowerName.includes('fıstık');
+            
+            if (isGramDb) {
+              if (!isSmallPortionAllowed && safeAmount < 50) {
+                safeAmount = 100; // Sebzeler, etler vb. için minimum 100g
+              } else if (isSmallPortionAllowed && safeAmount < 5) {
+                safeAmount = 10; // Yağlar ve yemişler için minimum 10g
+              }
+            }
+
             resolvedItems.push({
               food_id: foodId,
-              amount: item.amount
+              amount: safeAmount
             });
           }
           resolvedMeals.push({
@@ -1090,17 +1168,29 @@ ${dbSchemaInfo}`;
         if (input.plan_type === 'monthly') targetDays = 30;
         else if (input.plan_type === 'daily') targetDays = 1;
 
-        for (let day = 1; day <= targetDays; day++) {
-           const originalDay = ((day - 1) % maxDayProvided) + 1;
-           const mealsForDay = resolvedMeals.filter(m => m.day_of_week === originalDay);
-           const sourceMeals = mealsForDay.length > 0 ? mealsForDay : resolvedMeals.filter(m => m.day_of_week === 1);
-           
-           for (const m of sourceMeals) {
-              finalMeals.push({
-                 ...m,
-                 day_of_week: day
-              });
-           }
+        if (maxDayProvided < targetDays) {
+          for (let day = 1; day <= targetDays; day++) {
+            if (day <= maxDayProvided) {
+              const mealsForDay = resolvedMeals.filter(m => m.day_of_week === day);
+              finalMeals.push(...mealsForDay.map(m => ({ ...m, day_of_week: day })));
+            } else {
+              const mealNames = [...new Set(resolvedMeals.map(m => m.name))];
+              for (let i = 0; i < mealNames.length; i++) {
+                const mealName = mealNames[i];
+                const sourceDay = ((day + i) % maxDayProvided) + 1;
+                const sourceMeal = resolvedMeals.find(m => m.day_of_week === sourceDay && m.name === mealName) 
+                                || resolvedMeals.find(m => m.name === mealName);
+                if (sourceMeal) {
+                  finalMeals.push({
+                    ...sourceMeal,
+                    day_of_week: day
+                  });
+                }
+              }
+            }
+          }
+        } else {
+          finalMeals.push(...resolvedMeals);
         }
 
         let finalStartDate = input.start_date;
@@ -1123,8 +1213,14 @@ ${dbSchemaInfo}`;
 
       case 'get_my_active_plan':
         const plans = await this.dietPlansService.findAllByClient(user.id);
-        if (plans.length === 0) return JSON.stringify({ error: 'Aktif plan bulunamadı' });
-        const activePlan = plans[0];
+        if (plans.length === 0) return JSON.stringify({ error: 'Plan bulunamadı' });
+        
+        let activePlan = plans[0];
+        if (input.plan_id) {
+          const specific = plans.find(p => p.id === input.plan_id);
+          if (specific) activePlan = specific;
+        }
+        
         const simplifiedPlan = {
           id: activePlan.id,
           title: activePlan.title,
@@ -1152,6 +1248,14 @@ ${dbSchemaInfo}`;
           input.amount
         );
         return JSON.stringify({ success: true, message: 'Öğün içeriği başarıyla güncellendi' });
+
+      case 'replace_meal_items':
+        await this.dietPlansService.replaceMealItems(input.meal_id, input.new_items);
+        return JSON.stringify({ success: true, message: 'Tüm öğün içeriği başarıyla değiştirildi' });
+
+      case 'delete_diet_plan':
+        await this.dietPlansService.deletePlan(input.plan_id);
+        return JSON.stringify({ success: true, message: 'Diyet planı başarıyla silindi' });
 
       default:
         throw new Error(`Bilinmeyen araç (tool): ${toolName}`);

@@ -405,13 +405,28 @@ export default function AIAssistantWidget() {
     setLoading(true);
 
     try {
+      let systemContext = "";
+      if (window.location.pathname.includes("/plan/")) {
+        try {
+          const ctxStr = sessionStorage.getItem("current_plan_context");
+          if (ctxStr) {
+            const ctx = JSON.parse(ctxStr);
+            if (window.location.pathname.includes(ctx.planId)) {
+              systemContext = `[SİSTEM BİLGİSİ: Danışan şu anda arayüzde "${ctx.planTitle}" adlı planın ${ctx.day}. Gününe bakıyor.]\n\n`;
+            }
+          }
+        } catch(e) {}
+      }
+
+      const payloadPrompt = systemContext + userMessage.content;
+
       const res = await fetch("http://localhost:3000/api/ai-assistant/chat", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
           Authorization: `Bearer ${accessToken}`,
         },
-        body: JSON.stringify({ prompt: userMessage.content, sessionId }),
+        body: JSON.stringify({ prompt: payloadPrompt, sessionId }),
       });
 
       const data = await res.json();
@@ -554,11 +569,18 @@ export default function AIAssistantWidget() {
         ? `Az önce analiz ettiğin şu yiyecekleri:\n${itemsDescription}\n"${plan.title}" planımın "${dayName}" günündeki "${mealObj.name}" (meal_id: "${selectedMealId}") öğününe yeni yiyecekler olarak ekler misin? Lütfen her bir yiyecek bileşeni için foods tablosunda aratarak veya yoksa create_food aracıyla oluşturup, database_query veya SQL kullanarak diet_plan_meal_items tablosuna ekle ve güncel planı bana bildir.`
         : `Could you please add the following ingredients:\n${itemsDescription}\nto the "${mealObj.name}" meal (meal_id: "${selectedMealId}") on "${dayName}" of my plan "${plan.title}"? Please insert them into the database and confirm.`;
     } else {
-      const mealObj = plan?.meals?.find((m: any) => m.id === selectedMealId);
-      const itemObj = mealObj?.items?.find((i: any) => i.id === selectedMealItemId);
-      prompt = lang === "tr"
-        ? `Az önce analiz ettiğin şu yiyecekleri:\n${itemsDescription}\n"${plan.title}" planımın "${dayName}" günündeki "${mealObj.name}" öğününde yer alan "${itemObj?.food?.name || 'mevcut yiyecek'}" (meal_item_id: "${selectedMealItemId}") yerine ekleyerek değiştirir misin? Lütfen her bir yiyecek bileşeni için foods tablosunda aratarak veya yoksa create_food aracıyla oluşturup, update_meal_item veya database_query aracı ile güncellemeyi yap ve sonucu bana bildir.`
-        : `Could you please replace "${itemObj?.food?.name || 'existing food'}" (meal_item_id: "${selectedMealItemId}") in the "${mealObj.name}" meal on "${dayName}" of my plan "${plan.title}" with the following ingredients:\n${itemsDescription}? Please execute this update and confirm.`;
+      if (selectedMealItemId === "ALL") {
+        const mealObj = plan?.meals?.find((m: any) => m.id === selectedMealId);
+        prompt = lang === "tr"
+          ? `Az önce analiz ettiğin şu yiyecekleri:\n${itemsDescription}\n"${plan.title}" planımın "${dayName}" günündeki "${mealObj?.name}" (meal_id: "${selectedMealId}") öğününün TAMAMI YERİNE (tüm eski yiyecekleri silip) ekler misin? Lütfen her bir yiyecek bileşeni için foods tablosunda aratarak veya yoksa create_food aracıyla oluşturup, "replace_meal_items" aracı ile tüm öğünü güncellemeyi yap ve sonucu bana bildir.`
+          : `Could you please replace the ENTIRE "${mealObj?.name}" meal (meal_id: "${selectedMealId}") on "${dayName}" of my plan "${plan.title}" with the following ingredients:\n${itemsDescription}? Please use the replace_meal_items tool to execute this update and confirm.`;
+      } else {
+        const mealObj = plan?.meals?.find((m: any) => m.id === selectedMealId);
+        const itemObj = mealObj?.items?.find((i: any) => i.id === selectedMealItemId);
+        prompt = lang === "tr"
+          ? `Az önce analiz ettiğin şu yiyecekleri:\n${itemsDescription}\n"${plan.title}" planımın "${dayName}" günündeki "${mealObj?.name}" öğününde yer alan "${itemObj?.food?.name || 'mevcut yiyecek'}" (meal_item_id: "${selectedMealItemId}") yerine ekleyerek değiştirir misin? Lütfen her bir yiyecek bileşeni için foods tablosunda aratarak veya yoksa create_food aracıyla oluşturup, update_meal_item veya database_query aracı ile güncellemeyi yap ve sonucu bana bildir.`
+          : `Could you please replace "${itemObj?.food?.name || 'existing food'}" (meal_item_id: "${selectedMealItemId}") in the "${mealObj?.name}" meal on "${dayName}" of my plan "${plan.title}" with the following ingredients:\n${itemsDescription}? Please execute this update and confirm.`;
+      }
     }
 
     const displayItemsDescription = meal.items && meal.items.length > 0
@@ -576,11 +598,18 @@ export default function AIAssistantWidget() {
         ? `Bu resimdeki tabağı (${displayItemsDescription}) "${plan.title}" planımın "${dayName}" günündeki "${mealObj?.name || ''}" öğününe ekler misin?`
         : `Could you please add the food items in this photo (${displayItemsDescription}) to the "${mealObj?.name || ''}" meal on "${dayName}" of my plan "${plan.title}"?`;
     } else {
-      const mealObj = plan?.meals?.find((m: any) => m.id === selectedMealId);
-      const itemObj = mealObj?.items?.find((i: any) => i.id === selectedMealItemId);
-      displayPrompt = lang === "tr"
-        ? `Bu resimdeki tabağı (${displayItemsDescription}) "${plan.title}" planımın "${dayName}" günündeki "${mealObj?.name || ''}" öğününde yer alan "${itemObj?.food?.name || 'mevcut yiyecek'}" yerine ekleyerek değiştirir misin?`
-        : `Could you please replace "${itemObj?.food?.name || 'existing food'}" in the "${mealObj?.name || ''}" meal on "${dayName}" of my plan "${plan.title}" with the food items in this photo (${displayItemsDescription})?`;
+      if (selectedMealItemId === "ALL") {
+        const mealObj = plan?.meals?.find((m: any) => m.id === selectedMealId);
+        displayPrompt = lang === "tr"
+          ? `Bu resimdeki tabağı (${displayItemsDescription}) "${plan.title}" planımın "${dayName}" günündeki "${mealObj?.name || ''}" öğününün TAMAMI ile değiştirir misin?`
+          : `Could you please replace the ENTIRE "${mealObj?.name || ''}" meal on "${dayName}" of my plan "${plan.title}" with the food items in this photo (${displayItemsDescription})?`;
+      } else {
+        const mealObj = plan?.meals?.find((m: any) => m.id === selectedMealId);
+        const itemObj = mealObj?.items?.find((i: any) => i.id === selectedMealItemId);
+        displayPrompt = lang === "tr"
+          ? `Bu resimdeki tabağı (${displayItemsDescription}) "${plan.title}" planımın "${dayName}" günündeki "${mealObj?.name || ''}" öğününde yer alan "${itemObj?.food?.name || 'mevcut yiyecek'}" yerine ekleyerek değiştirir misin?`
+          : `Could you please replace "${itemObj?.food?.name || 'existing food'}" in the "${mealObj?.name || ''}" meal on "${dayName}" of my plan "${plan.title}" with the food items in this photo (${displayItemsDescription})?`;
+      }
     }
 
     setExpandedFormIndex(null);
@@ -589,13 +618,19 @@ export default function AIAssistantWidget() {
     setLoading(true);
 
     try {
+      let uiContext = undefined;
+      const contextStr = sessionStorage.getItem('aiUiContext');
+      if (contextStr) {
+        try { uiContext = JSON.parse(contextStr); } catch (e) {}
+      }
+
       const res = await fetch("http://localhost:3000/api/ai-assistant/chat", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
           Authorization: `Bearer ${accessToken}`,
         },
-        body: JSON.stringify({ prompt: userMessage.content, sessionId }),
+        body: JSON.stringify({ prompt: userMessage.content, sessionId, uiContext }),
       });
 
       const data = await res.json();
@@ -1054,6 +1089,7 @@ export default function AIAssistantWidget() {
                                         className={`w-full rounded-xl border border-indigo-500/30 bg-black/60 backdrop-blur-md px-3 py-2 text-xs font-bold text-white shadow-inner focus:border-indigo-400 focus:ring-2 focus:ring-indigo-500/20 outline-none transition`}
                                       >
                                         <option value="">-- Yiyecek Seçin --</option>
+                                        <option value="ALL">{lang === "tr" ? "Hepsi (Tüm Öğünü Değiştir)" : "All (Replace Entire Meal)"}</option>
                                         {mealsForDay.find((m: any) => m.id === selectedMealId)?.items
                                           ?.map((i: any) => (
                                             <option key={i.id} value={i.id}>{i.food?.name} ({i.amount}g)</option>

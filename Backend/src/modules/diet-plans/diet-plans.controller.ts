@@ -99,5 +99,14 @@ export class DietPlansController {
     return ResponseDto.success('Öğün besini silindi', result);
   }
 
+  @Delete(':id')
+  @UseGuards(RolesGuard)
+  @Roles('Diyetisyen', 'admin')
+  @ApiOperation({ summary: 'Diyet planını sil' })
+  async deletePlan(@Param('id') id: string) {
+    const result = await this.dietPlansService.deletePlan(id);
+    return ResponseDto.success('Diyet planı başarıyla silindi', result);
+  }
+
 }
 

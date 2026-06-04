@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { DataSource, Repository } from 'typeorm';
 import { DietPlan } from './entities/diet-plan.entity';
@@ -30,6 +30,52 @@ export class DietPlansService {
     // 1. Verify client exists
     const client = await this.userRepository.findOne({ where: { id: dto.client_id } });
     if (!client) throw new NotFoundException('Client not found');
+
+    // 1.5 Overlap check
+    let startDateStr = '';
+    const startMatch = dto.description?.match(/Başlangıç Tarihi:\s*(\d{4}-\d{2}-\d{2})/);
+    if (startMatch) startDateStr = startMatch[1];
+    else {
+      const d = new Date();
+      d.setDate(d.getDate() + 1);
+      startDateStr = d.toISOString().split('T')[0];
+    }
+
+    const newDays = dto.plan_type === 'monthly' ? 30 : (dto.plan_type === 'daily' ? 1 : 7);
+    const newStartDate = new Date(startDateStr);
+    newStartDate.setHours(0,0,0,0);
+    const newEndDate = new Date(newStartDate);
+    newEndDate.setDate(newEndDate.getDate() + newDays - 1);
+    newEndDate.setHours(0,0,0,0);
+
+    const allClientPlans = await this.dietPlanRepository.find({
+      where: { client_id: dto.client_id }
+    });
+
+    for (const p of allClientPlans) {
+      let pStart = '';
+      const pMatch = p.description?.match(/Başlangıç Tarihi:\s*(\d{4}-\d{2}-\d{2})/);
+      if (pMatch) pStart = pMatch[1];
+      else {
+        const d = new Date(p.createdAt);
+        d.setDate(d.getDate() + 1);
+        pStart = d.toISOString().split('T')[0];
+      }
+
+      const pDays = p.plan_type === 'monthly' ? 30 : (p.plan_type === 'daily' ? 1 : 7);
+      const pStartDate = new Date(pStart);
+      pStartDate.setHours(0,0,0,0);
+      const pEndDate = new Date(pStartDate);
+      pEndDate.setDate(pEndDate.getDate() + pDays - 1);
+      pEndDate.setHours(0,0,0,0);
+
+      if (newStartDate <= pEndDate && pStartDate <= newEndDate) {
+        const nextAvailable = new Date(pEndDate);
+        nextAvailable.setDate(nextAvailable.getDate() + 1);
+        const nextAvailableStr = nextAvailable.toISOString().split('T')[0];
+        throw new BadRequestException(`Çakışma Hatası: Danışanın mevcut planı ${pStart} ile ${pEndDate.toISOString().split('T')[0]} tarihleri arasındadır. Yeni plan en erken ${nextAvailableStr} tarihinde başlayabilir.`);
+      }
+    }
 
     // 2. Use transaction for nested saving
     const queryRunner = this.dataSource.createQueryRunner();
@@ -198,31 +244,48 @@ export class DietPlansService {
     });
   }
 
+  async replaceMealItems(mealId: string, newItems: { food_id: string, amount: number }[]) {
+    // 1. Öğündeki mevcut tüm items'ları bul ve sil
+    const existingItems = await this.mealItemRepository.find({ where: { meal_id: mealId } });
+    if (existingItems.length > 0) {
+      await this.mealItemRepository.remove(existingItems);
+    }
+
+    // 2. Yeni öğeleri ekle
+    const itemsToSave = newItems.map(item => this.mealItemRepository.create({
+      meal_id: mealId,
+      food_id: item.food_id,
+      amount: item.amount
+    }));
+
+    await this.mealItemRepository.save(itemsToSave);
+    
+    return { success: true, count: itemsToSave.length };
+  }
+
   async deleteMealItem(mealItemId: string) {
     const item = await this.mealItemRepository.findOne({ where: { id: mealItemId } });
     if (!item) throw new NotFoundException('Meal item not found');
     return this.mealItemRepository.remove(item);
   }
 
-  async calculateAdherence(planId: string, targetDateStr?: string): Promise<number> {
-    const plan = await this.dietPlanRepository.findOne({
-      where: { id: planId },
-      relations: ['meals', 'meals.items'],
-    });
-    if (!plan) return 0;
+  async deletePlan(planId: string) {
+    const plan = await this.dietPlanRepository.findOne({ where: { id: planId } });
+    if (!plan) throw new NotFoundException('Diet plan not found');
+    return this.dietPlanRepository.remove(plan);
+  }
 
-    let startDateStr = '';
-    if (plan.description) {
-      const startMatch = plan.description.match(/Başlangıç Tarihi:\s*(\d{4}-\d{2}-\d{2})/);
-      if (startMatch) {
-        startDateStr = startMatch[1];
-      }
-    }
-    if (!startDateStr) {
-      const d = new Date(plan.createdAt);
-      d.setDate(d.getDate() + 1);
-      startDateStr = d.toISOString().split('T')[0];
-    }
+  async calculateAdherence(planId: string, targetDateStr?: string): Promise<number> {
+    const activePlan = await this.dietPlanRepository.findOne({
+      where: { id: planId }
+    });
+    if (!activePlan) return 0;
+
+    const allPlans = await this.dietPlanRepository.find({
+      where: { client_id: activePlan.client_id },
+      relations: ['meals', 'meals.items'],
+      order: { createdAt: 'ASC' }
+    });
 
     let todayStr = targetDateStr;
     if (!todayStr) {
@@ -231,38 +294,55 @@ export class DietPlansService {
       const localToday = new Date(localDate.getTime() - (offset * 60 * 1000));
       todayStr = localToday.toISOString().split('T')[0];
     }
-
-    const [sy, sm, sd] = startDateStr.split('-').map(Number);
     const [ty, tm, td] = todayStr.split('-').map(Number);
-    const startUTC = Date.UTC(sy, sm - 1, sd);
     const todayUTC = Date.UTC(ty, tm - 1, td);
-    const diffMs = todayUTC - startUTC;
-    const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24)) + 1;
-
-    let maxDays = 1;
-    if (plan.plan_type === 'weekly') maxDays = 7;
-    else if (plan.plan_type === 'monthly') maxDays = 30;
-
-    const limitDays = Math.min(Math.max(0, diffDays), maxDays);
-    if (limitDays <= 0) return 0;
 
     const expectedItems: { date: string; meal_item_id: string }[] = [];
-    for (let dayNum = 1; dayNum <= limitDays; dayNum++) {
-      const dateObj = new Date(startUTC);
-      dateObj.setUTCDate(dateObj.getUTCDate() + (dayNum - 1));
-      const dateStr = dateObj.toISOString().split('T')[0];
 
-      let dayMeals = [];
-      if (plan.plan_type === 'weekly' || plan.plan_type === 'monthly') {
-        dayMeals = plan.meals.filter(m => m.day_of_week === dayNum);
-      } else {
-        dayMeals = plan.meals;
+    for (const plan of allPlans) {
+      let startDateStr = '';
+      if (plan.description) {
+        const startMatch = plan.description.match(/Başlangıç Tarihi:\s*(\d{4}-\d{2}-\d{2})/);
+        if (startMatch) startDateStr = startMatch[1];
+      }
+      if (!startDateStr) {
+        const d = new Date(plan.createdAt);
+        d.setDate(d.getDate() + 1);
+        startDateStr = d.toISOString().split('T')[0];
       }
 
-      for (const meal of dayMeals) {
-        if (meal.items) {
-          for (const item of meal.items) {
-            expectedItems.push({ date: dateStr, meal_item_id: item.id });
+      const [sy, sm, sd] = startDateStr.split('-').map(Number);
+      const startUTC = Date.UTC(sy, sm - 1, sd);
+      
+      if (startUTC > todayUTC) continue;
+
+      const diffMs = todayUTC - startUTC;
+      const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24)) + 1;
+
+      let maxDays = 1;
+      if (plan.plan_type === 'weekly') maxDays = 7;
+      else if (plan.plan_type === 'monthly') maxDays = 30;
+
+      const limitDays = Math.min(Math.max(0, diffDays), maxDays);
+      if (limitDays <= 0) continue;
+
+      for (let dayNum = 1; dayNum <= limitDays; dayNum++) {
+        const dateObj = new Date(startUTC);
+        dateObj.setUTCDate(dateObj.getUTCDate() + (dayNum - 1));
+        const dateStr = dateObj.toISOString().split('T')[0];
+
+        let dayMeals = [];
+        if (plan.plan_type === 'weekly' || plan.plan_type === 'monthly') {
+          dayMeals = plan.meals.filter(m => m.day_of_week === dayNum);
+        } else {
+          dayMeals = plan.meals;
+        }
+
+        for (const meal of dayMeals) {
+          if (meal.items) {
+            for (const item of meal.items) {
+              expectedItems.push({ date: dateStr, meal_item_id: item.id });
+            }
           }
         }
       }
@@ -270,29 +350,26 @@ export class DietPlansService {
 
     if (expectedItems.length === 0) return 0;
 
-    const trackings = await this.trackingRepository.find({
-      where: { plan_id: plan.id, is_consumed: true },
-    });
+    const planIds = allPlans.map(p => p.id);
+    if (planIds.length === 0) return 0;
+
+    const trackings = await this.trackingRepository.createQueryBuilder('track')
+      .where('track.plan_id IN (:...planIds)', { planIds })
+      .andWhere('track.is_consumed = :isConsumed', { isConsumed: true })
+      .getMany();
 
     const formatToYYYYMMDD = (dateVal: any): string => {
       if (!dateVal) return '';
       if (typeof dateVal === 'string') {
-        if (/^\d{4}-\d{2}-\d{2}$/.test(dateVal)) {
-          return dateVal;
-        }
+        if (/^\d{4}-\d{2}-\d{2}/.test(dateVal)) return dateVal.substring(0, 10);
         const d = new Date(dateVal);
-        if (!isNaN(d.getTime())) {
-          const year = d.getFullYear();
-          const month = String(d.getMonth() + 1).padStart(2, '0');
-          const day = String(d.getDate()).padStart(2, '0');
-          return `${year}-${month}-${day}`;
-        }
+        if (!isNaN(d.getTime())) return d.toISOString().split('T')[0];
         return dateVal.split('T')[0];
       }
       if (dateVal instanceof Date && !isNaN(dateVal.getTime())) {
-        const year = dateVal.getFullYear();
-        const month = String(dateVal.getMonth() + 1).padStart(2, '0');
-        const day = String(dateVal.getDate()).padStart(2, '0');
+        const year = dateVal.getUTCFullYear();
+        const month = String(dateVal.getUTCMonth() + 1).padStart(2, '0');
+        const day = String(dateVal.getUTCDate()).padStart(2, '0');
         return `${year}-${month}-${day}`;
       }
       return String(dateVal).split('T')[0];
@@ -302,9 +379,7 @@ export class DietPlansService {
     let consumedCount = 0;
     for (const t of trackings) {
       const key = `${formatToYYYYMMDD(t.date)}_${t.meal_item_id}`;
-      if (expectedKeys.has(key)) {
-        consumedCount++;
-      }
+      if (expectedKeys.has(key)) consumedCount++;
     }
 
     const percentage = (consumedCount / expectedItems.length) * 100;

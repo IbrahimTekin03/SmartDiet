@@ -20,7 +20,7 @@ export default function DietPlanView() {
 
   const [plan, setPlan] = useState<any>(null);
   const [loading, setLoading] = useState(true);
-  const [selectedDate, setSelectedDate] = useState(() => new Date().toISOString().split('T')[0]);
+  const [selectedDate, setSelectedDate] = useState<string>('');
   // trackingData is now indexed by date: { [date]: { [meal_item_id]: is_consumed } }
   const [trackingData, setTrackingData] = useState<Record<string, Record<string, boolean>>>({});
   const [selectedDay, setSelectedDay] = useState(() => {
@@ -82,8 +82,9 @@ export default function DietPlanView() {
     return `${day}/${month}/${year}`;
   };
 
+  // Initialize state once when plan is loaded
   useEffect(() => {
-    if (plan) {
+    if (plan && !selectedDate) {
       const startDateStr = getPlanStartDate();
       const todayStr = new Date().toISOString().split('T')[0];
       
@@ -104,9 +105,25 @@ export default function DietPlanView() {
       
       setSelectedDate(initialDate);
       setSelectedDay(initialDay);
-      fetchAdherence();
     }
-  }, [plan]);
+  }, [plan, selectedDate]);
+
+  // Fetch data whenever ID or selectedDate changes
+  useEffect(() => {
+    if (id && selectedDate) {
+      fetchPlan();
+      fetchTracking();
+      fetchAdherence(selectedDate);
+      
+      // AI Asistan için Context bilgisini sessionStorage'a kaydet
+      sessionStorage.setItem('aiUiContext', JSON.stringify({ planId: id, date: selectedDate }));
+    }
+    
+    return () => {
+      // Bileşen kapatıldığında context'i temizle
+      sessionStorage.removeItem('aiUiContext');
+    };
+  }, [id, selectedDate]);
 
   // Sync Day Tab -> Date
   const handleDayTabClick = (dayNumber: number) => {
@@ -146,6 +163,19 @@ export default function DietPlanView() {
     return () => controller.abort();
   }, [plan, selectedDate, selectedDay]);
 
+  useEffect(() => {
+    if (plan && plan.id && plan.title) {
+      sessionStorage.setItem('current_plan_context', JSON.stringify({
+        planId: plan.id,
+        planTitle: plan.title,
+        day: selectedDay
+      }));
+    }
+    return () => {
+      sessionStorage.removeItem('current_plan_context');
+    };
+  }, [plan, selectedDay]);
+
   const fetchPlan = async () => {
     try {
       const token = localStorage.getItem("access_token");
@@ -163,10 +193,10 @@ export default function DietPlanView() {
     }
   };
 
-  const fetchAdherence = async () => {
+  const fetchAdherence = async (dateStr: string = selectedDate) => {
     try {
       const token = localStorage.getItem("access_token");
-      const res = await fetch(`${API_BASE}/api/diet-plans/${id}/adherence`, {
+      const res = await fetch(`${API_BASE}/api/diet-plans/${id}/adherence?date=${dateStr}`, {
         headers: { Authorization: `Bearer ${token}` }
       });
       const data = await res.json();
@@ -236,7 +266,7 @@ export default function DietPlanView() {
       if (!res.ok) throw new Error();
       setSaveStatus("saved");
       setTimeout(() => setSaveStatus("idle"), 2000);
-      fetchAdherence();
+      fetchAdherence(activeDate);
     } catch (err) {
       console.error(err);
       setSaveStatus("error");
@@ -285,7 +315,7 @@ export default function DietPlanView() {
         });
         setTimeout(() => setToast(null), 3000);
       }
-      fetchAdherence();
+      fetchAdherence(activeDate);
     } catch (err) {
       console.error(err);
       if (showNotification) {
@@ -431,11 +461,14 @@ export default function DietPlanView() {
     }
   };
 
-  if (loading) {
+  if (loading || !plan || !selectedDate) {
     return (
-      <DashboardShell isDark={isDark} title={lang === "tr" ? "Yükleniyor..." : "Loading..."} backUrl="back">
-        <div className="flex h-64 items-center justify-center">
-          <div className="h-8 w-8 animate-spin rounded-full border-4 border-emerald-500 border-t-transparent" />
+      <DashboardShell
+        role={isDietitian ? "dietitian" : "client"}
+        title={lang === "tr" ? "Diyet Planı Görüntüle" : "View Diet Plan"}
+      >
+        <div className="flex h-full items-center justify-center">
+          <div className="h-8 w-8 animate-spin rounded-full border-4 border-indigo-600 border-t-transparent"></div>
         </div>
       </DashboardShell>
     );

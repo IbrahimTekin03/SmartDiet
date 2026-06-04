@@ -1,0 +1,898 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SmartDiet - Akademik Poster</title>
+  <!-- Google Fonts for Modern Typography -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Outfit:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  
+  <style>
+    :root {
+      --primary-color: #065f46; /* Deep Emerald Green */
+      --primary-light: #0f766e; /* Teal tone */
+      --accent-color: #10b981; /* Mint/Emerald */
+      --bg-color: #f8fafc; /* Sleek slate white background */
+      --card-bg: #ffffff;
+      --text-main: #1e293b; /* Dark charcoal */
+      --text-muted: #64748b; /* Soft slate gray */
+      --border-color: #e2e8f0;
+      --shadow-sm: 0 2px 8px rgba(6, 95, 70, 0.04);
+      --shadow-md: 0 4px 20px rgba(0, 0, 0, 0.05);
+      --shadow-lg: 0 10px 30px rgba(6, 95, 70, 0.08);
+      --border-radius: 12px;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      background-color: #cbd5e1;
+      font-family: 'Inter', sans-serif;
+      color: var(--text-main);
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      min-height: 100vh;
+      padding: 20px;
+    }
+
+    /* A3 / A4 Standard Portrait Aspect Ratio (1 : 1.414) */
+    .poster-container {
+      width: 1000px;
+      height: 1414px;
+      background-color: var(--bg-color);
+      box-shadow: 0 20px 50px rgba(0, 0, 0, 0.25);
+      padding: 30px;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      position: relative;
+      overflow: hidden;
+    }
+
+    /* Top University Header Ribbon */
+    .univ-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      border-bottom: 2px solid var(--primary-color);
+      padding-bottom: 8px;
+      margin-bottom: 12px;
+    }
+
+    .univ-header span {
+      font-size: 10px;
+      font-weight: 700;
+      color: var(--primary-color);
+      letter-spacing: 0.05em;
+      text-transform: uppercase;
+    }
+
+    /* Main Poster Banner Banner */
+    .poster-banner {
+      background: linear-gradient(135deg, var(--primary-color) 0%, var(--primary-light) 100%);
+      border-radius: var(--border-radius);
+      padding: 20px 30px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      box-shadow: var(--shadow-md);
+      color: white;
+      position: relative;
+    }
+
+    .logo-container {
+      background: white;
+      padding: 10px;
+      border-radius: 8px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      box-shadow: var(--shadow-sm);
+      height: 70px;
+      width: 100px;
+    }
+
+    .logo-container img {
+      max-height: 100%;
+      max-width: 100%;
+      object-fit: contain;
+    }
+
+    .title-container {
+      flex-grow: 1;
+      text-align: center;
+      padding: 0 20px;
+    }
+
+    .title-container h1 {
+      font-family: 'Outfit', sans-serif;
+      font-size: 32px;
+      font-weight: 800;
+      letter-spacing: -0.02em;
+      margin-bottom: 4px;
+      text-shadow: 0 2px 4px rgba(0, 0, 0, 0.15);
+    }
+
+    .title-container p {
+      font-size: 14px;
+      font-weight: 500;
+      color: #a7f3d0;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+    }
+
+    .right-badge {
+      height: 70px;
+      width: 70px;
+      background: rgba(255, 255, 255, 0.1);
+      border: 2px dashed rgba(255, 255, 255, 0.4);
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      position: relative;
+    }
+
+    .right-badge::before {
+      content: 'AI';
+      font-family: 'Outfit', sans-serif;
+      font-weight: 800;
+      font-size: 18px;
+      color: white;
+    }
+
+    /* Meta Info (Authors and Danisman) */
+    .meta-info {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      background: white;
+      border: 1px solid var(--border-color);
+      padding: 10px 24px;
+      border-radius: var(--border-radius);
+      margin-top: 12px;
+      box-shadow: var(--shadow-sm);
+    }
+
+    .meta-item {
+      font-size: 12px;
+      font-weight: 500;
+      color: var(--text-main);
+    }
+
+    .meta-item strong {
+      color: var(--primary-color);
+      font-weight: 700;
+      text-transform: uppercase;
+      font-size: 11px;
+      margin-right: 6px;
+    }
+
+    /* Main Poster Body Layout */
+    .poster-body {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 20px;
+      margin-top: 16px;
+      flex-grow: 1;
+    }
+
+    .poster-column {
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+    }
+
+    /* Section Cards styling */
+    .section-card {
+      background-color: var(--card-bg);
+      border-radius: var(--border-radius);
+      border: 1px solid var(--border-color);
+      padding: 16px 20px;
+      box-shadow: var(--shadow-sm);
+      display: flex;
+      flex-direction: column;
+      position: relative;
+      transition: all 0.2s ease;
+    }
+
+    .section-card::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 4px;
+      height: 100%;
+      background-color: var(--primary-color);
+      border-top-left-radius: var(--border-radius);
+      border-bottom-left-radius: var(--border-radius);
+    }
+
+    .section-title-container {
+      display: flex;
+      align-items: center;
+      margin-bottom: 12px;
+      padding-bottom: 6px;
+      border-bottom: 1px solid var(--border-color);
+    }
+
+    .section-bullet {
+      width: 10px;
+      height: 10px;
+      background-color: var(--accent-color);
+      border-radius: 50%;
+      margin-right: 8px;
+      box-shadow: 0 0 8px rgba(16, 185, 129, 0.6);
+    }
+
+    .section-title {
+      font-family: 'Outfit', sans-serif;
+      font-size: 16px;
+      font-weight: 700;
+      color: var(--primary-color);
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+
+    /* Content styling */
+    .card-content {
+      font-size: 11px;
+      line-height: 1.6;
+      color: var(--text-main);
+      text-align: justify;
+    }
+
+    .card-content p {
+      margin-bottom: 8px;
+    }
+
+    /* Modules list styling */
+    .modules-container {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+      margin-top: 10px;
+    }
+
+    .module-item {
+      background: var(--bg-color);
+      padding: 8px 12px;
+      border-radius: 8px;
+      font-size: 10.5px;
+      font-weight: 600;
+      color: var(--primary-color);
+      display: flex;
+      align-items: center;
+      border-left: 3px solid var(--accent-color);
+      box-shadow: var(--shadow-sm);
+    }
+
+    /* AI Box Sub-component */
+    .ai-box {
+      margin-top: 14px;
+      background: linear-gradient(135deg, rgba(6, 95, 70, 0.03) 0%, rgba(15, 118, 110, 0.03) 100%);
+      border: 1px dashed rgba(6, 95, 70, 0.2);
+      border-radius: 8px;
+      padding: 12px;
+    }
+
+    .ai-box-title {
+      font-family: 'Outfit', sans-serif;
+      font-size: 11.5px;
+      font-weight: 700;
+      color: var(--primary-color);
+      margin-bottom: 6px;
+      display: flex;
+      align-items: center;
+    }
+
+    .ai-box-title svg {
+      width: 14px;
+      height: 14px;
+      margin-right: 6px;
+      fill: var(--primary-color);
+    }
+
+    .ai-list {
+      list-style-type: none;
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 5px;
+    }
+
+    .ai-list li {
+      font-size: 10px;
+      color: var(--text-main);
+      display: flex;
+      align-items: center;
+      font-weight: 500;
+    }
+
+    .ai-list li::before {
+      content: '✦';
+      color: var(--accent-color);
+      margin-right: 6px;
+      font-weight: bold;
+    }
+
+    /* Flow Diagram Component in Yöntem */
+    .diagram-container {
+      position: relative;
+      width: 100%;
+      height: 250px;
+      background: var(--bg-color);
+      border-radius: 8px;
+      border: 1px solid var(--border-color);
+      margin-top: 10px;
+      overflow: hidden;
+    }
+
+    .diagram-svg {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      pointer-events: none;
+      z-index: 1;
+    }
+
+    .diagram-node {
+      position: absolute;
+      padding: 6px 10px;
+      border-radius: 6px;
+      font-size: 9px;
+      font-weight: 700;
+      text-align: center;
+      box-shadow: var(--shadow-sm);
+      z-index: 2;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border: 1px solid rgba(0,0,0,0.05);
+    }
+
+    .node-sistem {
+      left: 5%;
+      top: 5%;
+      width: 25%;
+      background-color: #fef3c7; /* Orange/Yellow tone */
+      color: #92400e;
+      border-left: 3px solid #f59e0b;
+    }
+
+    .node-danisan {
+      left: 5%;
+      top: 36%;
+      width: 25%;
+      background-color: #fef3c7;
+      color: #92400e;
+      border-left: 3px solid #f59e0b;
+    }
+
+    .node-admin {
+      left: 70%;
+      top: 5%;
+      width: 25%;
+      background-color: #fee2e2; /* Red tone */
+      color: #991b1b;
+      border-left: 3px solid #ef4444;
+    }
+
+    .node-diyetisyen {
+      left: 70%;
+      top: 36%;
+      width: 25%;
+      background-color: #dbeafe; /* Blue tone */
+      color: #1e40af;
+      border-left: 3px solid #3b82f6;
+    }
+
+    .node-ai {
+      left: 38%;
+      top: 36%;
+      width: 24%;
+      background-color: #f3e8ff; /* Purple tone */
+      color: #6b21a8;
+      border-left: 3px solid #a855f7;
+    }
+
+    .node-db {
+      left: 38%;
+      top: 76%;
+      width: 24%;
+      background-color: #d1fae5; /* Green tone */
+      color: #065f46;
+      border-left: 3px solid #10b981;
+    }
+
+    .diagram-label {
+      position: absolute;
+      font-size: 7px;
+      font-weight: 600;
+      color: var(--text-muted);
+      line-height: 1.2;
+      z-index: 3;
+    }
+
+    /* Table styling inside Bulgular */
+    .bulgular-table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 8px;
+      font-size: 9px;
+      box-shadow: var(--shadow-sm);
+      border-radius: 8px;
+      overflow: hidden;
+    }
+
+    .bulgular-table th {
+      background-color: var(--primary-color);
+      color: white;
+      font-weight: 600;
+      text-align: left;
+      padding: 6px 8px;
+      font-family: 'Outfit', sans-serif;
+    }
+
+    .bulgular-table td {
+      padding: 6px 8px;
+      border-bottom: 1px solid var(--border-color);
+      background-color: white;
+    }
+
+    .bulgular-table tr:last-child td {
+      border-bottom: none;
+    }
+
+    .bulgular-table tr:nth-child(even) td {
+      background-color: var(--bg-color);
+    }
+
+    /* Screenshots Grid inside Bulgular */
+    .screenshots-title {
+      font-size: 10px;
+      font-weight: 700;
+      color: var(--primary-color);
+      margin-top: 12px;
+      margin-bottom: 6px;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      font-family: 'Outfit', sans-serif;
+    }
+
+    .screens-grid {
+      display: grid;
+      grid-template-columns: 1fr 1.8fr 1fr;
+      gap: 10px;
+      margin-top: 4px;
+    }
+
+    .screen-wrapper {
+      border-radius: 6px;
+      border: 1px solid var(--border-color);
+      overflow: hidden;
+      box-shadow: var(--shadow-sm);
+      background: white;
+      padding: 3px;
+      position: relative;
+    }
+
+    .screen-wrapper::before {
+      content: '';
+      display: block;
+      height: 4px;
+      background: #e2e8f0;
+      border-bottom: 1px solid var(--border-color);
+      border-top-left-radius: 3px;
+      border-top-right-radius: 3px;
+    }
+
+    .screen-wrapper img {
+      width: 100%;
+      height: 75px;
+      object-fit: cover;
+      display: block;
+      border-radius: 2px;
+    }
+
+    /* Bottom section: Conclusion & QR Code Side-by-Side */
+    .bottom-layout {
+      display: grid;
+      grid-template-columns: 1.8fr 1fr;
+      gap: 16px;
+      margin-top: 10px;
+    }
+
+    .qr-card {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+      background: white;
+      border: 1px solid var(--border-color);
+      border-radius: var(--border-radius);
+      padding: 12px;
+      box-shadow: var(--shadow-sm);
+      position: relative;
+    }
+
+    .qr-card::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      right: 0;
+      width: 4px;
+      height: 100%;
+      background-color: var(--accent-color);
+      border-top-right-radius: var(--border-radius);
+      border-bottom-right-radius: var(--border-radius);
+    }
+
+    .qr-title {
+      font-family: 'Outfit', sans-serif;
+      font-size: 13px;
+      font-weight: 700;
+      color: var(--primary-color);
+      text-transform: uppercase;
+      margin-bottom: 8px;
+    }
+
+    .qr-image-container {
+      width: 90px;
+      height: 90px;
+      border: 1px solid var(--border-color);
+      border-radius: 6px;
+      padding: 4px;
+      background: white;
+      box-shadow: var(--shadow-sm);
+    }
+
+    .qr-image-container img {
+      width: 100%;
+      height: 100%;
+      object-fit: contain;
+    }
+
+    .qr-subtitle {
+      font-size: 8px;
+      color: var(--text-muted);
+      margin-top: 6px;
+      font-weight: 600;
+    }
+
+    /* Tiny Footer */
+    .poster-footer {
+      text-align: center;
+      font-size: 8px;
+      color: var(--text-muted);
+      border-top: 1px solid var(--border-color);
+      padding-top: 8px;
+      margin-top: 12px;
+      font-weight: 500;
+    }
+
+    /* Styling clean thank you note */
+    .thanks-note {
+      margin-top: 8px;
+      padding-top: 6px;
+      border-top: 1px dashed var(--border-color);
+      font-style: italic;
+      color: var(--text-muted);
+      font-size: 9.5px;
+    }
+
+    .strong-term {
+      color: var(--primary-color);
+      font-weight: 600;
+    }
+
+    /* Print settings optimization */
+    @media print {
+      body {
+        background-color: white;
+        padding: 0;
+      }
+      .poster-container {
+        box-shadow: none;
+        width: 100%;
+        height: 100%;
+        padding: 20px;
+      }
+    }
+  </style>
+</head>
+<body>
+
+  <div class="poster-container">
+    
+    <!-- Top University Banner -->
+    <div class="univ-header">
+      <span>Kocaeli Sağlık ve Teknoloji Üniversitesi</span>
+      <span>Mühendislik ve Doğa Bilimleri Fakültesi</span>
+      <span>2. Geleneksel Bitirme Projeleri Sergisi | 5 Haziran 2026</span>
+    </div>
+
+    <!-- Main Banner Title block -->
+    <div class="poster-banner">
+      <div class="logo-container">
+        <!-- University Logo cropped cleanly -->
+        <img src="PosterAssets/kostu_logo.png" alt="KOSTÜ Logo">
+      </div>
+      <div class="title-container">
+        <h1>SmartDiet</h1>
+        <p>AI Destekli Diyet Yönetim Platformu</p>
+      </div>
+      <div class="right-badge"></div>
+    </div>
+
+    <!-- Meta Info Sub-header -->
+    <div class="meta-info">
+      <div class="meta-item">
+        <strong>Yazarlar</strong> Mert Bülbül &amp; İbrahim Tekin
+      </div>
+      <div class="meta-item">
+        <strong>Danışman</strong> Dr. Öğr. Üyesi Fulya AKDENİZ
+      </div>
+    </div>
+
+    <!-- Poster Body (Columns) -->
+    <div class="poster-body">
+      
+      <!-- Left Column -->
+      <div class="poster-column">
+        
+        <!-- Giris Card -->
+        <div class="section-card">
+          <div class="section-title-container">
+            <div class="section-bullet"></div>
+            <h2 class="section-title">Giriş</h2>
+          </div>
+          <div class="card-content">
+            <p>Obezite, günümüzde bireylerin yaşam kalitesini olumsuz etkileyen önemli sağlık sorunları arasında yer almaktadır. Bu sorunların çözümünde takip ve uzman desteği büyük önem taşımaktadır.</p>
+            <p>Bu amaçla geliştirilen <span class="strong-term">SmartDiet</span>, diyetisyen ve danışan arasındaki iletişim ve takip süreçlerini dijital ortama taşıyan web tabanlı bir sistemdir. Uygulama; randevu yönetimi, diyet planı oluşturma, öğün ve su takibi, ölçüm kayıtları ile mesajlaşma gibi işlevleri destekleyerek süreçlerin daha düzenli ve verimli şekilde yürütülmesini sağlamaktadır.</p>
+          </div>
+        </div>
+
+        <!-- Moduller ve AI Asistan Card -->
+        <div class="section-card">
+          <div class="section-title-container">
+            <div class="section-bullet"></div>
+            <h2 class="section-title">Geliştirilen Modüller</h2>
+          </div>
+          <div class="card-content">
+            <div class="modules-container">
+              <div class="module-item">Diyet Planı Yönetimi</div>
+              <div class="module-item">Öğün Takibi</div>
+              <div class="module-item">Ölçüm Takibi</div>
+              <div class="module-item">Su Takibi</div>
+              <div class="module-item">Mesajlaşma</div>
+              <div class="module-item">Randevu Yönetimi</div>
+              <div class="module-item">Rol Bazlı Erişim</div>
+              <div class="module-item">Ai Asistan</div>
+            </div>
+            
+            <!-- AI Box Component -->
+            <div class="ai-box">
+              <div class="ai-box-title">
+                <svg viewBox="0 0 24 24">
+                  <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-6h2v6zm0-8h-2V7h2v2z"/>
+                </svg>
+                Ai Asistan Ne Yapar?
+              </div>
+              <ul class="ai-list">
+                <li>Yiyecek alternatifi önerir</li>
+                <li>Fotoğrafla kalori hesabı yapar</li>
+                <li>Kişiselleştirilmiş diyet planı oluşturur</li>
+                <li>Danışan ve diyetisyen sorularını yanıtlar</li>
+                <li>Kullanıcı rollerine göre özelleştirilmiş aksiyonlar alır</li>
+              </ul>
+            </div>
+          </div>
+        </div>
+
+        <!-- Sonuc Card -->
+        <div class="section-card" style="flex-grow: 1;">
+          <div class="section-title-container">
+            <div class="section-bullet"></div>
+            <h2 class="section-title">Sonuç</h2>
+          </div>
+          <div class="card-content" style="display: flex; flex-direction: column; justify-content: space-between; height: 100%;">
+            <div>
+              <p><span class="strong-term">SmartDiet</span>, diyet planlama, takip ve iletişim süreçlerini dijital ortama taşıyan bütünleşik bir platform olarak geliştirilmiştir. Sistem; ölçüm, öğün, su tüketimi verilerinin düzenli takibini sağlarken, yapay zekâ destekli asistan ile kullanıcı deneyimini zenginleştirmektedir.</p>
+              <p>Sonuç olarak proje; diyetisyen ve danışan arasındaki etkileşimi güçlendiren, veriye dayalı ve sürdürülebilir bir beslenme yönetimi altyapısı sunmaktadır. SmartDiet, dijitalleşen beslenme süreçlerini veriye dayalı olarak yönetir, uyum takibini kolaylaştırır ve kişiye özel rehberlik desteği sağlar. Bu sayede kişilerin obezite ile mücadelesinde etkin rol oynar.</p>
+            </div>
+            <div class="thanks-note">
+              Çalışmamızın her aşamasında değerli görüş, öneri ve desteklerini esirgemeyen, akademik birikimiyle yolumuzu aydınlatan kıymetli danışman hocamız Sayın <strong>Dr. Öğr. Üyesi Fulya AKDENİZ</strong>'e en içten teşekkürlerimizi sunarız.
+            </div>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- Right Column -->
+      <div class="poster-column">
+        
+        <!-- Yontem Card with SVG flowchart diagram -->
+        <div class="section-card">
+          <div class="section-title-container">
+            <div class="section-bullet"></div>
+            <h2 class="section-title">Yöntem</h2>
+          </div>
+          <div class="card-content">
+            <p>Sistem, kullanıcıların kayıt, giriş ve rol tabanlı yetkilendirme işlemlerini yönetmek amacıyla NestJS tabanlı bir backend mimarisi ile geliştirilmiştir. Veriler; kullanıcı profilleri, diyetisyen-danışan eşleşmeleri, diyet planları, öğün takipleri ve ölçüm kayıtları için PostgreSQL veritabanında saklanmaktadır. Arayüz ise React tabanlı modern frontend mimarisi üzerinde kurgulanmıştır.</p>
+            
+            <!-- Flow diagram container -->
+            <div class="diagram-container">
+              <!-- SVG Arrow Connections -->
+              <svg class="diagram-svg">
+                <defs>
+                  <marker id="arrow" viewBox="0 0 10 10" refX="6" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+                    <path d="M 0 1.5 L 8 5 L 0 8.5 z" fill="#64748b" />
+                  </marker>
+                  <marker id="arrow-double" viewBox="0 0 10 10" refX="6" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+                    <path d="M 0 1.5 L 8 5 L 0 8.5 z" fill="#64748b" />
+                  </marker>
+                </defs>
+                
+                <!-- Sistem -> Danışan -->
+                <line x1="17.5%" y1="20%" x2="17.5%" y2="35%" stroke="#64748b" stroke-width="1.2" marker-end="url(#arrow)" />
+                
+                <!-- Klinik Yöneticisi -> Diyetisyen -->
+                <line x1="82.5%" y1="20%" x2="82.5%" y2="35%" stroke="#64748b" stroke-width="1.2" marker-end="url(#arrow)" />
+                
+                <!-- Danışan <-> Diyetisyen -->
+                <line x1="30%" y1="45%" x2="70%" y2="45%" stroke="#64748b" stroke-width="1.2" marker-end="url(#arrow)" marker-start="url(#arrow)" />
+                
+                <!-- Danışan -> AI Asistan -->
+                <line x1="30%" y1="45%" x2="38%" y2="45%" stroke="#64748b" stroke-width="1.2" marker-end="url(#arrow)" />
+                
+                <!-- Diyetisyen -> AI Asistan -->
+                <line x1="70%" y1="45%" x2="62%" y2="45%" stroke="#64748b" stroke-width="1.2" marker-end="url(#arrow)" />
+                
+                <!-- AI Asistan -> Veritabanı -->
+                <line x1="50%" y1="54%" x2="50%" y2="75%" stroke="#64748b" stroke-width="1.2" marker-end="url(#arrow)" />
+                
+                <!-- Danışan -> Veritabanı (Path) -->
+                <path d="M 17.5% 54% L 17.5% 86% L 38% 86%" stroke="#64748b" stroke-width="1.2" fill="none" marker-end="url(#arrow)" />
+                
+                <!-- Diyetisyen -> Veritabanı (Path) -->
+                <path d="M 82.5% 54% L 82.5% 86% L 62% 86%" stroke="#64748b" stroke-width="1.2" fill="none" marker-end="url(#arrow)" />
+              </svg>
+              
+              <!-- Nodes -->
+              <div class="diagram-node node-sistem">Sistem</div>
+              <div class="diagram-node node-danisan">Danışan</div>
+              <div class="diagram-node node-admin">Klinik Yöneticisi</div>
+              <div class="diagram-node node-diyetisyen">Diyetisyen</div>
+              <div class="diagram-node node-ai">AI Asistan</div>
+              <div class="diagram-node node-db">Veritabanı</div>
+              
+              <!-- Labels -->
+              <div class="diagram-label" style="left: 19%; top: 22%; text-align: left; width: 22%;">Kayıt / Profil</div>
+              <div class="diagram-label" style="left: 64%; top: 22%; text-align: right; width: 17%;">Klinik/Diyetisyen</div>
+              <div class="diagram-label" style="left: 31%; top: 31%; text-align: center; width: 38%;">İletişim &amp; Diyet Planı Takibi</div>
+              <div class="diagram-label" style="left: 31%; top: 56%; text-align: center; width: 38%;">Veri Analizi &amp; Plan Önerileri</div>
+              <div class="diagram-label" style="left: 4%; top: 58%; text-align: right; width: 24%;">Öğün, Ölçüm, Su Girişleri</div>
+              <div class="diagram-label" style="left: 72%; top: 58%; text-align: left; width: 24%;">Plan Takibi &amp; Raporlar</div>
+              <div class="diagram-label" style="left: 19%; top: 78%; text-align: left; width: 18%;">Gün Sonu Kaydı</div>
+              <div class="diagram-label" style="left: 64%; top: 78%; text-align: right; width: 17%;">Güncellemeleri Kaydet</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Deneysel Bulgular (Table & Screens) Card -->
+        <div class="section-card" style="flex-grow: 1;">
+          <div class="section-title-container">
+            <div class="section-bullet"></div>
+            <h2 class="section-title">Deneysel Bulgular</h2>
+          </div>
+          <div class="card-content">
+            <table class="bulgular-table">
+              <thead>
+                <tr>
+                  <th>Veri Türü</th>
+                  <th>Açıklama</th>
+                  <th>Kaynak</th>
+                  <th>Kullanım Amacı</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td><strong>Öğün Verileri</strong></td>
+                  <td>Planlanan ve Tamamlanan Öğünler</td>
+                  <td>Diyet Planı</td>
+                  <td>Uyum analizi ve günlük takip</td>
+                </tr>
+                <tr>
+                  <td><strong>Ölçüm Verileri</strong></td>
+                  <td>Kilo, vücut ölçüleri ve diğer değerler</td>
+                  <td>Ölçüm Takibi</td>
+                  <td>İlerleme ve değişim analizi</td>
+                </tr>
+                <tr>
+                  <td><strong>Su Tüketimi</strong></td>
+                  <td>Günlük su tüketim miktarı</td>
+                  <td>Su Takibi</td>
+                  <td>Yaşam tarzı ve alışkanlık analizi</td>
+                </tr>
+                <tr>
+                  <td><strong>İletişim Verileri</strong></td>
+                  <td>Mesajlar ve diyetisyen etkileşimleri</td>
+                  <td>Mesajlaşma</td>
+                  <td>İletişim kalitesi ve yanıt takibi</td>
+                </tr>
+                <tr>
+                  <td><strong>Randevu Bilgileri</strong></td>
+                  <td>Randevu kayıtları ve durumları</td>
+                  <td>Randevu Yönetimi</td>
+                  <td>Planlama ve süreç yönetimi</td>
+                </tr>
+              </tbody>
+            </table>
+
+            <!-- App Screenshots Row -->
+            <div class="screenshots-title">Sistem Arayüzü Ekran Görüntüleri</div>
+            <div class="screens-grid">
+              <div class="screen-wrapper">
+                <img src="PosterAssets/screen1.png" alt="SmartDiet Arayüzü 1">
+              </div>
+              <div class="screen-wrapper">
+                <img src="PosterAssets/screen2.png" alt="SmartDiet Arayüzü 2">
+              </div>
+              <div class="screen-wrapper">
+                <img src="PosterAssets/screen3.png" alt="SmartDiet Arayüzü 3">
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Bottom Layout: Kaynakca/QR code -->
+        <div class="bottom-layout">
+          
+          <div class="section-card">
+            <div class="section-title-container">
+              <div class="section-bullet"></div>
+              <h2 class="section-title">Kaynakça</h2>
+            </div>
+            <div class="card-content" style="font-size: 8px; color: var(--text-muted); line-height: 1.4;">
+              <ol style="margin-left: 12px;">
+                <li>NestJS Documentation - NestJS Core Concepts &amp; Architecture (nestjs.com)</li>
+                <li>React Documentation - Component-Based UI Development (react.dev)</li>
+                <li>PostgreSQL Global Development Group - Relational Database Management (postgresql.org)</li>
+                <li>WHO - Obesity and Overweight Fact Sheet (who.int)</li>
+              </ol>
+            </div>
+          </div>
+
+          <div class="qr-card">
+            <div class="qr-title">Projeyi İncele</div>
+            <div class="qr-image-container">
+              <img src="PosterAssets/qrcode.png" alt="SmartDiet QR Code">
+            </div>
+            <div class="qr-subtitle">SmartDiet Platformu</div>
+          </div>
+
+        </div>
+
+      </div>
+
+    </div>
+
+    <!-- Small footer -->
+    <div class="poster-footer">
+      Kocaeli Sağlık ve Teknoloji Üniversitesi Mühendislik ve Doğa Bilimleri Fakültesi Bilgisayar Mühendisliği Bölümü Bitirme Projesi - 2026
+    </div>
+
+  </div>
+
+</body>
+</html>

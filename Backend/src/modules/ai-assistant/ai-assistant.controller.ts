@@ -41,7 +41,7 @@ export class AiAssistantController {
   @ApiOperation({ summary: 'Yapay zeka ile durum korumalı sohbet' })
   @ApiResponse({ status: 201, description: 'Yapay zeka sohbet yanıtı' })
   async chat(@Req() req: any, @Body() dto: ChatRequestDto) {
-    const result = await this.aiChatService.processChat(req.user, dto.prompt, dto.sessionId);
+    const result = await this.aiChatService.processChat(req.user, dto.prompt, dto.sessionId, dto.uiContext);
     return ResponseDto.success('Sohbet yanıtı', result);
   }
 
