@@ -13,11 +13,46 @@ export class AiAssistantService {
       apiKey: process.env.ANTHROPIC_API_KEY || '',
     });
   }
+  private async callGeminiJson(systemPrompt: string, userPrompt: string): Promise<string> {
+    const geminiApiKey = process.env.GEMINI_API_KEY;
+    if (!geminiApiKey) {
+      throw new Error('Gemini API key is not configured.');
+    }
+    const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${geminiApiKey}`;
+    const payload = {
+      contents: [
+        {
+          parts: [{ text: userPrompt }]
+        }
+      ],
+      systemInstruction: {
+        parts: [{ text: systemPrompt }]
+      },
+      generationConfig: {
+        temperature: 0.7,
+        responseMimeType: "application/json"
+      }
+    };
+
+    const res = await fetch(url, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify(payload)
+    });
+
+    const data = await res.json();
+    if (data.error) {
+      throw new Error(data.error.message || 'Gemini API call failed.');
+    }
+    return data.candidates?.[0]?.content?.parts?.[0]?.text || '';
+  }
+
 
   async generateDietPlan(dto: GenerateDietPlanDto) {
-    if (!process.env.ANTHROPIC_API_KEY) {
-      throw new InternalServerErrorException('Anthropic API key is not configured.');
-    }
+    // AI sağlayıcısını .env dosyasından oku (varsayılan: claude)
+    const useGeminiBypass = process.env.AI_PROVIDER === 'gemini';
 
     const systemPrompt = `Sen profesyonel bir diyetisyen asistanısın. Görevin, verilen bilgilere göre sağlıklı, dengeli ve uygulanabilir bir diyet listesi oluşturmak.
 Yanıtını sadece JSON formatında döndür. Markdown formatı kullanma, sadece saf JSON metni döndür. JSON şeması şöyle olmalı:
@@ -44,6 +79,23 @@ Yanıtını sadece JSON formatında döndür. Markdown formatı kullanma, sadece
 ${dto.additionalNotes ? '- Ek Notlar: ' + dto.additionalNotes : ''}
 
 Lütfen dengeli makro dağılımı sağla (yaklaşık %30 protein, %40 karbonhidrat, %30 yağ). Sadece geçerli JSON döndür.`;
+
+    if (useGeminiBypass) {
+      try {
+        console.log('Gemini Flash directly called for generateDietPlan (Claude Bypassed).');
+        const responseText = await this.callGeminiJson(systemPrompt, userPrompt);
+        const jsonMatch = responseText.match(/\{[\s\S]*\}/);
+        const jsonStr = jsonMatch ? jsonMatch[0] : responseText;
+        return JSON.parse(jsonStr);
+      } catch (error) {
+        console.error('Gemini generateDietPlan API Error:', error);
+        throw new Error('Failed to generate diet plan using Gemini Flash.');
+      }
+    }
+
+    if (!process.env.ANTHROPIC_API_KEY) {
+      throw new InternalServerErrorException('Anthropic API key is not configured.');
+    }
 
     try {
       const response = await this.anthropic.messages.create({
@@ -74,9 +126,8 @@ Lütfen dengeli makro dağılımı sağla (yaklaşık %30 protein, %40 karbonhid
   }
 
   async suggestSubstitution(dto: AskSubstitutionDto) {
-    if (!process.env.ANTHROPIC_API_KEY) {
-      throw new InternalServerErrorException('Anthropic API key is not configured.');
-    }
+    // AI sağlayıcısını .env dosyasından oku (varsayılan: claude)
+    const useGeminiBypass = process.env.AI_PROVIDER === 'gemini';
 
     const systemPrompt = `Sen danışanlara yardımcı olan bir beslenme uzmanısın. Danışan elinde olmayan bir yiyeceği değiştirmek istiyor.
 Görevin, orijinal yiyeceğe kalori ve makro değerleri açısından (özellikle protein ve karbonhidrat) en benzer 3 alternatif sunmak.
@@ -108,6 +159,23 @@ Dikkate alınması gerekenler:
 - Tercihler: ${(dto.preferences || []).join(', ') || 'Yok'}
 
 Sadece geçerli JSON döndür.`;
+
+    if (useGeminiBypass) {
+      try {
+        console.log('Gemini Flash directly called for suggestSubstitution (Claude Bypassed).');
+        const responseText = await this.callGeminiJson(systemPrompt, userPrompt);
+        const jsonMatch = responseText.match(/\{[\s\S]*\}/);
+        const jsonStr = jsonMatch ? jsonMatch[0] : responseText;
+        return JSON.parse(jsonStr);
+      } catch (error) {
+        console.error('Gemini suggestSubstitution API Error:', error);
+        throw new Error('Failed to generate substitution suggestions using Gemini Flash.');
+      }
+    }
+
+    if (!process.env.ANTHROPIC_API_KEY) {
+      throw new InternalServerErrorException('Anthropic API key is not configured.');
+    }
 
     try {
       const response = await this.anthropic.messages.create({

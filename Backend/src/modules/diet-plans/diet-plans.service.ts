@@ -69,11 +69,17 @@ export class DietPlansService {
       pEndDate.setDate(pEndDate.getDate() + pDays - 1);
       pEndDate.setHours(0,0,0,0);
 
+      const formatDate = (d: Date) => {
+        const y = d.getFullYear();
+        const m = String(d.getMonth() + 1).padStart(2, '0');
+        const day = String(d.getDate()).padStart(2, '0');
+        return `${y}-${m}-${day}`;
+      };
+
       if (newStartDate <= pEndDate && pStartDate <= newEndDate) {
         const nextAvailable = new Date(pEndDate);
         nextAvailable.setDate(nextAvailable.getDate() + 1);
-        const nextAvailableStr = nextAvailable.toISOString().split('T')[0];
-        throw new BadRequestException(`Çakışma Hatası: Danışanın mevcut planı ${pStart} ile ${pEndDate.toISOString().split('T')[0]} tarihleri arasındadır. Yeni plan en erken ${nextAvailableStr} tarihinde başlayabilir.`);
+        throw new BadRequestException(`Çakışma Hatası: Danışanın mevcut planı ${pStart} ile ${formatDate(pEndDate)} tarihleri arasındadır. Yeni plan en erken ${formatDate(nextAvailable)} tarihinde başlayabilir.`);
       }
     }
 
