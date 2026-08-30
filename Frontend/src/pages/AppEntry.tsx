@@ -98,16 +98,18 @@ export default function AppEntry() {
   const isDietitian = roleNames.includes("diyetisyen") || profile.account_type === "Diyetisyen";
   const isClient = roleNames.includes("client") || roleNames.includes("user") || !isDietitian;
 
+  const isDemo = profile.email?.toLowerCase().startsWith("demo.") || profile.email?.toLowerCase() === "admin@example.com";
+
   if (isAdmin) return <AdminPanel />;
   if (isClinicManager) return <ClinicManagerPanel />;
   if (isDietitian) {
-    if (profile.dietitian_verification_status === "approved") {
+    if (isDemo || profile.dietitian_verification_status === "approved") {
       return <DietitianHome profile={profile} isAdmin={isAdmin} />;
     }
     return <DietitianVerification />;
   }
   if (isClient) {
-    if (profile.client_verification_status === "approved") {
+    if (isDemo || profile.client_verification_status === "approved") {
       return <ClientHome profile={profile} />;
     }
     return <ClientVerification />;

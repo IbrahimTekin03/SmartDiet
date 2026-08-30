@@ -2,10 +2,13 @@ import { Injectable, Logger, OnApplicationBootstrap } from '@nestjs/common';
 import { DataSource } from 'typeorm';
 import * as bcrypt from 'bcrypt';
 import { User } from '../users/entities/user.entity';
-import { UserProfile } from '../users/entities/user.profile.entity';
+import { UserProfile, DietitianVerificationStatus } from '../users/entities/user.profile.entity';
 import { Role } from '../acl/entities/role.entity';
 import { Food } from '../foods/entities/food.entity';
 import { Clinic } from '../clinics/entities/clinic.entity';
+import { UserAssignedDietitian } from '../users/entities/user-assigned-dietitian.entity';
+import { DietPlan } from '../diet-plans/entities/diet-plan.entity';
+import { DietPlanMeal } from '../diet-plans/entities/diet-plan-meal.entity';
 
 @Injectable()
 export class AutoSeedService implements OnApplicationBootstrap {
@@ -27,6 +30,9 @@ export class AutoSeedService implements OnApplicationBootstrap {
     const profileRepo = this.dataSource.getRepository(UserProfile);
     const foodRepo = this.dataSource.getRepository(Food);
     const clinicRepo = this.dataSource.getRepository(Clinic);
+    const assignRepo = this.dataSource.getRepository(UserAssignedDietitian);
+    const planRepo = this.dataSource.getRepository(DietPlan);
+    const mealRepo = this.dataSource.getRepository(DietPlanMeal);
 
     // 1. Roles
     const baseRoles = [
@@ -76,17 +82,34 @@ export class AutoSeedService implements OnApplicationBootstrap {
           first_name: 'Demo',
           last_name: 'Diyetisyen',
           client_verification_status: 'approved',
+          dietitian_verification_status: DietitianVerificationStatus.Approved,
         }),
       );
-      this.logger.log('Demo Dietitian account created: demo.dietitian@smartdiet.com');
+      this.logger.log('Demo Dietitian created: demo.dietitian@smartdiet.com');
     } else {
-      // Ensure password and names
       dietitianUser.first_name = 'Demo';
       dietitianUser.last_name = 'Diyetisyen';
       dietitianUser.password_hash = passwordHash;
       dietitianUser.is_active = true;
       dietitianUser.is_verified = true;
       await userRepo.save(dietitianUser);
+
+      let dProfile = await profileRepo.findOne({ where: { user_id: dietitianUser.id } });
+      if (!dProfile) {
+        await profileRepo.save(
+          profileRepo.create({
+            user_id: dietitianUser.id,
+            first_name: 'Demo',
+            last_name: 'Diyetisyen',
+            client_verification_status: 'approved',
+            dietitian_verification_status: DietitianVerificationStatus.Approved,
+          }),
+        );
+      } else {
+        dProfile.client_verification_status = 'approved';
+        dProfile.dietitian_verification_status = DietitianVerificationStatus.Approved;
+        await profileRepo.save(dProfile);
+      }
     }
 
     // 3. Demo Client
@@ -114,9 +137,10 @@ export class AutoSeedService implements OnApplicationBootstrap {
           first_name: 'Demo',
           last_name: 'Danışan',
           client_verification_status: 'approved',
+          dietitian_verification_status: DietitianVerificationStatus.Approved,
         }),
       );
-      this.logger.log('Demo Client account created: demo.client@smartdiet.com');
+      this.logger.log('Demo Client created: demo.client@smartdiet.com');
     } else {
       clientUser.first_name = 'Demo';
       clientUser.last_name = 'Danışan';
@@ -124,6 +148,23 @@ export class AutoSeedService implements OnApplicationBootstrap {
       clientUser.is_active = true;
       clientUser.is_verified = true;
       await userRepo.save(clientUser);
+
+      let cProfile = await profileRepo.findOne({ where: { user_id: clientUser.id } });
+      if (!cProfile) {
+        await profileRepo.save(
+          profileRepo.create({
+            user_id: clientUser.id,
+            first_name: 'Demo',
+            last_name: 'Danışan',
+            client_verification_status: 'approved',
+            dietitian_verification_status: DietitianVerificationStatus.Approved,
+          }),
+        );
+      } else {
+        cProfile.client_verification_status = 'approved';
+        cProfile.dietitian_verification_status = DietitianVerificationStatus.Approved;
+        await profileRepo.save(cProfile);
+      }
     }
 
     // 4. Admin User
@@ -150,11 +191,31 @@ export class AutoSeedService implements OnApplicationBootstrap {
           first_name: 'System',
           last_name: 'Admin',
           client_verification_status: 'approved',
+          dietitian_verification_status: DietitianVerificationStatus.Approved,
         }),
       );
     }
 
-    // 5. Sample Foods
+    // 5. Connect Demo Client to Demo Dietitian
+    if (clientUser && dietitianUser) {
+      const existingAssign = await assignRepo.findOne({
+        where: {
+          clientId: clientUser.id,
+          dietitianId: dietitianUser.id,
+        },
+      });
+
+      if (!existingAssign) {
+        const assignment = assignRepo.create({
+          clientId: clientUser.id,
+          dietitianId: dietitianUser.id,
+        });
+        await assignRepo.save(assignment);
+        this.logger.log('Demo Client assigned to Demo Dietitian');
+      }
+    }
+
+    // 6. Sample Foods
     const foodCount = await foodRepo.count();
     if (foodCount === 0) {
       const sampleFoods = [
@@ -173,7 +234,7 @@ export class AutoSeedService implements OnApplicationBootstrap {
       this.logger.log(`Inserted ${sampleFoods.length} sample Turkish foods`);
     }
 
-    // 6. Sample Clinic
+    // 7. Sample Clinic
     const clinicCount = await clinicRepo.count();
     if (clinicCount === 0) {
       const clinic = clinicRepo.create({
@@ -183,6 +244,52 @@ export class AutoSeedService implements OnApplicationBootstrap {
       });
       await clinicRepo.save(clinic);
       this.logger.log('Sample clinic created');
+    }
+
+    // 8. Sample Diet Plan for Demo Client
+    if (clientUser && dietitianUser) {
+      const planCount = await planRepo.count({ where: { client_id: clientUser.id } });
+      if (planCount === 0) {
+        const plan = planRepo.create({
+          client_id: clientUser.id,
+          dietitian_id: dietitianUser.id,
+          title: 'Akdeniz Tipi Sağlıklı Beslenme & Kilo Kontrol Programı',
+          description: 'Haftalık dengeli protein ve lif içerikli, danışana özel olarak hazırlanmış klinik beslenme programı.',
+          is_active: true,
+          plan_type: 'weekly',
+        });
+        const savedPlan = await planRepo.save(plan);
+
+        const meals = [
+          mealRepo.create({
+            plan_id: savedPlan.id,
+            name: 'Sabah Kahvaltısı',
+            time: '08:30',
+            note: '2 adet haşlanmış yumurta, 5 adet az tuzlu siyah zeytin, 1 dilim beyaz peynir ve bol yeşillik (155 kcal).',
+          }),
+          mealRepo.create({
+            plan_id: savedPlan.id,
+            name: 'Öğle Yemeği',
+            time: '13:00',
+            note: '150g ızgara tavuk göğsü, zeytinyağlı mevsim salatası ve 1 kase az yağlı yoğurt (418 kcal).',
+          }),
+          mealRepo.create({
+            plan_id: savedPlan.id,
+            name: 'İkindi Ara Öğün',
+            time: '16:30',
+            note: '10 adet çiğ badem ve 1 fincan yeşil çay (70 kcal).',
+          }),
+          mealRepo.create({
+            plan_id: savedPlan.id,
+            name: 'Akşam Yemeği',
+            time: '19:30',
+            note: '180g fırında somon balığı, buharda brokoli ve limonlu yeşil salata (419 kcal).',
+          }),
+        ];
+
+        await mealRepo.save(meals);
+        this.logger.log('Sample Diet Plan & Meals created for Demo Client');
+      }
     }
 
     this.logger.log('AutoSeed completed successfully!');
