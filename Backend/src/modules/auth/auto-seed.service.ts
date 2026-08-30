@@ -288,24 +288,78 @@ export class AutoSeedService implements OnApplicationBootstrap {
       this.logger.log('Demo Client fully linked to Demo Dietitian (Assignment + Subscription + ChatRoom)');
     }
 
-    // 7. Sample Foods
-    const foodCount = await foodRepo.count();
-    if (foodCount === 0) {
-      const sampleFoods = [
-        { name: 'Zeytin (Siyah)', calories: 115, protein: 0.8, fat: 10.7, carbohydrates: 6.3, unit: 'adet (5g)' },
-        { name: 'Yumurta (Haşlanmış)', calories: 155, protein: 12.6, fat: 10.6, carbohydrates: 1.1, unit: 'adet (50g)' },
-        { name: 'Yulaf Ezmesi', calories: 389, protein: 16.9, fat: 6.9, carbohydrates: 66.3, unit: 'gram (100g)' },
-        { name: 'Tavuk Göğsü (Izgara)', calories: 165, protein: 31.0, fat: 3.6, carbohydrates: 0.0, unit: 'gram (100g)' },
-        { name: 'Yoğurt (Az Yağlı)', calories: 63, protein: 5.3, fat: 1.5, carbohydrates: 7.0, unit: 'gram (100g)' },
-        { name: 'Beyaz Peynir', calories: 250, protein: 15.0, fat: 20.0, carbohydrates: 2.0, unit: 'dilim (30g)' },
-        { name: 'Badem (Çiğ)', calories: 579, protein: 21.2, fat: 49.9, carbohydrates: 21.6, unit: 'adet (10g)' },
-        { name: 'Ceviz', calories: 654, protein: 15.2, fat: 65.2, carbohydrates: 13.7, unit: 'adet (15g)' },
-        { name: 'Somon Balığı', calories: 208, protein: 20.4, fat: 13.4, carbohydrates: 0.0, unit: 'gram (100g)' },
-        { name: 'Mevsim Salatası', calories: 45, protein: 1.5, fat: 2.0, carbohydrates: 5.5, unit: 'porsiyon' },
-      ];
-      await foodRepo.save(sampleFoods);
-      this.logger.log(`Inserted ${sampleFoods.length} sample Turkish foods`);
+    // 7. Comprehensive Food Library
+    const sampleFoods = [
+      // Kahvaltılıklar
+      { name: 'Yumurta (Haşlanmış)', calories: 155, protein: 12.6, fat: 10.6, carbohydrates: 1.1, unit: 'adet (50g)' },
+      { name: 'Yumurta (Sahanda/Omlet)', calories: 180, protein: 11.5, fat: 14.0, carbohydrates: 1.2, unit: 'adet (60g)' },
+      { name: 'Beyaz Peynir (Tam Yağlı)', calories: 260, protein: 16.0, fat: 21.0, carbohydrates: 1.5, unit: 'dilim (30g)' },
+      { name: 'Lor Peyniri (Yağsız/Diyet)', calories: 98, protein: 17.0, fat: 1.5, carbohydrates: 3.5, unit: 'porsiyon (100g)' },
+      { name: 'Kaşar Peyniri', calories: 350, protein: 27.0, fat: 26.0, carbohydrates: 2.0, unit: 'dilim (30g)' },
+      { name: 'Zeytin (Siyah)', calories: 115, protein: 0.8, fat: 10.7, carbohydrates: 6.3, unit: 'adet (5g)' },
+      { name: 'Zeytin (Yeşil)', calories: 145, protein: 1.0, fat: 15.0, carbohydrates: 3.8, unit: 'adet (5g)' },
+      { name: 'Yulaf Ezmesi', calories: 389, protein: 16.9, fat: 6.9, carbohydrates: 66.3, unit: 'gram (100g)' },
+      { name: 'Tam Buğday Ekmeği', calories: 247, protein: 13.0, fat: 3.4, carbohydrates: 41.0, unit: 'dilim (30g)' },
+      { name: 'Çavdar Ekmeği', calories: 259, protein: 8.5, fat: 3.3, carbohydrates: 48.0, unit: 'dilim (30g)' },
+      { name: 'Süzme Bal', calories: 304, protein: 0.3, fat: 0.0, carbohydrates: 82.4, unit: 'tatlı kaşığı (10g)' },
+
+      // Et, Tavuk ve Balık
+      { name: 'Tavuk Göğsü (Izgara/Haşlama)', calories: 165, protein: 31.0, fat: 3.6, carbohydrates: 0.0, unit: 'gram (100g)' },
+      { name: 'Tavuk But (Fırında/Derisiz)', calories: 175, protein: 24.0, fat: 8.5, carbohydrates: 0.0, unit: 'gram (100g)' },
+      { name: 'Dana Biftek / Yağsız Kırmızı Et', calories: 215, protein: 26.0, fat: 12.0, carbohydrates: 0.0, unit: 'gram (100g)' },
+      { name: 'Izgara Köfte (Ev Yapımı)', calories: 230, protein: 19.0, fat: 15.0, carbohydrates: 4.5, unit: 'adet (40g)' },
+      { name: 'Somon Balığı (Fırın)', calories: 208, protein: 20.4, fat: 13.4, carbohydrates: 0.0, unit: 'gram (100g)' },
+      { name: 'Ton Balığı (Konserve/Suda)', calories: 116, protein: 26.0, fat: 1.0, carbohydrates: 0.0, unit: 'kutu (80g)' },
+      { name: 'Levrek / Çipura (Izgara)', calories: 125, protein: 23.0, fat: 3.5, carbohydrates: 0.0, unit: 'gram (100g)' },
+
+      // Baklagil & Tahıllar
+      { name: 'Kırmızı Mercimek Çorbası', calories: 110, protein: 6.5, fat: 3.0, carbohydrates: 15.0, unit: 'kase (200ml)' },
+      { name: 'Kuru Fasulye (Zeytinyağlı)', calories: 140, protein: 9.0, fat: 3.5, carbohydrates: 20.0, unit: 'porsiyon (150g)' },
+      { name: 'Nohut Yemeği', calories: 160, protein: 8.8, fat: 4.0, carbohydrates: 23.0, unit: 'porsiyon (150g)' },
+      { name: 'Bulgur Pilavı', calories: 150, protein: 4.5, fat: 2.0, carbohydrates: 30.0, unit: 'porsiyon (100g)' },
+      { name: 'Kepekli / Tam Buğday Makarna', calories: 158, protein: 5.8, fat: 1.2, carbohydrates: 31.0, unit: 'porsiyon (100g)' },
+      { name: 'Basmati Pirinç Pilavı', calories: 130, protein: 2.7, fat: 0.5, carbohydrates: 28.0, unit: 'porsiyon (100g)' },
+      { name: 'Kinoa (Haşlanmış)', calories: 120, protein: 4.4, fat: 1.9, carbohydrates: 21.3, unit: 'porsiyon (100g)' },
+
+      // Süt & Süt Ürünleri
+      { name: 'Yoğurt (Az Yağlı)', calories: 63, protein: 5.3, fat: 1.5, carbohydrates: 7.0, unit: 'gram (100g)' },
+      { name: 'Süzme Yoğurt', calories: 97, protein: 9.0, fat: 4.5, carbohydrates: 4.0, unit: 'gram (100g)' },
+      { name: 'Kefir (Sade)', calories: 55, protein: 3.5, fat: 2.5, carbohydrates: 4.5, unit: 'bardak (200ml)' },
+      { name: 'Yağsız Süt', calories: 35, protein: 3.4, fat: 0.1, carbohydrates: 5.0, unit: 'bardak (200ml)' },
+      { name: 'Badem Sütü (Şekersiz)', calories: 13, protein: 0.4, fat: 1.1, carbohydrates: 0.3, unit: 'bardak (200ml)' },
+
+      // Sebze & Salatalar
+      { name: 'Mevsim Salatası (Zeytinyağlı)', calories: 65, protein: 1.5, fat: 4.0, carbohydrates: 6.0, unit: 'porsiyon' },
+      { name: 'Brokoli (Buharda)', calories: 35, protein: 2.8, fat: 0.4, carbohydrates: 7.0, unit: 'porsiyon (100g)' },
+      { name: 'Ispanak Yemeği', calories: 50, protein: 3.0, fat: 2.5, carbohydrates: 4.0, unit: 'porsiyon (150g)' },
+      { name: 'Kabak Sote / Izgara', calories: 30, protein: 1.2, fat: 1.5, carbohydrates: 3.5, unit: 'porsiyon (100g)' },
+      { name: 'Közlenmiş Kırmızı Biber', calories: 35, protein: 1.0, fat: 0.5, carbohydrates: 6.5, unit: 'adet (80g)' },
+      { name: 'Salatalık & Domates Söğüş', calories: 20, protein: 0.8, fat: 0.2, carbohydrates: 3.8, unit: 'porsiyon (100g)' },
+
+      // Meyveler
+      { name: 'Muz (Orta Boy)', calories: 105, protein: 1.3, fat: 0.3, carbohydrates: 27.0, unit: 'adet (118g)' },
+      { name: 'Yeşil Elma', calories: 52, protein: 0.3, fat: 0.2, carbohydrates: 14.0, unit: 'adet (100g)' },
+      { name: 'Çilek', calories: 32, protein: 0.7, fat: 0.3, carbohydrates: 7.7, unit: 'kase (150g)' },
+      { name: 'Yaban Mersini / Böğürtlen', calories: 57, protein: 0.7, fat: 0.3, carbohydrates: 14.0, unit: 'avuç (50g)' },
+      { name: 'Portakal', calories: 62, protein: 1.2, fat: 0.2, carbohydrates: 15.4, unit: 'adet (130g)' },
+      { name: 'Avokado', calories: 160, protein: 2.0, fat: 14.7, carbohydrates: 8.5, unit: 'yarım adet (80g)' },
+
+      // Kuruyemiş & Sağlıklı Yağlar
+      { name: 'Çiğ Badem', calories: 579, protein: 21.2, fat: 49.9, carbohydrates: 21.6, unit: 'adet (10g)' },
+      { name: 'Ceviz İçi', calories: 654, protein: 15.2, fat: 65.2, carbohydrates: 13.7, unit: 'adet (15g)' },
+      { name: 'Çiğ Fındık', calories: 628, protein: 15.0, fat: 61.0, carbohydrates: 17.0, unit: 'avuç (25g)' },
+      { name: 'Fıstık Ezmesi (Şekersiz)', calories: 588, protein: 25.0, fat: 50.0, carbohydrates: 20.0, unit: 'tatlı kaşığı (15g)' },
+      { name: 'Zeytinyağı (Soğuk Sıkım)', calories: 884, protein: 0.0, fat: 100.0, carbohydrates: 0.0, unit: 'yemek kaşığı (10g)' },
+      { name: 'Chia Tohumu', calories: 486, protein: 16.5, fat: 30.7, carbohydrates: 42.1, unit: 'tatlı kaşığı (10g)' },
+    ];
+
+    for (const f of sampleFoods) {
+      const exists = await foodRepo.findOne({ where: { name: f.name } });
+      if (!exists) {
+        await foodRepo.save(foodRepo.create(f));
+      }
     }
+    this.logger.log(`Verified ${sampleFoods.length} comprehensive foods in food library`);
 
     // 8. Sample Diet Plan for Demo Client
     if (clientUser && dietitianUser) {

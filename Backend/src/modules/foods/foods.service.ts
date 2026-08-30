@@ -12,16 +12,19 @@ export class FoodsService {
   ) {}
 
   async findAll(search?: string) {
-    if (search) {
+    if (search && search.trim().length > 0) {
+      const q = search.trim();
       return this.foodRepository.find({
         where: [
-          { name: ILike(`%${search}%`) },
+          { name: ILike(`%${q}%`) },
         ],
-        take: 20,
+        order: { name: 'ASC' },
+        take: 50,
       });
     }
     return this.foodRepository.find({
-      take: 20,
+      order: { name: 'ASC' },
+      take: 50,
     });
   }
 

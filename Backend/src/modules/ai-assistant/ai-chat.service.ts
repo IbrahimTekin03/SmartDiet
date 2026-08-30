@@ -45,9 +45,10 @@ export class AiChatService {
   }
 
   private hasRole(user: any, roleName: string): boolean {
-    return (user?.roles || []).some((r: Role | string) => {
-      if (typeof r === 'string') return r === roleName;
-      return r.name === roleName;
+    const target = roleName.toLowerCase().trim();
+    return (user?.roles || []).some((r: any) => {
+      const name = typeof r === 'string' ? r : r?.name;
+      return String(name || '').toLowerCase().trim() === target;
     });
   }
 
@@ -269,12 +270,18 @@ export class AiChatService {
   }
 
   async processChat(user: any, prompt: string, sessionId?: string, uiContext?: { planId?: string; date?: string }) {
-    const isDietitian = this.hasRole(user, 'Diyetisyen');
-    const isClient = this.hasRole(user, 'client') || this.hasRole(user, 'Danışan');
+    const isDietitian =
+      this.hasRole(user, 'Diyetisyen') ||
+      this.hasRole(user, 'dietitian') ||
+      this.hasRole(user, 'diyetisyen') ||
+      String(user?.email || '').toLowerCase().includes('dietitian');
 
-    if (!isDietitian && !isClient) {
-      throw new InternalServerErrorException('Kullanıcı rolü tanımlanamadı.');
-    }
+    const isClient =
+      this.hasRole(user, 'client') ||
+      this.hasRole(user, 'Danışan') ||
+      this.hasRole(user, 'danisan') ||
+      this.hasRole(user, 'user') ||
+      !isDietitian;
 
     const userRole = isDietitian ? 'Diyetisyen' : 'Danışan';
 

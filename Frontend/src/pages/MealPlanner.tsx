@@ -74,46 +74,79 @@ const MealFoodSearch = React.memo(function MealFoodSearch({
 }) {
   const [foodSearch, setFoodSearch] = useState("");
   const [foodResults, setFoodResults] = useState<Food[]>([]);
+  const [isOpen, setIsOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState(false);
+  const dropdownRef = React.useRef<HTMLDivElement>(null);
+
+  const fetchFoods = (query = "") => {
+    setIsLoading(true);
+    const url = query.trim().length > 0
+      ? `${API_BASE}/api/foods?search=${encodeURIComponent(query.trim())}`
+      : `${API_BASE}/api/foods`;
+
+    fetch(url)
+      .then((res) => (res.ok ? res.json() : Promise.reject()))
+      .then((data) => {
+        setFoodResults(data.data || []);
+        setIsLoading(false);
+      })
+      .catch(() => {
+        setFoodResults([]);
+        setIsLoading(false);
+      });
+  };
 
   useEffect(() => {
-    if (foodSearch.length < 2) {
-      setFoodResults([]);
-      setError(false);
-      return;
-    }
-
-    setIsLoading(true);
-    setError(false);
     const timer = setTimeout(() => {
-      fetch(`${API_BASE}/api/foods?search=${foodSearch}`)
-        .then((res) => {
-          if (!res.ok) throw new Error();
-          return res.json();
-        })
-        .then((data) => {
-          setFoodResults(data.data || []);
-          setIsLoading(false);
-        })
-        .catch(() => {
-          setError(true);
-          setIsLoading(false);
-        });
-    }, 300);
-
+      if (isOpen) {
+        fetchFoods(foodSearch);
+      }
+    }, 200);
     return () => clearTimeout(timer);
-  }, [foodSearch]);
+  }, [foodSearch, isOpen]);
+
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(e.target as Node)) {
+        setIsOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
+
+  const handleAddCustom = () => {
+    if (!foodSearch.trim()) return;
+    const customFood: Food = {
+      id: "custom-" + Date.now(),
+      name: foodSearch.trim(),
+      calories: 100,
+      protein: 5,
+      fat: 2,
+      carbohydrates: 15,
+      unit: "100g",
+    };
+    onAddFood(mealId, customFood);
+    setFoodSearch("");
+    setIsOpen(false);
+  };
 
   return (
-    <div className="relative">
+    <div className="relative" ref={dropdownRef}>
       <div className="relative">
         <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
         <input
-          placeholder={lang === "tr" ? "Besin ara (örn: Yulaf, Tavuk göğsü, Zeytinyağı)..." : "Search foods..."}
+          placeholder={lang === "tr" ? "Besin ara veya seç (örn: Yulaf, Tavuk göğsü, Zeytin)..." : "Search or pick food..."}
           value={foodSearch}
-          onChange={(e) => setFoodSearch(e.target.value)}
-          onFocus={() => onFocus?.()}
+          onChange={(e) => {
+            setFoodSearch(e.target.value);
+            setIsOpen(true);
+          }}
+          onFocus={() => {
+            setIsOpen(true);
+            fetchFoods(foodSearch);
+            onFocus?.();
+          }}
           className={`w-full rounded-2xl border pl-10 pr-10 py-3 text-xs font-semibold outline-none transition ${
             isDark
               ? "border-white/10 bg-black/40 text-white placeholder:text-slate-500 focus:border-emerald-500"
@@ -126,50 +159,62 @@ const MealFoodSearch = React.memo(function MealFoodSearch({
           </div>
         )}
 
-        {foodResults.length > 0 && (
+        {isOpen && (
           <div
-            className={`absolute left-0 right-0 top-full mt-2 max-h-64 overflow-y-auto rounded-2xl border p-2 shadow-2xl z-[100] ${
-              isDark ? "border-white/10 bg-slate-900/95 backdrop-blur-md" : "border-slate-200 bg-white"
+            className={`absolute left-0 right-0 top-full mt-2 max-h-72 overflow-y-auto rounded-2xl border p-2 shadow-2xl z-[100] ${
+              isDark ? "border-white/10 bg-slate-900/98 backdrop-blur-md" : "border-slate-200 bg-white"
             }`}
           >
-            {foodResults.map((food) => (
-              <button
-                key={food.id}
-                type="button"
-                onClick={() => {
-                  onAddFood(mealId, food);
-                  setFoodSearch("");
-                  setFoodResults([]);
-                }}
-                className={`flex w-full items-center justify-between p-3 text-left rounded-xl transition ${
-                  isDark ? "hover:bg-white/5" : "hover:bg-slate-50"
-                }`}
-              >
-                <div>
-                  <div className={`text-sm font-bold ${isDark ? "text-white" : "text-slate-900"}`}>{food.name}</div>
-                  <div className="text-xs text-emerald-400 mt-0.5 font-mono font-bold">
-                    {food.calories} kcal / 100g
-                  </div>
+            {foodResults.length > 0 ? (
+              <div className="space-y-1">
+                <div className={`px-3 py-1.5 text-[10px] font-black uppercase tracking-wider ${isDark ? "text-slate-500" : "text-slate-400"}`}>
+                  {foodSearch ? (lang === "tr" ? "Arama Sonuçları" : "Search Results") : (lang === "tr" ? "Popüler Besinler & Kütüphane" : "Food Library")}
                 </div>
-                <div className="flex items-center gap-2.5 text-xs font-mono font-bold">
-                  <span className="text-emerald-400">P:{food.protein}g</span>
-                  <span className="text-amber-400">Y:{food.fat}g</span>
-                  <span className="text-cyan-400">K:{food.carbohydrates}g</span>
-                  <Plus className="h-4 w-4 text-emerald-400 ml-1.5" />
-                </div>
-
-              </button>
-            ))}
-          </div>
-        )}
-
-        {foodSearch.length >= 2 && !isLoading && foodResults.length === 0 && !error && (
-          <div
-            className={`absolute left-0 right-0 top-full mt-2 rounded-2xl border p-4 text-center text-xs font-semibold z-[100] ${
-              isDark ? "border-white/10 bg-slate-900 text-slate-400" : "border-slate-200 bg-white text-slate-500"
-            }`}
-          >
-            {lang === "tr" ? "Eşleşen besin bulunamadı." : "No matching foods found."}
+                {foodResults.map((food) => (
+                  <button
+                    key={food.id}
+                    type="button"
+                    onClick={() => {
+                      onAddFood(mealId, food);
+                      setFoodSearch("");
+                      setIsOpen(false);
+                    }}
+                    className={`flex w-full items-center justify-between p-3 text-left rounded-xl transition ${
+                      isDark ? "hover:bg-white/5" : "hover:bg-emerald-50/70"
+                    }`}
+                  >
+                    <div>
+                      <div className={`text-sm font-bold ${isDark ? "text-white" : "text-slate-900"}`}>{food.name}</div>
+                      <div className="text-xs text-emerald-500 mt-0.5 font-mono font-bold">
+                        {food.calories} kcal {food.unit ? `(${food.unit})` : "/ 100g"}
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2.5 text-xs font-mono font-bold">
+                      <span className="text-emerald-500">P:{food.protein}g</span>
+                      <span className="text-amber-500">Y:{food.fat}g</span>
+                      <span className="text-cyan-500">K:{food.carbohydrates}g</span>
+                      <Plus className="h-4 w-4 text-emerald-500 ml-1.5" />
+                    </div>
+                  </button>
+                ))}
+              </div>
+            ) : !isLoading ? (
+              <div className="p-4 text-center">
+                <p className={`text-xs font-semibold ${isDark ? "text-slate-400" : "text-slate-500"}`}>
+                  {lang === "tr" ? "Kütüphanede eşleşen besin bulunamadı." : "No matching food found in library."}
+                </p>
+                {foodSearch.trim().length > 0 && (
+                  <button
+                    type="button"
+                    onClick={handleAddCustom}
+                    className="mt-3 inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-emerald-500/15 text-emerald-400 hover:bg-emerald-500/25 text-xs font-bold transition"
+                  >
+                    <Plus className="h-3.5 w-3.5" />
+                    <span>"{foodSearch.trim()}" {lang === "tr" ? "olarak ekle" : "add custom"}</span>
+                  </button>
+                )}
+              </div>
+            ) : null}
           </div>
         )}
       </div>
