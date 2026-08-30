@@ -118,7 +118,7 @@ type Clinic = {
   updatedAt?: string;
 };
 
-const API_BASE = "http://localhost:3000";
+import { API_BASE_URL as API_BASE } from "../lib/api";
 
 const COPY = {
   tr: {

@@ -1,6 +1,24 @@
 import React, { useState, useEffect, useCallback } from "react";
 import { useAppSettings } from "../context/AppSettingsContext";
 import { Link, useSearchParams, useNavigate } from "react-router-dom";
+import { 
+  Utensils, 
+  Search, 
+  Plus, 
+  Trash2, 
+  Calendar, 
+  Clock, 
+  Save, 
+  ChevronLeft, 
+  Sparkles, 
+  Flame, 
+  Activity, 
+  User, 
+  AlertCircle,
+  CheckCircle2,
+  Copy,
+  Info
+} from "lucide-react";
 
 type Client = {
   user_id: string;
@@ -23,7 +41,7 @@ type MealItem = {
   id: string;
   food_id: string;
   name: string;
-  amount: number; // grams
+  amount: number;
   calories: number;
   protein: number;
   fat: number;
@@ -39,12 +57,23 @@ type Meal = {
   day_of_week?: number;
 };
 
-const API_BASE = "http://localhost:3000";
+import { API_BASE_URL as API_BASE } from "../lib/api";
 
-const MealFoodSearch = React.memo(function MealFoodSearch({ mealId, isDark, lang, onAddFood, onFocus }: { mealId: string, isDark: boolean, lang: string, onAddFood: (mealId: string, food: Food) => void, onFocus?: () => void }) {
+const MealFoodSearch = React.memo(function MealFoodSearch({
+  mealId,
+  isDark,
+  lang,
+  onAddFood,
+  onFocus,
+}: {
+  mealId: string;
+  isDark: boolean;
+  lang: string;
+  onAddFood: (mealId: string, food: Food) => void;
+  onFocus?: () => void;
+}) {
   const [foodSearch, setFoodSearch] = useState("");
   const [foodResults, setFoodResults] = useState<Food[]>([]);
-
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState(false);
 
@@ -78,49 +107,71 @@ const MealFoodSearch = React.memo(function MealFoodSearch({ mealId, isDark, lang
 
   return (
     <div className="relative">
-      <div className="flex items-center gap-3">
-        <div className="relative flex-1">
-          <input 
-            placeholder={lang === "tr" ? "Yiyecek ara..." : "Search foods..."}
-            value={foodSearch}
-            onChange={(e) => setFoodSearch(e.target.value)}
-            onFocus={() => onFocus?.()}
-            className={isDark ? "w-full rounded-2xl bg-black/40 border border-white/10 px-4 py-3 text-xs text-white outline-none focus:border-emerald-500" : "w-full rounded-2xl bg-zinc-50 border border-[#325d51]/10 px-4 py-3 text-xs text-[#0e2d27] outline-none focus:border-emerald-500"}
-          />
-          {isLoading && (
-            <div className="absolute right-3 top-3.5">
-              <div className="h-4 w-4 animate-spin rounded-full border-2 border-emerald-500 border-t-transparent" />
-            </div>
-          )}
-          {foodResults.length > 0 && (
-            <div className={isDark ? "absolute top-full left-0 right-0 mt-2 max-h-64 overflow-y-auto rounded-2xl border border-white/10 bg-zinc-900 shadow-2xl z-[100] p-2" : "absolute top-full left-0 right-0 mt-2 max-h-64 overflow-y-auto rounded-2xl border border-[#325d51]/10 bg-white shadow-2xl z-[100] p-2"}>
-              {foodResults.map((food) => (
-                <button
-                  key={food.id}
-                  onClick={() => {
-                    onAddFood(mealId, food);
-                    setFoodSearch("");
-                    setFoodResults([]);
-                  }}
-                  className={isDark ? "flex w-full flex-col p-3 text-left hover:bg-emerald-500/10 rounded-xl transition-all" : "flex w-full flex-col p-3 text-left hover:bg-emerald-500/5 rounded-xl transition-all"}
-                >
-                  <span className={isDark ? "text-xs font-bold text-white" : "text-xs font-bold text-[#0e2d27]"}>{food.name}</span>
-                  <span className="text-[10px] text-zinc-500">{food.calories}kcal | P:{food.protein}g | K:{food.carbohydrates}g</span>
-                </button>
-              ))}
-            </div>
-          )}
-          {foodSearch.length >= 2 && !isLoading && foodResults.length === 0 && !error && (
-              <div className={isDark ? "absolute top-full left-0 right-0 mt-2 rounded-2xl border border-white/10 bg-zinc-900 p-4 text-center text-[10px] text-zinc-500 z-[100]" : "absolute top-full left-0 right-0 mt-2 rounded-2xl border border-[#325d51]/10 bg-white p-4 text-center text-[10px] text-zinc-500 z-[100]"}>
-                 {lang === "tr" ? "Sonuç bulunamadı." : "No results found."}
-              </div>
-          )}
-          {error && (
-            <div className={isDark ? "absolute top-full left-0 right-0 mt-2 rounded-2xl border border-rose-500/50 bg-rose-500/10 p-4 text-center text-[10px] text-rose-500 z-[100]" : "absolute top-full left-0 right-0 mt-2 rounded-2xl border border-rose-500/50 bg-rose-50 p-4 text-center text-[10px] text-rose-500 z-[100]"}>
-               {lang === "tr" ? "Arama sırasında bir hata oluştu." : "Error during search."}
-            </div>
-          )}
-        </div>
+      <div className="relative">
+        <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+        <input
+          placeholder={lang === "tr" ? "Besin ara (örn: Yulaf, Tavuk göğsü, Zeytinyağı)..." : "Search foods..."}
+          value={foodSearch}
+          onChange={(e) => setFoodSearch(e.target.value)}
+          onFocus={() => onFocus?.()}
+          className={`w-full rounded-2xl border pl-10 pr-10 py-3 text-xs font-semibold outline-none transition ${
+            isDark
+              ? "border-white/10 bg-black/40 text-white placeholder:text-slate-500 focus:border-emerald-500"
+              : "border-slate-200 bg-slate-50 text-slate-900 placeholder:text-slate-400 focus:border-emerald-500"
+          }`}
+        />
+        {isLoading && (
+          <div className="absolute right-3.5 top-1/2 -translate-y-1/2">
+            <div className="h-4 w-4 animate-spin rounded-full border-2 border-emerald-500 border-t-transparent" />
+          </div>
+        )}
+
+        {foodResults.length > 0 && (
+          <div
+            className={`absolute left-0 right-0 top-full mt-2 max-h-64 overflow-y-auto rounded-2xl border p-2 shadow-2xl z-[100] ${
+              isDark ? "border-white/10 bg-slate-900/95 backdrop-blur-md" : "border-slate-200 bg-white"
+            }`}
+          >
+            {foodResults.map((food) => (
+              <button
+                key={food.id}
+                type="button"
+                onClick={() => {
+                  onAddFood(mealId, food);
+                  setFoodSearch("");
+                  setFoodResults([]);
+                }}
+                className={`flex w-full items-center justify-between p-3 text-left rounded-xl transition ${
+                  isDark ? "hover:bg-white/5" : "hover:bg-slate-50"
+                }`}
+              >
+                <div>
+                  <div className={`text-sm font-bold ${isDark ? "text-white" : "text-slate-900"}`}>{food.name}</div>
+                  <div className="text-xs text-emerald-400 mt-0.5 font-mono font-bold">
+                    {food.calories} kcal / 100g
+                  </div>
+                </div>
+                <div className="flex items-center gap-2.5 text-xs font-mono font-bold">
+                  <span className="text-emerald-400">P:{food.protein}g</span>
+                  <span className="text-amber-400">Y:{food.fat}g</span>
+                  <span className="text-cyan-400">K:{food.carbohydrates}g</span>
+                  <Plus className="h-4 w-4 text-emerald-400 ml-1.5" />
+                </div>
+
+              </button>
+            ))}
+          </div>
+        )}
+
+        {foodSearch.length >= 2 && !isLoading && foodResults.length === 0 && !error && (
+          <div
+            className={`absolute left-0 right-0 top-full mt-2 rounded-2xl border p-4 text-center text-xs font-semibold z-[100] ${
+              isDark ? "border-white/10 bg-slate-900 text-slate-400" : "border-slate-200 bg-white text-slate-500"
+            }`}
+          >
+            {lang === "tr" ? "Eşleşen besin bulunamadı." : "No matching foods found."}
+          </div>
+        )}
       </div>
     </div>
   );
@@ -141,25 +192,24 @@ export default function MealPlanner() {
     const defaultMeals: Meal[] = [];
     for (let day = 1; day <= 7; day++) {
       defaultMeals.push(
-        { id: Math.random().toString(36).substr(2, 9), name: "Kahvaltı", time: "08:00", items: [], note: "", day_of_week: day },
+        { id: Math.random().toString(36).substr(2, 9), name: "Kahvaltı", time: "08:30", items: [], note: "", day_of_week: day },
         { id: Math.random().toString(36).substr(2, 9), name: "Öğle Yemeği", time: "13:00", items: [], note: "", day_of_week: day },
-        { id: Math.random().toString(36).substr(2, 9), name: "Akşam Yemeği", time: "19:00", items: [], note: "", day_of_week: day }
+        { id: Math.random().toString(36).substr(2, 9), name: "Ara Öğün", time: "16:30", items: [], note: "", day_of_week: day },
+        { id: Math.random().toString(36).substr(2, 9), name: "Akşam Yemeği", time: "19:30", items: [], note: "", day_of_week: day }
       );
     }
     return defaultMeals;
   });
+
   const [loading, setLoading] = useState(true);
-  
-  // Plan Title state
   const [planTitle, setPlanTitle] = useState("");
   const [isSaving, setIsSaving] = useState(false);
+  const [savedSuccess, setSavedSuccess] = useState(false);
   const [startDate, setStartDate] = useState(() => {
     const d = new Date();
     d.setDate(d.getDate() + 1);
-    return d.toISOString().split('T')[0];
+    return d.toISOString().split("T")[0];
   });
-
-  // We will handle search individually per meal to prevent state collisions.
 
   useEffect(() => {
     const token = localStorage.getItem("access_token");
@@ -185,42 +235,36 @@ export default function MealPlanner() {
   const handlePlanTypeChange = (type: string) => {
     const oldType = planType;
     setPlanType(type);
-    
-    if (type === 'weekly' || type === 'monthly') {
-      const daysCount = type === 'weekly' ? 7 : 30;
+
+    if (type === "weekly" || type === "monthly") {
+      const daysCount = type === "weekly" ? 7 : 30;
       const newMeals: Meal[] = [];
-      
-      // Eğer önceden 'daily' idiyse, daily öğünlerini 1. güne koyup diğer günlere çoğaltalım
-      if (oldType === 'daily') {
+
+      if (oldType === "daily") {
         for (let day = 1; day <= daysCount; day++) {
-          meals.forEach(m => {
+          meals.forEach((m) => {
             newMeals.push({
               ...m,
-              id: Math.random().toString(36).substr(2, 9), // ID çakışmaması için yeni ID
+              id: Math.random().toString(36).substr(2, 9),
               day_of_week: day,
-              // Alt öğeleri (items) de derin kopyalayalım
-              items: m.items.map(item => ({ ...item, id: Math.random().toString(36).substr(2, 9) }))
+              items: m.items.map((item) => ({ ...item, id: Math.random().toString(36).substr(2, 9) })),
             });
           });
         }
       } else {
-        // Zaten haftalık/aylık arasındaysa, mevcut günleri koruyup eksik günleri tamamlayalım veya fazlaları kırpalım
-        const currentMaxDay = oldType === 'weekly' ? 7 : 30;
-        
+        const currentMaxDay = oldType === "weekly" ? 7 : 30;
         for (let day = 1; day <= daysCount; day++) {
           if (day <= currentMaxDay) {
-            // Mevcut güne ait öğünleri koru
-            const dayMeals = meals.filter(m => m.day_of_week === day);
+            const dayMeals = meals.filter((m) => m.day_of_week === day);
             newMeals.push(...dayMeals);
           } else {
-            // Eksik günler için 1. günün öğünlerini şablon olarak kopyala
-            const day1Meals = meals.filter(m => m.day_of_week === 1);
-            day1Meals.forEach(m => {
+            const day1Meals = meals.filter((m) => m.day_of_week === 1);
+            day1Meals.forEach((m) => {
               newMeals.push({
                 ...m,
                 id: Math.random().toString(36).substr(2, 9),
                 day_of_week: day,
-                items: m.items.map(item => ({ ...item, id: Math.random().toString(36).substr(2, 9) }))
+                items: m.items.map((item) => ({ ...item, id: Math.random().toString(36).substr(2, 9) })),
               });
             });
           }
@@ -229,15 +273,14 @@ export default function MealPlanner() {
       setMeals(newMeals);
       setSelectedDay(1);
     } else {
-      // 'daily' ye geçiyorsak, kullanıcının o an seçtiği günün (selectedDay) öğünlerini daily yapalım
-      const currentDayMeals = meals.filter(m => m.day_of_week === selectedDay);
-      const baseMeals = currentDayMeals.length > 0 ? currentDayMeals : meals.filter(m => m.day_of_week === 1);
-      
-      const dailyMeals = (baseMeals.length > 0 ? baseMeals : meals).map(m => ({
+      const currentDayMeals = meals.filter((m) => m.day_of_week === selectedDay);
+      const baseMeals = currentDayMeals.length > 0 ? currentDayMeals : meals.filter((m) => m.day_of_week === 1);
+
+      const dailyMeals = (baseMeals.length > 0 ? baseMeals : meals).map((m) => ({
         ...m,
         id: Math.random().toString(36).substr(2, 9),
         day_of_week: undefined,
-        items: m.items.map(item => ({ ...item, id: Math.random().toString(36).substr(2, 9) }))
+        items: m.items.map((item) => ({ ...item, id: Math.random().toString(36).substr(2, 9) })),
       }));
       setMeals(dailyMeals);
     }
@@ -247,10 +290,10 @@ export default function MealPlanner() {
     const newMeal: Meal = {
       id: Math.random().toString(36).substr(2, 9),
       name: lang === "tr" ? `Öğün ${meals.length + 1}` : `Meal ${meals.length + 1}`,
-      time: "",
+      time: "12:00",
       items: [],
       note: "",
-      day_of_week: planType === 'weekly' ? selectedDay : undefined,
+      day_of_week: ["weekly", "monthly"].includes(planType) ? selectedDay : undefined,
     };
     setMeals([...meals, newMeal]);
   };
@@ -282,7 +325,7 @@ export default function MealPlanner() {
           return { ...m, items: [...m.items, newItem] };
         }
         return m;
-      })
+      }),
     );
   }, []);
 
@@ -292,7 +335,7 @@ export default function MealPlanner() {
         if (m.id === mealId) {
           const updatedItems = m.items.map((item) => {
             if (item.id === itemId) {
-              const ratio = amount / item.amount;
+              const ratio = amount / (item.amount || 1);
               return {
                 ...item,
                 amount: amount,
@@ -307,7 +350,7 @@ export default function MealPlanner() {
           return { ...m, items: updatedItems };
         }
         return m;
-      })
+      }),
     );
   };
 
@@ -318,7 +361,7 @@ export default function MealPlanner() {
           return { ...m, items: m.items.filter((i) => i.id !== itemId) };
         }
         return m;
-      })
+      }),
     );
   };
 
@@ -330,20 +373,23 @@ export default function MealPlanner() {
         fat: acc.fat + curr.fat,
         carbs: acc.carbs + curr.carbohydrates,
       }),
-      { calories: 0, protein: 0, fat: 0, carbs: 0 }
+      { calories: 0, protein: 0, fat: 0, carbs: 0 },
     );
   };
+
+  const currentVisibleMeals = meals.filter((m) =>
+    ["weekly", "monthly"].includes(planType) ? m.day_of_week === selectedDay : true,
+  );
+
+  const totalDayCalories = currentVisibleMeals.reduce((acc, m) => acc + calculateMealTotals(m).calories, 0);
+  const totalDayProtein = currentVisibleMeals.reduce((acc, m) => acc + calculateMealTotals(m).protein, 0);
+  const totalDayFat = currentVisibleMeals.reduce((acc, m) => acc + calculateMealTotals(m).fat, 0);
+  const totalDayCarbs = currentVisibleMeals.reduce((acc, m) => acc + calculateMealTotals(m).carbs, 0);
 
   const handleSavePlan = async () => {
     if (!selectedClient) return;
     if (!planTitle.trim()) {
       alert(lang === "tr" ? "Lütfen bir plan başlığı girin." : "Please enter a plan title.");
-      return;
-    }
-
-    const emptyMealNames = meals.some(m => !m.name.trim());
-    if (emptyMealNames) {
-      alert(lang === "tr" ? "Lütfen tüm öğünlere bir ad verin." : "Please give a name to all meals.");
       return;
     }
 
@@ -377,347 +423,367 @@ export default function MealPlanner() {
         body: JSON.stringify(payload),
       });
 
-      const data = await res.json();
       if (res.ok) {
-        alert(lang === "tr" ? "Diyet planı başarıyla kaydedildi!" : "Diet plan saved successfully!");
-      } else {
-        alert(data.message || (lang === "tr" ? "Bir hata oluştu." : "An error occurred."));
+        setSavedSuccess(true);
+        setTimeout(() => setSavedSuccess(false), 4000);
       }
-    } catch (error) {
-      alert(lang === "tr" ? "Sunucuya ulaşılamadı." : "Could not connect to server.");
+    } catch {
+      alert("Error saving plan");
     } finally {
       setIsSaving(false);
     }
   };
 
   return (
-    <div className="relative min-h-screen w-screen overflow-hidden">
-      {/* Background & Effects */}
-      <div className="pointer-events-none absolute inset-0">
-        <div
-          className={
-            isDark
-              ? "absolute inset-0 opacity-100 [background:radial-gradient(1100px_700px_at_18%_15%,rgba(16,185,129,0.12),transparent_60%),linear-gradient(180deg,#050608,#07090b_55%,#050608)]"
-              : "absolute inset-0 opacity-[0.99] [background:radial-gradient(1180px_740px_at_12%_0%,rgba(22,128,101,0.15),transparent_58%),linear-gradient(180deg,#e8f0eb,#dee8e2_56%,#dbe5df)]"
-          }
-        />
-      </div>
+    <div className={`min-h-screen flex flex-col ${isDark ? "bg-[#040711] text-white" : "bg-[#f8fafc] text-slate-900"}`}>
+      {/* Top Header */}
+      <header className={`h-16 px-6 border-b flex items-center justify-between backdrop-blur-md sticky top-0 z-40 ${
+        isDark ? "border-white/10 bg-slate-950/70" : "border-slate-200 bg-white/70"
+      }`}>
+        <div className="flex items-center gap-4">
+          <button
+            type="button"
+            onClick={() => navigate(-1)}
+            className="flex items-center gap-1.5 rounded-xl border border-white/10 px-3 py-1.5 text-xs font-bold hover:bg-white/5 transition"
+          >
+            <ChevronLeft className="h-4 w-4" />
+            <span>{lang === "tr" ? "Geri" : "Back"}</span>
+          </button>
 
-      <div className="relative z-10 flex h-screen flex-col">
-        {/* Header */}
-        <header className="flex h-16 items-center justify-between border-b border-white/5 bg-white/5 px-6">
-          <div className="flex items-center gap-4">
-            <button
-              type="button"
-              onClick={() => navigate(-1)}
-              className={[
-                "inline-flex items-center gap-1.5 text-[11px] font-black transition rounded-full px-3 py-1.5 mr-2",
-                isDark
-                  ? "border border-transparent bg-emerald-950/40 text-emerald-300 hover:bg-emerald-900/40 shadow-[0_4px_16px_rgba(0,0,0,0.2)]"
-                  : "border border-[#2f6154]/25 bg-[#edf6ec] text-[#285743] hover:bg-white shadow-sm",
-              ].join(" ")}
-            >
-              <svg className="h-3 w-3 shrink-0 stroke-current" viewBox="0 0 24 24" fill="none" strokeWidth="2.5">
-                <path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" />
-              </svg>
-              {lang === "tr" ? "Geri" : "Back"}
-            </button>
-            <Link to="/" className="flex items-center gap-2">
-              <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-emerald-500 font-bold text-white text-xs">SD</div>
-              <span className={isDark ? "font-bold text-white" : "font-bold text-[#0e2d27]"}>SmartDiet</span>
-            </Link>
-            <div className="h-4 w-[1px] bg-white/10 mx-2" />
-            <h1 className={isDark ? "text-sm font-medium text-zinc-300" : "text-sm font-medium text-[#36544c]"}>
-              {lang === "tr" ? "Öğün Planlayıcı" : "Meal Planner"}
-            </h1>
-          </div>
-          <div className="flex items-center gap-3">
-            <button 
-              onClick={handleSavePlan}
-              disabled={isSaving}
-              className={[
-                "rounded-full px-4 py-1.5 text-xs font-bold text-white transition-all",
-                isSaving ? "opacity-50 cursor-not-allowed" : "",
-                isDark ? "bg-emerald-500 hover:bg-emerald-400" : "bg-emerald-600 hover:bg-emerald-500"
-              ].join(" ")}
-            >
-              {isSaving ? (lang === "tr" ? "Kaydediliyor..." : "Saving...") : (lang === "tr" ? "Kaydet" : "Save Plan")}
-            </button>
-          </div>
-        </header>
-
-        {/* Main Content */}
-        <div className="flex flex-1 overflow-hidden">
-          {/* Sidebar - Client List */}
-          <aside className={isDark ? "w-72 border-r border-white/5 bg-black/20" : "w-72 border-r border-[#325d51]/10 bg-white/40"}>
-            <div className="p-4 border-b border-white/5">
-              <div className={isDark ? "text-xs font-bold uppercase tracking-wider text-zinc-500" : "text-xs font-bold uppercase tracking-wider text-[#4d6b62]"}>
-                {lang === "tr" ? "Atanan Danışanlar" : "Assigned Clients"}
+          <div className="flex items-center gap-2">
+            <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-gradient-to-tr from-emerald-500 to-teal-400 p-0.5">
+              <div className="flex h-full w-full items-center justify-center rounded-[10px] bg-[#040711] text-emerald-400">
+                <Utensils className="h-4 w-4" />
               </div>
             </div>
-            <div className="overflow-y-auto h-[calc(100vh-130px)]">
-              {loading ? (
-                <div className="p-4">
-                  <div className="h-10 w-full animate-pulse rounded-xl bg-white/5" />
-                  <div className="mt-2 h-10 w-full animate-pulse rounded-xl bg-white/5" />
-                </div>
-              ) : (
-                clients.map((c) => (
+            <span className="font-display font-black text-sm tracking-tight">SmartDiet Builder</span>
+          </div>
+        </div>
+
+        <div className="flex items-center gap-3">
+          {savedSuccess && (
+            <div className="flex items-center gap-1.5 text-xs font-black text-emerald-400 bg-emerald-500/10 border border-emerald-500/30 px-3 py-1.5 rounded-xl animate-fadeInUp">
+              <CheckCircle2 className="h-4 w-4" />
+              <span>{lang === "tr" ? "Plan Başarıyla Kaydedildi!" : "Plan Saved!"}</span>
+            </div>
+          )}
+
+          <button
+            type="button"
+            onClick={handleSavePlan}
+            disabled={isSaving || !selectedClient}
+            className="flex items-center gap-2 rounded-2xl bg-gradient-to-r from-emerald-500 to-teal-400 px-6 py-2.5 text-xs font-black text-slate-950 shadow-lg shadow-emerald-500/25 hover:brightness-110 transition disabled:opacity-50"
+          >
+            <Save className="h-4 w-4" />
+            <span>{isSaving ? (lang === "tr" ? "Kaydediliyor..." : "Saving...") : (lang === "tr" ? "Planı Kaydet" : "Save Plan")}</span>
+          </button>
+        </div>
+      </header>
+
+      {/* Main Builder Grid */}
+      <div className="flex flex-1 overflow-hidden">
+        {/* Sidebar: Client Picker */}
+        <aside className={`w-72 border-r flex flex-col ${
+          isDark ? "border-white/10 bg-slate-950/40" : "border-slate-200 bg-white"
+        }`}>
+          <div className="p-4 border-b border-white/5 flex items-center gap-2 text-xs font-black uppercase tracking-wider text-slate-400">
+            <User className="h-4 w-4 text-emerald-400" />
+            <span>{lang === "tr" ? "Danışan Seçin" : "Select Client"}</span>
+          </div>
+
+          <div className="flex-1 overflow-y-auto p-3 space-y-1.5">
+            {loading ? (
+              <div className="p-4 text-xs text-slate-500">{lang === "tr" ? "Yükleniyor..." : "Loading..."}</div>
+            ) : (
+              clients.map((c) => {
+                const isSelected = selectedClient?.user_id === c.user_id;
+                return (
                   <button
                     key={c.user_id}
+                    type="button"
                     onClick={() => setSelectedClient(c)}
-                    className={[
-                      "flex w-full flex-col p-4 text-left transition hover:bg-white/5",
-                      selectedClient?.user_id === c.user_id ? (isDark ? "bg-emerald-500/10 ring-1 ring-emerald-500/20" : "bg-emerald-500/5 ring-1 ring-emerald-500/20") : ""
-                    ].join(" ")}
+                    className={`w-full flex items-center gap-3 p-3 rounded-2xl text-left border transition ${
+                      isSelected
+                        ? "border-emerald-500/40 bg-emerald-500/10 text-emerald-300 ring-1 ring-emerald-500/30"
+                        : isDark ? "border-transparent hover:bg-white/5" : "border-transparent hover:bg-slate-50"
+                    }`}
                   >
-                    <span className={isDark ? "text-sm font-semibold text-white" : "text-sm font-semibold text-[#0e2d27]"}>
-                      {c.first_name} {c.last_name}
-                    </span>
+                    <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-emerald-500/15 text-emerald-400 font-display font-black text-xs">
+                      {c.first_name[0]}{c.last_name[0]}
+                    </div>
+                    <div className="min-w-0">
+                      <div className="truncate text-xs font-bold">{c.first_name} {c.last_name}</div>
+                    </div>
                   </button>
-                ))
-              )}
-            </div>
-          </aside>
+                );
+              })
+            )}
+          </div>
+        </aside>
 
-          {/* Content Area */}
-          <main className="flex-1 overflow-y-auto p-8">
-            {!selectedClient ? (
-              <div className="flex h-full items-center justify-center text-center">
-                <div className="max-w-md">
-                  <div className="mx-auto flex h-20 w-20 items-center justify-center rounded-full bg-emerald-500/10 text-emerald-500">
-                    <svg className="h-10 w-10" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-                    </svg>
-                  </div>
-                  <h2 className={isDark ? "mt-4 text-xl font-bold text-white" : "mt-4 text-xl font-bold text-[#0e2d27]"}>
-                    {lang === "tr" ? "Bir Danışan Seçin" : "Select a Client"}
-                  </h2>
-                  <p className={isDark ? "mt-2 text-zinc-400" : "mt-2 text-[#4d6b62]"}>
-                    {lang === "tr" ? "Plan hazırlamak istediğiniz danışanı soldaki listeden seçin." : "Select a client from the list on the left to prepare a meal plan."}
-                  </p>
-                </div>
+        {/* Center Workspace */}
+        <main className="flex-1 overflow-y-auto p-8">
+          {!selectedClient ? (
+            <div className="flex h-full items-center justify-center text-center">
+              <div className="max-w-md p-8 rounded-[32px] border border-dashed border-white/10">
+                <User className="mx-auto h-10 w-10 text-slate-500 mb-3" />
+                <h3 className="font-display text-base font-black">{lang === "tr" ? "Danışan Seçilmedi" : "No Client Selected"}</h3>
+                <p className="mt-1 text-xs text-slate-400">
+                  {lang === "tr" ? "Sol taraftaki listeden bir danışan seçerek yeni diyet programı oluşturmaya başlayın." : "Choose a client from the left pane to begin building a plan."}
+                </p>
               </div>
-            ) : (
-              <div className="mx-auto max-w-4xl">
-                <div className="mb-8 flex items-end justify-between">
+            </div>
+          ) : (
+            <div className="mx-auto max-w-4xl space-y-6">
+              {/* Header Plan Controls */}
+              <div className={`p-6 rounded-[32px] border ${
+                isDark ? "border-white/10 bg-slate-900/60 shadow-xl" : "border-slate-200 bg-white shadow-md"
+              }`}>
+                <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
                   <div>
-                    <span className="text-xs font-bold text-emerald-500 uppercase tracking-widest">
-                      {lang === "tr" ? "ÖĞÜN LİSTESİ" : "MEAL LIST"}
+                    <span className="text-[10px] font-mono uppercase tracking-widest text-emerald-400 font-bold">
+                      {lang === "tr" ? "KİŞİYE ÖZEL PROGRAM" : "NUTRITION BLUEPRINT"}
                     </span>
-                    <h2 className={isDark ? "mt-1 text-2xl font-bold text-white" : "mt-1 text-2xl font-bold text-[#0e2d27]"}>
+                    <h2 className="font-display text-xl font-black mt-1">
                       {selectedClient.first_name} {selectedClient.last_name}
                     </h2>
-                    <div className="mt-4 flex flex-wrap gap-4 items-end">
-                      <div className="flex flex-col gap-1.5 flex-1 min-w-[200px]">
-                        <span className={isDark ? "text-[10px] font-black text-zinc-500 uppercase tracking-widest" : "text-[10px] font-black text-[#5e776e] uppercase tracking-widest"}>
-                          {lang === "tr" ? "Plan Başlığı" : "Plan Title"}
-                        </span>
-                        <input 
-                          placeholder={lang === "tr" ? "Plan Başlığı (Örn: Haftalık Liste)" : "Plan Title (Ex: Weekly List)"}
-                          value={planTitle}
-                          onChange={(e) => setPlanTitle(e.target.value)}
-                          className={isDark ? "w-full rounded-xl border border-white/10 bg-black/40 px-4 py-2 text-sm text-white outline-none focus:border-emerald-500" : "w-full rounded-xl border border-[#325d51]/10 bg-zinc-50 px-4 py-2 text-sm text-[#0e2d27] outline-none focus:border-emerald-500"}
-                        />
-                      </div>
-                      <div className="flex flex-col gap-1.5">
-                        <span className={isDark ? "text-[10px] font-black text-zinc-500 uppercase tracking-widest" : "text-[10px] font-black text-[#5e776e] uppercase tracking-widest"}>
-                          {lang === "tr" ? "Plan Türü" : "Plan Type"}
-                        </span>
-                        <select
-                          value={planType}
-                          onChange={(e) => handlePlanTypeChange(e.target.value)}
-                          className={isDark ? "rounded-xl border border-white/10 bg-black/40 px-4 py-2 text-sm text-white outline-none focus:border-emerald-500" : "rounded-xl border border-[#325d51]/10 bg-zinc-50 px-4 py-2 text-sm text-[#0e2d27] outline-none focus:border-emerald-500"}
-                        >
-                          <option value="daily">{lang === "tr" ? "Günlük" : "Daily"}</option>
-                          <option value="weekly">{lang === "tr" ? "Haftalık" : "Weekly"}</option>
-                          <option value="monthly">{lang === "tr" ? "Aylık" : "Monthly"}</option>
-                        </select>
-                      </div>
-                      <div className="flex flex-col gap-1.5">
-                        <span className={isDark ? "text-[10px] font-black text-zinc-500 uppercase tracking-widest" : "text-[10px] font-black text-[#5e776e] uppercase tracking-widest"}>
-                          {lang === "tr" ? "Başlangıç Tarihi" : "Start Date"}
-                        </span>
-                        <input 
-                          type="date"
-                          value={startDate}
-                          onChange={(e) => setStartDate(e.target.value)}
-                          className={isDark ? "rounded-xl border border-white/10 bg-black/40 px-4 py-2 text-sm text-white outline-none focus:border-emerald-500" : "rounded-xl border border-[#325d51]/10 bg-zinc-50 px-4 py-2 text-sm text-[#0e2d27] outline-none focus:border-emerald-500"}
-                        />
-                      </div>
+                  </div>
+
+                  {/* Telemetry Pills for Selected Day */}
+                  <div className="flex items-center gap-3">
+                    <div className={`px-3.5 py-2 rounded-2xl border text-center ${
+                      isDark ? "border-white/5 bg-black/40" : "border-slate-200 bg-slate-50"
+                    }`}>
+                      <div className="text-[10px] font-bold text-slate-400">Kalori</div>
+                      <div className="font-display text-base font-black text-emerald-400">{Math.round(totalDayCalories)} kcal</div>
+                    </div>
+                    <div className={`px-3.5 py-2 rounded-2xl border text-center ${
+                      isDark ? "border-white/5 bg-black/40" : "border-slate-200 bg-slate-50"
+                    }`}>
+                      <div className="text-[10px] font-bold text-slate-400">Protein</div>
+                      <div className="font-display text-base font-black text-cyan-400">{totalDayProtein.toFixed(0)}g</div>
+                    </div>
+                    <div className={`px-3.5 py-2 rounded-2xl border text-center ${
+                      isDark ? "border-white/5 bg-black/40" : "border-slate-200 bg-slate-50"
+                    }`}>
+                      <div className="text-[10px] font-bold text-slate-400">Karb / Yağ</div>
+                      <div className="font-display text-xs font-black mt-1 text-slate-300">{totalDayCarbs.toFixed(0)}g / {totalDayFat.toFixed(0)}g</div>
                     </div>
                   </div>
+                </div>
+
+                <div className="mt-6 grid gap-3 sm:grid-cols-3">
+                  <div>
+                    <label className="text-[10px] font-black uppercase text-slate-400 tracking-wider mb-1.5 block">
+                      {lang === "tr" ? "Plan Başlığı" : "Plan Title"}
+                    </label>
+                    <input
+                      value={planTitle}
+                      onChange={(e) => setPlanTitle(e.target.value)}
+                      placeholder={lang === "tr" ? "Örn: 1. Ay Ketojenik Beslenme" : "Plan Title..."}
+                      className={`w-full rounded-2xl border px-4 py-2.5 text-xs font-semibold outline-none ${
+                        isDark ? "border-white/10 bg-black/40 text-white focus:border-emerald-500" : "border-slate-200 bg-slate-50 text-slate-900 focus:border-emerald-500"
+                      }`}
+                    />
+                  </div>
+
+                  <div>
+                    <label className="text-[10px] font-black uppercase text-slate-400 tracking-wider mb-1.5 block">
+                      {lang === "tr" ? "Plan Süresi" : "Plan Type"}
+                    </label>
+                    <select
+                      value={planType}
+                      onChange={(e) => handlePlanTypeChange(e.target.value)}
+                      className={`w-full rounded-2xl border px-4 py-2.5 text-xs font-semibold outline-none ${
+                        isDark ? "border-white/10 bg-black/40 text-white focus:border-emerald-500" : "border-slate-200 bg-slate-50 text-slate-900 focus:border-emerald-500"
+                      }`}
+                    >
+                      <option value="daily">{lang === "tr" ? "Günlük Plan" : "Daily"}</option>
+                      <option value="weekly">{lang === "tr" ? "Haftalık Plan (7 Gün)" : "Weekly"}</option>
+                      <option value="monthly">{lang === "tr" ? "Aylık Plan (30 Gün)" : "Monthly"}</option>
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="text-[10px] font-black uppercase text-slate-400 tracking-wider mb-1.5 block">
+                      {lang === "tr" ? "Başlangıç Tarihi" : "Start Date"}
+                    </label>
+                    <input
+                      type="date"
+                      value={startDate}
+                      onChange={(e) => setStartDate(e.target.value)}
+                      className={`w-full rounded-2xl border px-4 py-2.5 text-xs font-mono font-semibold outline-none ${
+                        isDark ? "border-white/10 bg-black/40 text-white focus:border-emerald-500" : "border-slate-200 bg-slate-50 text-slate-900 focus:border-emerald-500"
+                      }`}
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* Day Selection Tabs for Weekly/Monthly */}
+              {["weekly", "monthly"].includes(planType) && (
+                <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-hide">
+                  {(planType === "weekly"
+                    ? ["Pazartesi", "Salı", "Çarşamba", "Perşembe", "Cuma", "Cumartesi", "Pazar"]
+                    : Array.from({ length: 30 }, (_, i) => `${i + 1}. Gün`)
+                  ).map((day, idx) => {
+                    const dayNumber = idx + 1;
+                    const isSelected = selectedDay === dayNumber;
+                    return (
+                      <button
+                        key={dayNumber}
+                        type="button"
+                        onClick={() => setSelectedDay(dayNumber)}
+                        className={`whitespace-nowrap rounded-2xl px-5 py-2.5 text-xs font-black transition ${
+                          isSelected
+                            ? "bg-emerald-500 text-slate-950 shadow-lg shadow-emerald-500/25"
+                            : isDark ? "border border-white/5 bg-black/40 text-slate-400 hover:text-white" : "border border-slate-200 bg-white text-slate-700 hover:bg-slate-50"
+                        }`}
+                      >
+                        {day}
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
+
+              {/* Meals List */}
+              <div className="space-y-4">
+                <div className="flex items-center justify-between">
+                  <h3 className="font-display text-sm font-black flex items-center gap-2">
+                    <Sparkles className="h-4 w-4 text-emerald-400" />
+                    <span>{lang === "tr" ? "Öğünler & Besinler" : "Meals & Items"}</span>
+                  </h3>
                   <button
+                    type="button"
                     onClick={addMeal}
-                    className="flex items-center gap-2 rounded-xl bg-white/5 border border-white/10 px-4 py-2 text-xs font-bold text-emerald-400 hover:bg-white/10 transition"
+                    className="flex items-center gap-1.5 rounded-xl border border-emerald-500/30 bg-emerald-500/10 px-3.5 py-1.5 text-xs font-bold text-emerald-400 hover:bg-emerald-500/20 transition"
                   >
-                    <span>+</span>
-                    {lang === "tr" ? "Öğün Ekle" : "Add Meal"}
+                    <Plus className="h-3.5 w-3.5" />
+                    <span>{lang === "tr" ? "Yeni Öğün Ekle" : "Add Meal"}</span>
                   </button>
                 </div>
 
-                {['weekly', 'monthly'].includes(planType) && (
-                  <div className="mb-6 flex gap-2 overflow-x-auto pb-2 scrollbar-hide">
-                    {(planType === 'weekly' 
-                      ? ["Pazartesi", "Salı", "Çarşamba", "Perşembe", "Cuma", "Cumartesi", "Pazar"]
-                      : Array.from({ length: 30 }, (_, i) => lang === "tr" ? `${i + 1}. Gün` : `Day ${i + 1}`)
-                    ).map((day, idx) => {
-                      const dayNumber = idx + 1;
-                      const isSelected = selectedDay === dayNumber;
-                      return (
-                        <button
-                          key={dayNumber}
-                          onClick={() => setSelectedDay(dayNumber)}
-                          className={["whitespace-nowrap rounded-xl px-5 py-2.5 text-sm font-bold transition-all", isSelected ? "bg-emerald-500 text-white shadow-lg shadow-emerald-500/30" : isDark ? "bg-white/5 text-zinc-400 hover:bg-white/10 hover:text-white" : "bg-[#2f6154]/5 text-[#4d6b62] hover:bg-[#2f6154]/10 hover:text-[#0e2d27]"].join(" ")}
-                        >
-                          {day}
-                        </button>
-                      );
-                    })}
-                  </div>
-                )}
+                {currentVisibleMeals.map((meal) => {
+                  const totals = calculateMealTotals(meal);
+                  return (
+                    <div
+                      key={meal.id}
+                      className={`p-6 rounded-[32px] border space-y-4 transition ${
+                        isDark ? "border-white/10 bg-slate-900/60" : "border-slate-200 bg-white shadow-sm"
+                      }`}
+                    >
+                      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-white/5 pb-4">
+                        <div className="flex items-center gap-3 flex-1">
+                          <input
+                            type="time"
+                            value={meal.time}
+                            onChange={(e) => updateMeal(meal.id, "time", e.target.value)}
+                            className={`rounded-xl border px-3 py-1.5 text-xs font-mono font-bold outline-none ${
+                              isDark ? "border-white/10 bg-black/40 text-emerald-400" : "border-slate-200 bg-slate-50 text-emerald-700"
+                            }`}
+                          />
+                          <input
+                            value={meal.name}
+                            onChange={(e) => updateMeal(meal.id, "name", e.target.value)}
+                            placeholder="Öğün Adı..."
+                            className={`flex-1 rounded-xl border px-3 py-1.5 text-xs font-black outline-none ${
+                              isDark ? "border-white/10 bg-black/40 text-white" : "border-slate-200 bg-slate-50 text-slate-900"
+                            }`}
+                          />
+                        </div>
 
-                <div className="space-y-6 pb-48">
-                  {meals.filter(m => ['weekly', 'monthly'].includes(planType) ? m.day_of_week === selectedDay : true).map((meal) => {
-                    const totals = calculateMealTotals(meal);
-                    return (
-                      <div
-                        key={meal.id}
-                        className={[
-                          isDark ? "relative rounded-[32px] border border-white/10 bg-white/5 p-8 transition" : "relative rounded-[32px] border border-[#325d51]/20 bg-white p-8 shadow-sm transition",
-                          focusedMealId === meal.id ? "z-[60] border-emerald-500/50 shadow-2xl shadow-emerald-500/10 scale-[1.01]" : "z-10"
-                        ].join(" ")}
-                      >
-                        <button
-                          onClick={() => removeMeal(meal.id)}
-                          className="absolute -right-2 -top-2 h-8 w-8 items-center justify-center rounded-full bg-rose-500 text-white text-xs font-bold shadow-lg flex"
-                        >
-                          ✕
-                        </button>
-
-                        <div className="grid gap-8 sm:grid-cols-[200px_1fr]">
-                          <div className="space-y-4">
-                            <div>
-                              <label className={isDark ? "mt-2 block text-[10px] font-bold uppercase tracking-wider text-zinc-500" : "mt-2 block text-[10px] font-bold uppercase tracking-wider text-[#4d6b62]"}>
-                                {lang === "tr" ? "Öğün Zamanı" : "Meal Time"}
-                              </label>
-                              <input
-                                type="time"
-                                value={meal.time}
-                                onChange={(e) => updateMeal(meal.id, "time", e.target.value)}
-                                className={isDark ? "w-full rounded-2xl border border-white/10 bg-black/40 px-4 py-3 text-sm text-white outline-none focus:border-emerald-500/50" : "w-full rounded-2xl border border-[#325d51]/10 bg-zinc-50 px-4 py-3 text-sm text-[#0e2d27] outline-none focus:border-emerald-500/50"}
-                              />
-                            </div>
-                            <div>
-                              <label className={isDark ? "mt-2 block text-[10px] font-bold uppercase tracking-wider text-zinc-500" : "mt-2 block text-[10px] font-bold uppercase tracking-wider text-[#4d6b62]"}>
-                                {lang === "tr" ? "Öğün Adı" : "Meal Name"}
-                              </label>
-                              <input
-                                placeholder={lang === "tr" ? "Örn: Akşam Yemeği" : "Ex: Dinner"}
-                                value={meal.name}
-                                onChange={(e) => updateMeal(meal.id, "name", e.target.value)}
-                                className={isDark ? "w-full rounded-2xl border border-white/10 bg-black/40 px-4 py-3 text-sm text-white outline-none focus:border-emerald-500/50" : "w-full rounded-2xl border border-[#325d51]/10 bg-zinc-50 px-4 py-3 text-sm text-[#0e2d27] outline-none focus:border-emerald-500/50"}
-                              />
-                            </div>
-                            
-                            <div className={isDark ? "rounded-2xl bg-black/40 p-4 border border-white/5" : "rounded-2xl bg-emerald-50/50 p-4 border border-emerald-500/10"}>
-                               <div className="text-[10px] font-bold text-emerald-500 uppercase mb-3">{lang === "tr" ? "Öğün Özeti" : "Meal Summary"}</div>
-                               <div className="space-y-2">
-                                  <div className="flex justify-between items-center text-xs">
-                                     <span className={isDark ? "active text-zinc-400" : "text-[#4d6b62]"}>Kalori:</span>
-                                     <span className={isDark ? "font-bold text-white" : "font-bold text-[#0e2d27]"}>{Math.round(totals.calories)} kcal</span>
-                                  </div>
-                                  <div className="flex justify-between items-center text-[11px]">
-                                     <span className={isDark ? "text-zinc-500" : "text-[#4d6b62]"}>P:</span>
-                                     <span className={isDark ? "text-zinc-300" : "text-[#0e2d27]"}>{totals.protein.toFixed(1)}g</span>
-                                  </div>
-                                  <div className="flex justify-between items-center text-[11px]">
-                                     <span className={isDark ? "text-zinc-500" : "text-[#4d6b62]"}>Y:</span>
-                                     <span className={isDark ? "text-zinc-300" : "text-[#0e2d27]"}>{totals.fat.toFixed(1)}g</span>
-                                  </div>
-                                  <div className="flex justify-between items-center text-[11px]">
-                                     <span className={isDark ? "text-zinc-500" : "text-[#4d6b62]"}>K:</span>
-                                     <span className={isDark ? "text-zinc-300" : "text-[#0e2d27]"}>{totals.carbs.toFixed(1)}g</span>
-                                  </div>
-                               </div>
-                            </div>
-                          </div>
-
-                          <div className="space-y-6">
-                             {/* Food Items List */}
-                             <div className="space-y-3">
-                                {meal.items.map((item) => (
-                                   <div key={item.id} className={isDark ? "flex items-center gap-4 rounded-2xl bg-white/5 p-3 border border-white/5 group/item" : "flex items-center gap-4 rounded-2xl bg-zinc-50 p-3 border border-[#325d51]/5 group/item"}>
-                                      <div className="flex-1">
-                                         <div className={isDark ? "text-xs font-bold text-white" : "text-xs font-bold text-[#0e2d27]"}>{item.name}</div>
-                                         <div className="text-[10px] text-emerald-500">{Math.round(item.calories)} kcal | {item.protein.toFixed(1)}P | {item.carbohydrates.toFixed(1)}K</div>
-                                      </div>
-                                      <div className="flex items-center gap-3">
-                                         <div className="flex items-center gap-2">
-                                            <input 
-                                               type="number"
-                                               value={item.amount}
-                                               onChange={(e) => updateItemAmount(meal.id, item.id, Number(e.target.value))}
-                                               className={isDark ? "w-16 rounded-lg bg-black/40 border border-white/10 px-2 py-1 text-[11px] text-white text-center outline-none" : "w-16 rounded-lg bg-white border border-[#325d51]/10 px-2 py-1 text-[11px] text-[#0e2d27] text-center outline-none"}
-                                            />
-                                            <span className="text-[10px] font-bold text-zinc-500">g</span>
-                                         </div>
-                                         <button 
-                                            onClick={() => removeItemFromMeal(meal.id, item.id)}
-                                            className="opacity-0 group-hover/item:opacity-100 transition-opacity p-1 text-rose-500 hover:bg-rose-500/10 rounded-lg"
-                                         >
-                                            <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                                            </svg>
-                                         </button>
-                                      </div>
-                                   </div>
-                                ))}
-                             </div>
-
-                             {/* Search and Add Component */}
-                             <MealFoodSearch 
-                                mealId={meal.id} 
-                                isDark={isDark} 
-                                lang={lang} 
-                                onAddFood={addFoodToMeal} 
-                                onFocus={() => setFocusedMealId(meal.id)}
-                             />
-
-                             <div>
-                                <label className={isDark ? "mt-2 block text-[10px] font-bold uppercase tracking-wider text-zinc-500" : "mt-2 block text-[10px] font-bold uppercase tracking-wider text-[#4d6b62]"}>
-                                  {lang === "tr" ? "Öğün İçeriği ve Notlar" : "Content and Notes"}
-                                </label>
-                                <textarea
-                                  rows={3}
-                                  placeholder={lang === "tr" ? "Genel bilgilendirme..." : "General info..."}
-                                  value={meal.note}
-                                  onChange={(e) => updateMeal(meal.id, "note", e.target.value)}
-                                  className={isDark ? "w-full rounded-2xl border border-white/10 bg-black/40 px-4 py-3 text-sm text-white outline-none focus:border-emerald-500/50 resize-none" : "w-full rounded-2xl border border-[#325d51]/10 bg-zinc-50 px-4 py-3 text-sm text-[#0e2d27] outline-none focus:border-emerald-500/50 resize-none"}
-                                />
-                             </div>
-                          </div>
+                        <div className="flex items-center gap-4">
+                          <span className="text-xs font-mono font-bold text-emerald-400">
+                            {Math.round(totals.calories)} kcal
+                          </span>
+                          <button
+                            type="button"
+                            onClick={() => removeMeal(meal.id)}
+                            className="p-1 text-slate-400 hover:text-rose-400 transition"
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </button>
                         </div>
                       </div>
-                    );
-                  })}
 
-                  {meals.length === 0 && (
-                     <div className="py-20 text-center text-zinc-500 bg-white/2 rounded-[32px] border border-dashed border-white/10">
-                        <div className="mx-auto h-12 w-12 rounded-full bg-white/5 flex items-center justify-center mb-4">
-                           <svg className="h-6 w-6 text-emerald-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 4v16m8-8H4" />
-                           </svg>
-                        </div>
-                        {lang === "tr" ? "Henüz öğün eklenmedi." : "No meals added yet."}
-                     </div>
-                  )}
-                </div>
+                      {/* Items Inside Meal */}
+                      <div className="space-y-2.5">
+                        {meal.items.map((item) => (
+                          <div
+                            key={item.id}
+                            className={`p-4 rounded-2xl border flex items-center justify-between gap-4 ${
+                              isDark ? "border-white/10 bg-slate-900/80" : "border-slate-200 bg-slate-50"
+                            }`}
+                          >
+                            <div className="flex-1 min-w-0">
+                              <div className={`text-sm sm:text-base font-bold truncate ${isDark ? "text-white" : "text-slate-900"}`}>
+                                {item.name}
+                              </div>
+                              <div className="text-xs text-slate-400 font-mono font-medium mt-1 flex flex-wrap items-center gap-2">
+                                <span className="font-bold text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded-lg">
+                                  {Math.round(item.calories)} kcal
+                                </span>
+                                <span>•</span>
+                                <span className="text-emerald-400">P:{item.protein.toFixed(1)}g</span>
+                                <span>•</span>
+                                <span className="text-amber-400">Y:{item.fat.toFixed(1)}g</span>
+                                <span>•</span>
+                                <span className="text-cyan-400">K:{item.carbohydrates.toFixed(1)}g</span>
+                              </div>
+                            </div>
+
+                            <div className="flex items-center gap-2 shrink-0">
+                              <input
+                                type="number"
+                                value={item.amount}
+                                onChange={(e) => updateItemAmount(meal.id, item.id, Number(e.target.value))}
+                                className={`w-20 rounded-xl border px-3 py-1.5 text-xs font-mono font-bold text-center outline-none ${
+                                  isDark ? "border-white/15 bg-black/50 text-white focus:border-emerald-500" : "border-slate-300 bg-white text-slate-900 focus:border-emerald-500"
+                                }`}
+                              />
+                              <span className="text-xs font-bold text-slate-400">g</span>
+                              <button
+                                type="button"
+                                onClick={() => removeItemFromMeal(meal.id, item.id)}
+                                className="p-2 text-slate-400 hover:text-rose-400 hover:bg-rose-500/10 rounded-xl transition ml-1"
+                              >
+                                <Trash2 className="h-4 w-4" />
+                              </button>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+
+
+                      {/* Food Autocomplete Search */}
+                      <MealFoodSearch
+                        mealId={meal.id}
+                        isDark={isDark}
+                        lang={lang}
+                        onAddFood={addFoodToMeal}
+                        onFocus={() => setFocusedMealId(meal.id)}
+                      />
+
+                      {/* Meal Note */}
+                      <textarea
+                        rows={2}
+                        value={meal.note}
+                        onChange={(e) => updateMeal(meal.id, "note", e.target.value)}
+                        placeholder={lang === "tr" ? "Danışana özel not veya alternatifler..." : "Notes..."}
+                        className={`w-full rounded-2xl border px-4 py-2.5 text-xs font-semibold outline-none resize-none ${
+                          isDark ? "border-white/10 bg-black/40 text-white placeholder:text-slate-600" : "border-slate-200 bg-slate-50 text-slate-900 placeholder:text-slate-400"
+                        }`}
+                      />
+                    </div>
+                  );
+                })}
               </div>
-            )}
-          </main>
-        </div>
+            </div>
+          )}
+        </main>
       </div>
     </div>
   );
 }
+

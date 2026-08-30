@@ -1,10 +1,36 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useAppSettings } from "../context/AppSettingsContext";
-import { clearAuthSession, setAuthSession, useAuthSession } from "../lib/authSession";
+import { setAuthSession, useAuthSession } from "../lib/authSession";
+import { API_BASE_URL as API_BASE } from "../lib/api";
+import { 
+  Activity, 
+  Lock, 
+  Mail, 
+  Eye, 
+  EyeOff, 
+  ArrowRight, 
+  Sparkles, 
+  KeyRound, 
+  AlertCircle,
+  Moon,
+  Sun,
+  Globe,
+  CheckCircle2,
+  Stethoscope,
+  UserCheck
+} from "lucide-react";
 
 type Lang = "tr" | "en";
 type OtpChannel = "email" | "sms";
+
+type LoginPayload = {
+  password?: string;
+  email?: string;
+  phone_number?: string;
+  username?: string;
+};
+
 type CopyText = {
   brandSub: string;
   signUp: string;
@@ -74,12 +100,9 @@ type CopyText = {
   forgotPasswordSuccess: string;
   forgotPasswordLocked: string;
   forgotPasswordAfterAttempts: string;
-};
-
-type LoginPayload = {
-  email?: string;
-  phone_number?: string;
-  password: string;
+  demoTitle: string;
+  demoDietitian: string;
+  demoClient: string;
 };
 
 type SessionUser = {
@@ -108,344 +131,295 @@ const COPY: Record<Lang, CopyText> = {
     forgotPasswordAfterAttempts: "Bu alan 3 başarısız giriş denemesinin ardından açıldı.",
     brandSub: "Klinik ve Beslenme Yönetimi",
     signUp: "Kayıt Ol",
-    secureLogin: "Güvenli Giriş",
-    titleA: "Hesabına",
-    titleB: "giriş yap",
-    subtitle: "Danışan yönetimi, plan takibi, ölçüm raporları ve iletişim tek ekranda.",
-    pillA: "Tek Merkez",
-    pillAText: "Tüm süreç tek panelde",
-    pillB: "Takip",
-    pillBText: "Ölçüm ve uyum takibi",
-    pillC: "İletişim",
-    pillCText: "Hızlı ve güvenli mesajlaşma",
+    secureLogin: "Güvenli Giriş Portali",
+    titleA: "SmartDiet'e",
+    titleB: "Hoş Geldiniz",
+    subtitle: "Kişiselleştirilmiş klinik beslenme süreçleri, danışan takibi ve analizler tek bir ekosistemde.",
+    pillA: "Akıllı Makro Analizi",
+    pillAText: "Ölçüm, kalori ve besin değeri hesaplamaları",
+    pillB: "Gerçek Zamanlı İletişim",
+    pillBText: "Diyetisyen-danışan mesajlaşması ve randevu",
+    pillC: "Yapay Zeka Asistanı",
+    pillCText: "Görsel tabak tarama ve akıllı öneriler",
     cardTitle: "Giriş Yap",
-    cardSub: "E-posta veya telefon numaran ve şifren ile devam et. Gerekirse son adımda doğrulama kodu istenir.",
+    cardSub: "Hesabınıza erişmek için bilgilerinizi girin.",
     identifier: "E-posta veya Telefon",
-    identifierPh: "E-posta adresi veya telefon numarası",
+    identifierPh: "ornek@smartdiet.com veya +90...",
     password: "Şifre",
     hide: "Gizle",
     show: "Göster",
-    nextStep: "Devam Et",
+    nextStep: "Giriş Yap",
     nextStepBusy: "Kontrol ediliyor...",
-    noAccount: "Henüz hesabın yok mu?",
-    toRegister: "Kayıt ol",
+    noAccount: "Henüz bir hesabınız yok mu?",
+    toRegister: "Hemen Kaydolun",
     idReq: "E-posta veya telefon numarası zorunludur.",
-    idInvalid: "Geçerli bir e-posta adresi ya da telefon numarası gir.",
-    passwordReq: "Şifre zorunludur.",
-    loginFail: "Giriş başarısız. Bilgilerini kontrol ederek tekrar dene.",
-    genericErr: "Beklenmeyen bir hata oluştu.",
-    otpTitle: "Doğrulama Yöntemi",
-    otpSub: "Hesaba giriş yapmadan önce doğrulama yöntemini seç.",
-    otpByEmail: "E-posta ile doğrula",
-    otpBySms: "SMS ile doğrula",
-    sendCode: "Kodu Gönder",
+    idInvalid: "Geçerli bir e-posta adresi ya da telefon numarası girin.",
+    passwordReq: "Şifre alanı boş bırakılamaz.",
+    loginFail: "Giriş başarısız. Lütfen bilgilerinizi kontrol edin.",
+    genericErr: "İşlem sırasında beklenmeyen bir hata oluştu.",
+    otpTitle: "İki Aşamalı Doğrulama (OTP)",
+    otpSub: "Hesap güvenliğiniz için doğrulama yöntemini seçin.",
+    otpByEmail: "E-posta ile Doğrula",
+    otpBySms: "SMS ile Doğrula",
+    sendCode: "Doğrulama Kodu Gönder",
     sendingCode: "Kod gönderiliyor...",
-    codeLabel: "Doğrulama Kodu",
-    codePh: "123456",
-    verifyCode: "Kodu Doğrula ve Giriş Yap",
+    codeLabel: "6 Haneli Doğrulama Kodu",
+    codePh: "• • • • • •",
+    verifyCode: "Doğrula ve Giriş Yap",
     verifyingCode: "Doğrulanıyor...",
     resendCode: "Kodu Yeniden Gönder",
-    resendIn: "Tekrar gönderim",
-    cancelOtp: "İptal",
-    otpHint: "Kod gönderildi. Lütfen gelen 6 haneli doğrulama kodunu gir.",
-    otpInvalid: "Kod 6 haneli olmalıdır.",
-    otpSentTo: "Kod gönderildi:",
-    otpExpiresIn: "Kodun geçerlilik süresi",
-    otpExpired: "Kodun süresi doldu. Lütfen yeniden kod iste.",
-    missingOtpEmail: "Bu hesap için doğrulama e-postası bulunamadı.",
-    missingOtpPhone: "Bu hesap için doğrulama telefonu bulunamadı.",
-    smsNotConfigured: "SMS servisi şu anda aktif değil. Lütfen e-posta ile devam et.",
-    otpExpiry: "Kodun geçerlilik süresi: 5 dakika",
-    errOtpInvalidCode: "Girdiğin doğrulama kodu hatalı.",
-    errOtpExpired: "Kod geçersiz ya da süresi dolmuş.",
-    errOtpUsed: "Bu kod daha önce kullanılmış. Lütfen yeni bir kod iste.",
-    errOtpLocked: "Çok fazla hatalı deneme yapıldı. Lütfen daha sonra tekrar dene.",
-    errOtpRateLimit: "Çok sık kod talep edildi. Biraz bekleyip tekrar dene.",
-    errOtpCooldown: "Yeniden kod istemeden önce kısa bir süre bekle.",
-    errOtpDeviceRate: "Bu cihazdan çok fazla kod talep edildi. Lütfen daha sonra tekrar dene.",
-    errUserNotFound: "Kullanıcı bulunamadı.",
-    errNetwork: "Sunucuya ulaşılamıyor. Bağlantını kontrol edip tekrar dene.",
+    resendIn: "Tekrar gönderim için bekleyin",
+    cancelOtp: "Geri Dön",
+    otpHint: "Doğrulama kodu iletildi. Lütfen gelen 6 haneli kodu giriniz.",
+    otpInvalid: "Doğrulama kodu 6 haneli olmalıdır.",
+    otpSentTo: "Kod gönderilen adres:",
+    otpExpiresIn: "Kalan Süre",
+    otpExpired: "Kodun süresi doldu. Lütfen yeni kod talep edin.",
+    missingOtpEmail: "Bu hesaba ait kayıtlı e-posta adresi bulunamadı.",
+    missingOtpPhone: "Bu hesaba ait kayıtlı telefon numarası bulunamadı.",
+    smsNotConfigured: "SMS servisi aktif değil. Lütfen e-posta yöntemiyle devam edin.",
+    otpExpiry: "Kod geçerlilik süresi 5 dakikadır.",
+    errOtpInvalidCode: "Girdiğiniz doğrulama kodu hatalıdır.",
+    errOtpExpired: "Doğrulama kodunun süresi dolmuş.",
+    errOtpUsed: "Bu kod daha önce kullanılmış. Yeni bir kod talep edin.",
+    errOtpLocked: "Çok fazla hatalı deneme. Lütfen bir süre bekleyin.",
+    errOtpRateLimit: "Çok sık kod talep edildi. Lütfen bekleyin.",
+    errOtpCooldown: "Yeniden kod istemeden önce lütfen sürenin dolmasını bekleyin.",
+    errOtpDeviceRate: "Cihaz istek limiti aşıldı. Lütfen daha sonra tekrar deneyin.",
+    errUserNotFound: "Bu bilgilere sahip kullanıcı bulunamadı.",
+    errNetwork: "Sunucu bağlantısı kurulamadı.",
+    demoTitle: "Hızlı Demo Girişi",
+    demoDietitian: "Diyetisyen Paneli",
+    demoClient: "Danışan Paneli",
   },
   en: {
     forgotPassword: "Forgot password",
     forgotPasswordHint: "After 3 failed attempts, we can send a password reset link by email.",
-    forgotPasswordEmail: "Email address",
+    forgotPasswordEmail: "Email Address",
     forgotPasswordEmailPh: "name@example.com",
-    forgotPasswordSend: "Send Link",
+    forgotPasswordSend: "Send Reset Link",
     forgotPasswordSending: "Sending...",
-    forgotPasswordSuccess: "If the email belongs to an eligible account, a reset link has been sent.",
-    forgotPasswordLocked: "Password reset is not available yet. It opens after 3 failed attempts.",
-    forgotPasswordAfterAttempts: "This section opened after 3 failed attempts.",
-    brandSub: "Clinic and Nutrition Management",
+    forgotPasswordSuccess: "A password reset link has been dispatched to your email.",
+    forgotPasswordLocked: "Password reset unlocks after 3 consecutive failed attempts.",
+    forgotPasswordAfterAttempts: "Password recovery is now unlocked.",
+    brandSub: "Clinical & Nutrition Ecosystem",
     signUp: "Sign Up",
-    secureLogin: "Secure login",
-    titleA: "Sign in to",
-    titleB: "your account",
-    subtitle: "Clients, plans, measurements and chat in a single panel.",
-    pillA: "Single Panel",
-    pillAText: "One flow",
-    pillB: "Tracking",
-    pillBText: "Measurement and adherence",
-    pillC: "Messages",
-    pillCText: "Real-time communication",
+    secureLogin: "Secure Portal",
+    titleA: "Welcome to",
+    titleB: "SmartDiet",
+    subtitle: "Tailored nutrition plans, bio-metric tracking, and dietitian communication in one place.",
+    pillA: "Smart Macro Tracking",
+    pillAText: "Measurements, calorie and nutrient math",
+    pillB: "Real-time Messaging",
+    pillBText: "Dietitian-client chats and appointments",
+    pillC: "AI Plate Assistant",
+    pillCText: "Computer vision plate scanning and tips",
     cardTitle: "Sign In",
-    cardSub: "Enter email/phone and password. Complete OTP before entering account.",
-    identifier: "Email",
-    identifierPh: "Enter email or phone",
+    cardSub: "Enter your credentials to access your account.",
+    identifier: "Email or Phone",
+    identifierPh: "name@example.com or +1...",
     password: "Password",
     hide: "Hide",
     show: "Show",
-    nextStep: "Continue",
-    nextStepBusy: "Checking...",
+    nextStep: "Sign In",
+    nextStepBusy: "Verifying...",
     noAccount: "Don't have an account?",
-    toRegister: "Sign up",
-    idReq: "Email or phone is required.",
-    idInvalid: "Enter a valid email or phone.",
-    passwordReq: "Password is required.",
-    loginFail: "Login failed. Check your credentials.",
-    genericErr: "An error occurred.",
-    otpTitle: "Verification Method",
-    otpSub: "Choose how to receive the code before entering account.",
-    otpByEmail: "Verify by email",
-    otpBySms: "Send SMS",
-    sendCode: "Send Code",
+    toRegister: "Sign up now",
+    idReq: "Email or phone number is required.",
+    idInvalid: "Please enter a valid email or phone number.",
+    passwordReq: "Password cannot be empty.",
+    loginFail: "Sign in failed. Please verify your credentials.",
+    genericErr: "An unexpected error occurred.",
+    otpTitle: "Two-Factor Verification (OTP)",
+    otpSub: "Choose a verification method to secure your session.",
+    otpByEmail: "Verify via Email",
+    otpBySms: "Verify via SMS",
+    sendCode: "Send Verification Code",
     sendingCode: "Sending code...",
-    codeLabel: "Verification Code",
-    codePh: "123456",
-    verifyCode: "Verify Code and Sign In",
+    codeLabel: "6-Digit Verification Code",
+    codePh: "• • • • • •",
+    verifyCode: "Verify & Enter",
     verifyingCode: "Verifying...",
     resendCode: "Resend Code",
-    resendIn: "Resend in",
-    cancelOtp: "Cancel",
-    otpHint: "Code sent. Enter the 6-digit code.",
-    otpInvalid: "Code must be 6 digits.",
+    resendIn: "Wait to resend",
+    cancelOtp: "Go Back",
+    otpHint: "Verification code has been sent. Enter the 6-digit code.",
+    otpInvalid: "The verification code must be 6 digits.",
     otpSentTo: "Code sent to:",
-    otpExpiresIn: "Code validity",
-    otpExpired: "Code expired. Please request a new one.",
-    missingOtpEmail: "No email found for OTP delivery.",
-    missingOtpPhone: "No phone found for OTP delivery.",
-    smsNotConfigured: "SMS service is not configured. Continue with email.",
-    otpExpiry: "Code validity: 5 minutes",
+    otpExpiresIn: "Remaining",
+    otpExpired: "Code expired. Please request a new code.",
+    missingOtpEmail: "No registered email found for this account.",
+    missingOtpPhone: "No registered phone found for this account.",
+    smsNotConfigured: "SMS gateway is unavailable. Please use email verification.",
+    otpExpiry: "Code validity is 5 minutes.",
     errOtpInvalidCode: "The verification code is incorrect.",
-    errOtpExpired: "The code is invalid or expired.",
-    errOtpUsed: "This code was already used. Please request a new one.",
-    errOtpLocked: "Too many incorrect attempts. Please try again later.",
-    errOtpRateLimit: "Too many code requests. Please wait and try again.",
-    errOtpCooldown: "Please wait before requesting a new code.",
-    errOtpDeviceRate: "Too many requests from this device. Please try again later.",
-    errUserNotFound: "User not found.",
-    errNetwork: "Server is unreachable. Check your connection and try again.",
+    errOtpExpired: "The verification code has expired.",
+    errOtpUsed: "This code has already been used.",
+    errOtpLocked: "Too many failed attempts. Please wait.",
+    errOtpRateLimit: "Too many requests. Please wait.",
+    errOtpCooldown: "Please wait for cooldown before requesting another code.",
+    errOtpDeviceRate: "Device request limit exceeded. Try again later.",
+    errUserNotFound: "User with these credentials was not found.",
+    errNetwork: "Unable to reach the server.",
+    demoTitle: "Quick Demo Sandbox",
+    demoDietitian: "Dietitian Dashboard",
+    demoClient: "Client Portal",
   },
 };
 
-function guessIdentifierType(identifier: string): "email" | "phone" | "invalid" {
-  const v = identifier.trim();
-  if (!v) return "invalid";
-  if (EMAIL_REGEX.test(v)) return "email";
-  if (PHONE_REGEX.test(v)) return "phone";
-  return "invalid";
-}
+const LOGIN_URL = API_BASE + "/api/auth/login";
+const REQUEST_OTP_URL = API_BASE + "/api/auth/request-otp";
+const VERIFY_OTP_URL = API_BASE + "/api/auth/verify-otp";
+const FORGOT_PASSWORD_URL = API_BASE + "/api/auth/forgot-password";
 
-function readLastIdentifier(): string {
-  return localStorage.getItem(LAST_IDENTIFIER_KEY) || "";
-}
-
-function readLastChannel(): OtpChannel {
-  return localStorage.getItem(LAST_OTP_CHANNEL_KEY) === "sms" ? "sms" : "email";
+function guessIdentifierType(val: string): "email" | "phone" | "unknown" {
+  const t = val.trim();
+  if (EMAIL_REGEX.test(t)) return "email";
+  if (PHONE_REGEX.test(t)) return "phone";
+  return "unknown";
 }
 
 function getOrCreateDeviceId(): string {
-  const existing = localStorage.getItem(DEVICE_ID_KEY);
-  if (existing) return existing;
-
-  const generated =
-    typeof crypto !== "undefined" && "randomUUID" in crypto
-      ? crypto.randomUUID()
-      : `web-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
-  localStorage.setItem(DEVICE_ID_KEY, generated);
-  return generated;
-}
-
-function formatCountdown(totalSeconds: number): string {
-  const safe = Math.max(0, totalSeconds);
-  const minutes = Math.floor(safe / 60);
-  const seconds = safe % 60;
-  return `${minutes}:${String(seconds).padStart(2, "0")}`;
-}
-
-function maskIdentity(identity: string, identityType: 1 | 2 | null): string {
-  const value = String(identity || "").trim();
-  if (!value) return "";
-
-  const isEmail = identityType === 1 || value.includes("@");
-  if (isEmail) {
-    const [local, domain] = value.split("@");
-    if (!domain) return `${value[0] || "*"}***`;
-    const first = local?.[0] || "*";
-    return `${first}***@${domain}`;
+  try {
+    const existing = localStorage.getItem(DEVICE_ID_KEY);
+    if (existing) return existing;
+    const generated = "dev_" + Math.random().toString(36).slice(2) + Date.now().toString(36);
+    localStorage.setItem(DEVICE_ID_KEY, generated);
+    return generated;
+  } catch {
+    return "dev_fallback";
   }
-
-  if (value.length <= 4) return "***";
-  const prefixLen = value.startsWith("+") ? 3 : 2;
-  const prefix = value.slice(0, prefixLen);
-  const suffix = value.slice(-2);
-  return `${prefix}***${suffix}`;
 }
 
-function extractApiMessage(data: unknown, fallback: string): string {
-  if (!data || typeof data !== "object") return fallback;
-  const raw = (data as { message?: unknown }).message;
-  if (Array.isArray(raw)) return raw.join(" - ");
-  if (typeof raw === "string" && raw.trim()) return raw;
+function extractApiMessage(data: any, fallback: string): string {
+  if (!data) return fallback;
+  if (Array.isArray(data.message)) return data.message.join(" - ");
+  if (typeof data.message === "string") return data.message;
+  if (typeof data.error === "string") return data.error;
   return fallback;
 }
 
-function mapApiError(message: string, t: CopyText): string {
-  const raw = String(message || "").trim();
-  if (!raw) return t.genericErr;
-
-  const normalized = raw.toLowerCase();
-
-  if (normalized.includes("invalid otp") || normalized.includes("inavlid otp")) return t.errOtpInvalidCode;
-  if (normalized.includes("otp not found") || normalized.includes("expired")) return t.errOtpExpired;
-  if (normalized.includes("otp already used")) return t.errOtpUsed;
-  if (normalized.includes("temporarily locked")) return t.errOtpLocked;
-  if (normalized.includes("otp rate limit exceeded")) return t.errOtpRateLimit;
-  if (normalized.includes("otp device rate limit exceeded")) return t.errOtpDeviceRate;
-  if (normalized.includes("otp resend cooldown active")) return t.errOtpCooldown;
-  if (normalized.includes("please wait before requesting a new otp")) return t.errOtpCooldown;
-  if (normalized.includes("too many requests")) return t.errOtpRateLimit;
-  if (normalized.includes("sms service is not configured")) return t.smsNotConfigured;
-  if (normalized.includes("e-posta veya telefon") || normalized.includes("email or phone")) return t.idReq;
-  if (normalized.includes("user not found")) return t.errUserNotFound;
-  if (normalized.includes("failed to fetch") || normalized.includes("networkerror")) return t.errNetwork;
-  if (normalized.includes("password reset becomes available") || normalized.includes("şifre sıfırlama yalnızca")) return t.forgotPasswordLocked;
-  if (normalized.includes("unauthorized")) return t.loginFail;
-  if (normalized.includes("invalid credentials")) return t.loginFail;
-
-  return raw;
+function mapApiError(raw: string, t: CopyText): string {
+  const msg = raw.toLowerCase();
+  if (msg.includes("user_not_found") || msg.includes("not found") || msg.includes("bulunamadi") || msg.includes("bulunamadı")) return t.errUserNotFound;
+  if (msg.includes("invalid_credentials") || msg.includes("unauthorized") || msg.includes("hatali") || msg.includes("hatalı")) return t.loginFail;
+  if (msg.includes("otp_invalid_code") || msg.includes("invalid code")) return t.errOtpInvalidCode;
+  if (msg.includes("otp_expired") || msg.includes("expired")) return t.errOtpExpired;
+  if (msg.includes("otp_used")) return t.errOtpUsed;
+  if (msg.includes("otp_locked")) return t.errOtpLocked;
+  if (msg.includes("otp_rate_limit")) return t.errOtpRateLimit;
+  if (msg.includes("otp_cooldown")) return t.errOtpCooldown;
+  if (msg.includes("otp_device_rate_limit")) return t.errOtpDeviceRate;
+  if (msg.includes("network") || msg.includes("fetch") || msg.includes("failed to fetch")) return t.errNetwork;
+  return raw || t.genericErr;
 }
 
 export default function Login() {
   const navigate = useNavigate();
+  const { lang, setLang, isDark, toggleTheme } = useAppSettings();
+  const t = COPY[lang];
   const { accessToken } = useAuthSession();
 
-  const API_BASE = "http://localhost:3000";
-  const LOGIN_URL = `${API_BASE}/api/auth/login`;
-  const FORGOT_PASSWORD_URL = `${API_BASE}/api/auth/forgot-password`;
-  const REQUEST_OTP_URL = `${API_BASE}/api/auth/request-otp`;
-  const VERIFY_OTP_URL = `${API_BASE}/api/auth/verify-otp`;
-  const { lang, isDark } = useAppSettings();
-  const t = COPY[lang];
-  const deviceId = useMemo(() => getOrCreateDeviceId(), []);
-
-  const [identifier, setIdentifier] = useState(readLastIdentifier());
+  const [identifier, setIdentifier] = useState("");
   const [password, setPassword] = useState("");
-  const [showPass, setShowPass] = useState(false);
-
+  const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+
   const [failedAttempts, setFailedAttempts] = useState(0);
   const [forgotPasswordEnabled, setForgotPasswordEnabled] = useState(false);
+  const [forgotOpen, setForgotOpen] = useState(false);
   const [forgotEmail, setForgotEmail] = useState("");
   const [forgotLoading, setForgotLoading] = useState(false);
-  const [forgotError, setForgotError] = useState("");
   const [forgotSuccess, setForgotSuccess] = useState("");
+  const [forgotError, setForgotError] = useState("");
 
   const [otpOpen, setOtpOpen] = useState(false);
-  const [otpChannel, setOtpChannel] = useState<OtpChannel>(readLastChannel());
+  const [otpUser, setOtpUser] = useState<SessionUser | null>(null);
+  const [otpChannel, setOtpChannel] = useState<OtpChannel>("email");
   const [otpSent, setOtpSent] = useState(false);
-  const [otpCode, setOtpCode] = useState("");
-  const [otpIdentityType, setOtpIdentityType] = useState<1 | 2 | null>(null);
-  const [otpIdentity, setOtpIdentity] = useState("");
-  const [otpCooldown, setOtpCooldown] = useState(0);
-  const [otpExpiresAt, setOtpExpiresAt] = useState<number | null>(null);
-  const [otpSecondsLeft, setOtpSecondsLeft] = useState(0);
-  const [otpInfo, setOtpInfo] = useState("");
-  const [otpError, setOtpError] = useState("");
   const [otpSending, setOtpSending] = useState(false);
   const [otpVerifying, setOtpVerifying] = useState(false);
-  const [pendingUser, setPendingUser] = useState<SessionUser | null>(null);
+  const [otpCode, setOtpCode] = useState("");
+  const [otpError, setOtpError] = useState("");
+  const [otpInfo, setOtpInfo] = useState("");
+  const [otpCooldown, setOtpCooldown] = useState(0);
+  const [otpExpiresAt, setOtpExpiresAt] = useState<number | null>(null);
+  const [otpNow, setOtpNow] = useState(Date.now());
+  const [otpIdentityType, setOtpIdentityType] = useState<"email" | "phone" | null>(null);
+  const [otpIdentity, setOtpIdentity] = useState<string | null>(null);
+
+  const deviceId = useMemo(() => getOrCreateDeviceId(), []);
 
   useEffect(() => {
-    if (!accessToken) return;
-    let cancelled = false;
-
-    fetch(`${API_BASE}/api/auth/profile`, {
-      headers: { Authorization: `Bearer ${accessToken}` },
-    })
-      .then((res) => {
-        if (!res.ok) throw new Error("stale_session");
-        if (!cancelled) navigate("/", { replace: true });
-      })
-      .catch(() => {
-        if (!cancelled) clearAuthSession();
-      });
-
-    return () => {
-      cancelled = true;
-    };
-  }, [API_BASE, accessToken, navigate]);
-
-  useEffect(() => {
-    const idType = guessIdentifierType(identifier);
-    if (idType === "email") {
-      setForgotEmail(identifier.trim());
+    if (accessToken) {
+      navigate("/", { replace: true });
     }
-    setForgotError("");
-    setForgotSuccess("");
-    setFailedAttempts(0);
-    setForgotPasswordEnabled(false);
-  }, [identifier]);
+  }, [accessToken, navigate]);
 
   useEffect(() => {
-    if (otpCooldown <= 0) return;
-    const timer = window.setTimeout(() => setOtpCooldown((v) => Math.max(v - 1, 0)), 1000);
-    return () => window.clearTimeout(timer);
-  }, [otpCooldown]);
+    try {
+      const saved = localStorage.getItem(LAST_IDENTIFIER_KEY);
+      if (saved) setIdentifier(saved);
+      const savedChannel = localStorage.getItem(LAST_OTP_CHANNEL_KEY) as OtpChannel | null;
+      if (savedChannel === "email" || savedChannel === "sms") setOtpChannel(savedChannel);
+    } catch {}
+  }, []);
 
   useEffect(() => {
-    if (!otpSent || !otpExpiresAt) {
-      setOtpSecondsLeft(0);
-      return;
-    }
+    if (!otpOpen || !otpExpiresAt) return;
+    const interval = setInterval(() => {
+      setOtpNow(Date.now());
+    }, 1000);
+    return () => clearInterval(interval);
+  }, [otpOpen, otpExpiresAt]);
 
-    const tick = () => {
-      const seconds = Math.max(0, Math.ceil((otpExpiresAt - Date.now()) / 1000));
-      setOtpSecondsLeft(seconds);
-    };
+  useEffect(() => {
+    if (!otpOpen || otpCooldown <= 0) return;
+    const interval = setInterval(() => {
+      setOtpCooldown((c) => Math.max(0, c - 1));
+    }, 1000);
+    return () => clearInterval(interval);
+  }, [otpOpen, otpCooldown]);
 
-    tick();
-    const timer = window.setInterval(tick, 1000);
-    return () => window.clearInterval(timer);
-  }, [otpSent, otpExpiresAt]);
+  const otpSecondsLeft = useMemo(() => {
+    if (!otpExpiresAt) return 0;
+    return Math.max(0, Math.ceil((otpExpiresAt - otpNow) / 1000));
+  }, [otpExpiresAt, otpNow]);
 
-  const availableChannels = useMemo(() => {
-    const email = String(pendingUser?.email || "").trim();
-    const phone = String(pendingUser?.phone_number || "").trim();
-    return {
-      email: EMAIL_REGEX.test(email),
-      sms: PHONE_REGEX.test(phone),
-    };
-  }, [pendingUser]);
-
-  const maskedOtpTarget = useMemo(() => maskIdentity(otpIdentity, otpIdentityType), [otpIdentity, otpIdentityType]);
-
-  const buildOtpTarget = (channel: OtpChannel) => {
-    if (!pendingUser) throw new Error(t.genericErr);
-
-    if (channel === "email") {
-      const candidate = String(pendingUser.email || "").trim();
-      if (!EMAIL_REGEX.test(candidate)) throw new Error(t.missingOtpEmail);
-      return { identityType: 1 as const, identity: candidate };
-    }
-
-    const candidate = String(pendingUser.phone_number || "").trim();
-    if (!PHONE_REGEX.test(candidate)) throw new Error(t.missingOtpPhone);
-    return { identityType: 2 as const, identity: candidate };
+  const validateCredentials = (): string | null => {
+    const raw = identifier.trim();
+    if (!raw) return t.idReq;
+    const kind = guessIdentifierType(raw);
+    if (kind === "unknown") return t.idInvalid;
+    if (!password) return t.passwordReq;
+    return null;
   };
 
-  const requestOtp = async (identityType: 1 | 2, identity: string) => {
+  const openOtpModal = (userData: SessionUser) => {
+    setOtpUser(userData);
+    setOtpError("");
+    setOtpInfo("");
+    setOtpCode("");
+    setOtpSent(false);
+    setOtpCooldown(0);
+    setOtpExpiresAt(null);
+    setOtpOpen(true);
+  };
+
+  const buildOtpTarget = (channel: OtpChannel): { identityType: "email" | "phone"; identity: string } => {
+    if (channel === "email") {
+      const email = otpUser?.email || (guessIdentifierType(identifier) === "email" ? identifier.trim() : "");
+      if (!email) throw new Error(t.missingOtpEmail);
+      return { identityType: "email", identity: email };
+    } else {
+      const phone = otpUser?.phone_number || (guessIdentifierType(identifier) === "phone" ? identifier.trim() : "");
+      if (!phone) throw new Error(t.missingOtpPhone);
+      return { identityType: "phone", identity: phone };
+    }
+  };
+
+  const requestOtp = async (identityType: "email" | "phone", identity: string) => {
     const res = await fetch(REQUEST_OTP_URL, {
       method: "POST",
       headers: {
@@ -458,34 +432,12 @@ export default function Login() {
         purpose: 2,
       }),
     });
-
     const data = await res.json().catch(() => ({}));
     if (!res.ok) {
-      throw new Error(extractApiMessage(data, t.genericErr));
+      const msg = extractApiMessage(data, t.genericErr);
+      throw new Error(msg);
     }
-  };
-
-  const validateCredentials = () => {
-    if (!identifier.trim()) return t.idReq;
-    if (guessIdentifierType(identifier) === "invalid") return t.idInvalid;
-    if (!password) return t.passwordReq;
-    return "";
-  };
-
-  const openOtpModal = (user: SessionUser) => {
-    const nextChannel: OtpChannel = EMAIL_REGEX.test(String(user.email || "")) ? "email" : "sms";
-    setPendingUser(user);
-    setOtpChannel(nextChannel);
-    setOtpOpen(true);
-    setOtpSent(false);
-    setOtpCode("");
-    setOtpIdentityType(null);
-    setOtpIdentity("");
-    setOtpCooldown(0);
-    setOtpExpiresAt(null);
-    setOtpSecondsLeft(0);
-    setOtpInfo("");
-    setOtpError("");
+    return data;
   };
 
   const handleCredentialSubmit = async (ev: React.FormEvent) => {
@@ -521,14 +473,20 @@ export default function Login() {
       });
 
       const data = await res.json().catch(() => ({}));
+
       if (!res.ok) {
-        const nextFailedAttempts = failedAttempts + 1;
-        setFailedAttempts(nextFailedAttempts);
-        setForgotPasswordEnabled(idType === "email" && nextFailedAttempts >= 3);
-        if (idType === "email") {
-          setForgotEmail(identifier.trim());
-        }
-        setError(mapApiError(extractApiMessage(data, t.loginFail), t));
+        const rawMsg = extractApiMessage(data, t.loginFail);
+        const mapped = mapApiError(rawMsg, t);
+        setError(mapped);
+
+        setFailedAttempts((prev) => {
+          const next = prev + 1;
+          if (next >= 3) {
+            setForgotPasswordEnabled(true);
+            if (idType === "email") setForgotEmail(identifier.trim());
+          }
+          return next;
+        });
         return;
       }
 
@@ -536,12 +494,12 @@ export default function Login() {
       if (result?.otpRequired === false && (result?.access_token || result?.accessToken)) {
         const accessToken = result?.access_token || result?.accessToken;
         const refreshToken = result?.refresh_token || result?.refreshToken;
-        const user = result?.user;
+        const userObj = result?.user;
 
         setAuthSession({
           accessToken,
           refreshToken,
-          user,
+          user: userObj,
         });
 
         setFailedAttempts(0);
@@ -550,13 +508,36 @@ export default function Login() {
         return;
       }
 
-      const user = (result?.user ?? {}) as SessionUser;
+      const userData = (result?.user ?? {}) as SessionUser;
       setFailedAttempts(0);
       setForgotPasswordEnabled(false);
-      openOtpModal(user);
+      openOtpModal(userData);
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : "";
       setError(mapApiError(message, t));
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleQuickDemo = async (email: string, targetPath: string) => {
+    setLoading(true);
+    setError("");
+    try {
+      const res = await fetch(LOGIN_URL, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email, password: "admin123" }),
+      });
+      const data = await res.json();
+      if (data.success && data.data?.access_token) {
+        setAuthSession({ accessToken: data.data.access_token, user: data.data.user });
+        window.location.href = targetPath;
+      } else {
+        setError(lang === "tr" ? "Demo hesaba giriş yapılamadı." : "Failed to log in to demo account.");
+      }
+    } catch {
+      setError(lang === "tr" ? "Bağlantı hatası oluştu." : "Network connection error.");
     } finally {
       setLoading(false);
     }
@@ -576,16 +557,12 @@ export default function Login() {
     try {
       const res = await fetch(FORGOT_PASSWORD_URL, {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email }),
       });
 
       const data = await res.json().catch(() => ({}));
-      if (!res.ok) {
-        throw new Error(extractApiMessage(data, t.genericErr));
-      }
+      if (!res.ok) throw new Error(extractApiMessage(data, t.genericErr));
 
       setForgotSuccess(t.forgotPasswordSuccess);
     } catch (err: unknown) {
@@ -631,7 +608,7 @@ export default function Login() {
       setOtpError(t.otpExpired);
       return;
     }
-    if (!/^\d{6}$/.test(otpCode.trim())) {
+    if (!/^d{6}$/.test(otpCode.trim())) {
       setOtpError(t.otpInvalid);
       return;
     }
@@ -653,20 +630,17 @@ export default function Login() {
       });
 
       const data = await res.json().catch(() => ({}));
-      if (!res.ok) {
-        const msg = extractApiMessage(data, t.genericErr);
-        throw new Error(msg);
-      }
+      if (!res.ok) throw new Error(extractApiMessage(data, t.genericErr));
 
       const result = data?.data ?? data;
       const accessToken = result?.access_token || result?.accessToken;
       const refreshToken = result?.refresh_token || result?.refreshToken;
-      const user = result?.user;
+      const userObj = result?.user;
 
       setAuthSession({
         accessToken,
         refreshToken,
-        user,
+        user: userObj,
       });
 
       setOtpOpen(false);
@@ -679,374 +653,370 @@ export default function Login() {
     }
   };
 
-  const handleResend = async () => {
-    if (otpCooldown > 0 || !otpIdentityType || !otpIdentity) return;
-    setOtpError("");
-    try {
-      await requestOtp(otpIdentityType, otpIdentity);
-      setOtpCooldown(60);
-      setOtpExpiresAt(Date.now() + OTP_TTL_SECONDS * 1000);
-      setOtpInfo(t.otpHint);
-    } catch (err: unknown) {
-      const message = err instanceof Error ? err.message : "";
-      setOtpError(mapApiError(message, t));
-    }
-  };
-
   return (
-    <div className="relative min-h-screen w-screen overflow-hidden">
-      <div className="pointer-events-none absolute inset-0">
-        <div
-          className={
-            isDark
-              ? "absolute inset-0 opacity-100 [background:radial-gradient(1100px_700px_at_18%_15%,rgba(16,185,129,0.18),transparent_60%),radial-gradient(900px_700px_at_90%_20%,rgba(20,184,166,0.12),transparent_60%),radial-gradient(900px_700px_at_60%_95%,rgba(56,189,248,0.10),transparent_60%),linear-gradient(180deg,#050608,#07090b_55%,#050608)]"
-              : "absolute inset-0 opacity-[0.99] [background:radial-gradient(1180px_740px_at_12%_0%,rgba(22,128,101,0.23),transparent_58%),radial-gradient(980px_640px_at_92%_8%,rgba(20,120,133,0.16),transparent_56%),radial-gradient(980px_680px_at_52%_108%,rgba(34,117,91,0.14),transparent_62%),linear-gradient(180deg,#e8f0eb,#dee8e2_56%,#dbe5df)]"
-          }
-        />
-        <div
-          className={
-            isDark
-              ? "absolute inset-0 opacity-[0.10] [background-image:radial-gradient(rgba(255,255,255,0.14)_1px,transparent_1px)] [background-size:18px_18px]"
-              : "absolute inset-0 opacity-[0.12] [background-image:radial-gradient(rgba(8,37,31,0.11)_1px,transparent_1px)] [background-size:22px_22px]"
-          }
-        />
+    <div className={"relative min-h-screen w-full overflow-x-hidden flex flex-col justify-between " + (isDark ? "bg-[#040711] text-white" : "bg-[#f8fafc] text-slate-900")}>
+      {/* Dynamic Background Glows */}
+      <div className="pointer-events-none fixed inset-0 z-0 overflow-hidden">
+        {isDark ? (
+          <>
+            <div className="absolute top-[-10%] left-[-10%] h-[650px] w-[650px] rounded-full bg-emerald-500/15 blur-[140px]" />
+            <div className="absolute bottom-[-10%] right-[-10%] h-[650px] w-[650px] rounded-full bg-cyan-500/15 blur-[140px]" />
+            <div className="absolute inset-0 bg-grid-pattern opacity-100" />
+          </>
+        ) : (
+          <>
+            <div className="absolute top-[-10%] left-[-10%] h-[650px] w-[650px] rounded-full bg-emerald-500/10 blur-[130px]" />
+            <div className="absolute bottom-[-10%] right-[-10%] h-[650px] w-[650px] rounded-full bg-cyan-500/10 blur-[130px]" />
+            <div className="absolute inset-0 bg-grid-pattern opacity-40" />
+          </>
+        )}
       </div>
 
-      <header className="relative z-10 mx-auto flex w-full max-w-6xl items-center justify-between px-4 py-5 sm:px-6">
-        <Link to="/" className="flex items-center gap-3">
-          <div className={isDark ? "grid h-10 w-10 place-items-center rounded-xl bg-emerald-500/15 ring-1 ring-emerald-400/20" : "grid h-10 w-10 place-items-center rounded-xl bg-emerald-600/15 ring-1 ring-emerald-700/20"}>
-            <span className={isDark ? "text-sm font-extrabold text-emerald-200" : "text-sm font-extrabold text-emerald-800"}>SD</span>
+      {/* Global Navigation Header */}
+      <header className="relative z-10 mx-auto flex w-full max-w-7xl items-center justify-between px-6 py-6 sm:px-8">
+        <Link to="/" className="group flex items-center gap-3">
+          <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-gradient-to-tr from-emerald-500 to-teal-400 text-slate-950 font-display font-black text-lg shadow-lg shadow-emerald-500/25 group-hover:scale-105 transition">
+            SD
           </div>
-          <div className="leading-tight">
-            <div className={isDark ? "text-sm font-semibold text-white" : "text-sm font-semibold text-[#0e2d27]"}>SmartDiet</div>
-            <div className={isDark ? "text-xs text-zinc-400" : "text-xs text-[#4d6b62]"}>{t.brandSub}</div>
+          <div>
+            <span className="font-display text-xl font-black tracking-tight">SmartDiet</span>
+            <span className="block text-[11px] font-bold text-slate-400">{t.brandSub}</span>
           </div>
         </Link>
 
-        <Link
-          to="/register"
-          className={isDark ? "rounded-full bg-emerald-500 px-4 py-2 text-xs font-semibold text-zinc-950 hover:brightness-110" : "rounded-full bg-gradient-to-r from-[#1a7f5b] to-[#167f72] px-4 py-2 text-xs font-semibold text-white hover:brightness-110"}
-        >
-          {t.signUp}
-        </Link>
+        <div className="flex items-center gap-3">
+          <button
+            type="button"
+            onClick={toggleTheme}
+            className={"p-2.5 rounded-2xl border transition hover:scale-105 " + (isDark ? "border-white/10 bg-slate-900/60 text-slate-300 hover:bg-slate-900" : "border-slate-200 bg-white text-slate-700 hover:bg-slate-100 shadow-sm")}
+          >
+            {isDark ? <Sun className="h-4 w-4 text-amber-400" /> : <Moon className="h-4 w-4 text-slate-700" />}
+          </button>
+
+          <button
+            type="button"
+            onClick={() => setLang(lang === "tr" ? "en" : "tr")}
+            className={"flex items-center gap-1.5 px-3 py-2 rounded-2xl border text-xs font-black transition hover:scale-105 " + (isDark ? "border-white/10 bg-slate-900/60 text-slate-300 hover:bg-slate-900" : "border-slate-200 bg-white text-slate-700 hover:bg-slate-100 shadow-sm")}
+          >
+            <Globe className="h-3.5 w-3.5 text-emerald-400" />
+            <span>{lang.toUpperCase()}</span>
+          </button>
+
+          <Link
+            to="/register"
+            className="flex items-center gap-2 rounded-2xl bg-gradient-to-r from-emerald-500 to-teal-400 px-5 py-2.5 text-xs font-black text-slate-950 shadow-lg shadow-emerald-500/20 hover:brightness-110 hover:scale-105 transition"
+          >
+            <span>{t.signUp}</span>
+            <ArrowRight className="h-3.5 w-3.5" />
+          </Link>
+        </div>
       </header>
 
-      <main className="relative z-10 mx-auto grid w-full max-w-6xl grid-cols-1 gap-10 px-4 pb-14 pt-4 sm:px-6 lg:grid-cols-[1fr_1.05fr] lg:items-center">
-        <section className="lg:pr-6">
-          <div className={isDark ? "inline-flex items-center gap-2 rounded-full border border-emerald-400/20 bg-emerald-500/10 px-3 py-1 text-xs text-emerald-100" : "inline-flex items-center gap-2 rounded-full border border-emerald-700/20 bg-emerald-500/10 px-3 py-1 text-xs text-emerald-900"}>
-            <span className={isDark ? "h-2 w-2 rounded-full bg-emerald-400" : "h-2 w-2 rounded-full bg-emerald-600"} />
-            {t.secureLogin}
-          </div>
-
-          <h1 className={isDark ? "mt-5 text-[40px] font-extrabold leading-[1.05] tracking-tight text-white sm:text-[52px]" : "mt-5 text-[40px] font-extrabold leading-[1.05] tracking-tight text-[#0e2d27] sm:text-[52px]"}>
-            {t.titleA}{" "}
-            <span className={isDark ? "bg-gradient-to-r from-emerald-300 to-teal-200 bg-clip-text text-transparent" : "bg-gradient-to-r from-[#135241] to-[#0f6b66] bg-clip-text text-transparent"}>
-              {t.titleB}
-            </span>
-            .
-          </h1>
-
-          <p className={isDark ? "mt-4 max-w-xl text-sm leading-7 text-zinc-300 sm:text-base" : "mt-4 max-w-xl text-sm leading-7 text-[#36544c] sm:text-base"}>
-            {t.subtitle}
-          </p>
-
-          <div className="mt-7 grid gap-3 sm:grid-cols-3">
-            <InfoPill isDark={isDark} icon="PI" title={t.pillA} desc={t.pillAText} />
-            <InfoPill isDark={isDark} icon="TK" title={t.pillB} desc={t.pillBText} />
-            <InfoPill isDark={isDark} icon="MS" title={t.pillC} desc={t.pillCText} />
-          </div>
-        </section>
-
-        <section>
-          <div className={isDark ? "rounded-[26px] border border-white/10 bg-white/5 p-5 shadow-[0_40px_140px_rgba(0,0,0,0.65)] sm:p-7" : "rounded-[26px] border border-[#325d51]/25 bg-[#eaf2ed]/84 p-5 shadow-[0_40px_120px_rgba(8,22,20,0.12)] sm:p-7"}>
-            <div className="mb-5">
-              <div className={isDark ? "text-base font-extrabold text-white" : "text-base font-extrabold text-[#0e2d27]"}>{t.cardTitle}</div>
-              <div className={isDark ? "mt-1 text-xs text-zinc-400" : "mt-1 text-xs text-[#4d6b62]"}>{t.cardSub}</div>
+      {/* Main Grid Content */}
+      <main className="relative z-10 mx-auto my-auto w-full max-w-7xl px-6 py-8 sm:px-8">
+        <div className="grid lg:grid-cols-12 gap-12 items-center">
+          {/* Left Pitch Column */}
+          <div className="lg:col-span-6 space-y-6">
+            <div className="inline-flex items-center gap-2 rounded-full border border-emerald-500/30 bg-emerald-500/10 px-4 py-1.5 text-xs font-black text-emerald-400">
+              <Sparkles className="h-3.5 w-3.5" />
+              <span>{t.secureLogin}</span>
             </div>
 
-            {error ? <div className="mb-4 rounded-xl border border-rose-500/25 bg-rose-500/10 px-4 py-3 text-sm text-rose-100">{error}</div> : null}
+            <h1 className="font-display text-4xl sm:text-5xl lg:text-6xl font-black tracking-tight leading-[1.08]">
+              {t.titleA}{" "}
+              <span className="bg-gradient-to-r from-emerald-400 via-teal-300 to-cyan-400 bg-clip-text text-transparent">
+                {t.titleB}
+              </span>
+            </h1>
 
-            <form onSubmit={handleCredentialSubmit} className="space-y-4" autoComplete="on">
-              <Field
-                isDark={isDark}
-                label={t.identifier}
-                value={identifier}
-                onChange={(v) => {
-                  setIdentifier(v);
-                  setError("");
-                }}
-                placeholder={t.identifierPh}
-                autoComplete="username"
-                name="identifier"
-              />
+            <p className="text-sm sm:text-base leading-relaxed text-slate-300 max-w-xl">
+              {t.subtitle}
+            </p>
 
-              <div>
-                <label className={isDark ? "mb-2 block text-xs font-semibold text-zinc-200" : "mb-2 block text-xs font-semibold text-[#36544c]"}>{t.password}</label>
-                <div className="relative">
-                  <input
-                    value={password}
-                    onChange={(e) => {
-                      setPassword(e.target.value);
-                      setError("");
-                    }}
-                    type={showPass ? "text" : "password"}
-                    placeholder="********"
-                    autoComplete="current-password"
-                    name="password"
-                    className={[
-                      "w-full rounded-2xl border px-4 py-3 pr-12 text-sm outline-none transition",
-                      isDark ? "bg-black/20 text-white" : "bg-white text-[#0e2d27]",
-                      "border-[#325d51]/25 focus:border-emerald-400/40 focus:ring-4 focus:ring-emerald-500/10",
-                    ].join(" ")}
-                  />
-                  <button
-                    type="button"
-                    onClick={() => setShowPass((p) => !p)}
-                    className={isDark ? "absolute right-3 top-1/2 -translate-y-1/2 rounded-xl border border-white/10 bg-white/5 px-2 py-1 text-[11px] font-semibold text-zinc-200 hover:bg-white/10" : "absolute right-3 top-1/2 -translate-y-1/2 rounded-xl border border-[#325d51]/25 bg-[#d7e4de] px-2 py-1 text-[11px] font-semibold text-[#36544c] hover:bg-[#c9dad3]"}
-                  >
-                    {showPass ? t.hide : t.show}
-                  </button>
+            {/* Feature Bento Pills */}
+            <div className="space-y-3 pt-2">
+              <div className={"flex items-center gap-4 p-4 rounded-2xl border transition " + (isDark ? "border-white/10 bg-slate-900/60" : "border-slate-200 bg-white/80 shadow-sm")}>
+                <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-emerald-500/15 text-emerald-400 font-black">
+                  <Activity className="h-5 w-5" />
+                </div>
+                <div>
+                  <h4 className="text-sm font-bold font-display">{t.pillA}</h4>
+                  <p className="text-xs text-slate-400 mt-0.5">{t.pillAText}</p>
                 </div>
               </div>
 
-              <button
-                disabled={loading}
-                type="submit"
-                className="mt-2 w-full rounded-2xl bg-gradient-to-r from-emerald-400 to-teal-300 px-5 py-3 text-sm font-extrabold text-zinc-950 shadow-[0_18px_60px_rgba(16,185,129,0.20)] transition hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-60"
-              >
-                {loading ? t.nextStepBusy : t.nextStep}
-              </button>
+              <div className={"flex items-center gap-4 p-4 rounded-2xl border transition " + (isDark ? "border-white/10 bg-slate-900/60" : "border-slate-200 bg-white/80 shadow-sm")}>
+                <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-teal-500/15 text-teal-400 font-black">
+                  <Stethoscope className="h-5 w-5" />
+                </div>
+                <div>
+                  <h4 className="text-sm font-bold font-display">{t.pillB}</h4>
+                  <p className="text-xs text-slate-400 mt-0.5">{t.pillBText}</p>
+                </div>
+              </div>
+            </div>
 
-              {forgotPasswordEnabled ? (
-                <div className={isDark ? "rounded-2xl border border-amber-400/20 bg-amber-500/10 p-4" : "rounded-2xl border border-amber-700/20 bg-amber-50 p-4"}>
-                  <div className={isDark ? "text-sm font-bold text-amber-100" : "text-sm font-bold text-amber-900"}>
-                    {t.forgotPassword}
+            {/* Fast Demo Sandbox Picker */}
+            <div className="pt-2">
+              <span className="text-xs font-black uppercase tracking-wider text-slate-400 block mb-2.5">
+                {t.demoTitle}
+              </span>
+              <div className="grid sm:grid-cols-2 gap-3">
+                <button
+                  type="button"
+                  disabled={loading}
+                  onClick={() => handleQuickDemo("ibrahim_tkn033@hotmail.com", "/dietitian-home")}
+                  className="flex items-center justify-between p-3.5 rounded-2xl border border-emerald-500/30 bg-emerald-500/10 text-emerald-400 text-xs font-black hover:bg-emerald-500/20 hover:scale-[1.02] transition disabled:opacity-50"
+                >
+                  <div className="flex items-center gap-2.5">
+                    <Stethoscope className="h-4 w-4" />
+                    <span>{t.demoDietitian}</span>
                   </div>
-                  <div className={isDark ? "mt-1 text-xs text-amber-50/80" : "mt-1 text-xs text-amber-800/80"}>
-                    {t.forgotPasswordAfterAttempts}
-                  </div>
-                  <div className={isDark ? "mt-2 text-xs text-zinc-300" : "mt-2 text-xs text-[#5f5a3c]"}>
-                    {t.forgotPasswordHint}
-                  </div>
+                  <ArrowRight className="h-3.5 w-3.5" />
+                </button>
 
-                  <div className="mt-3 space-y-3">
-                    <Field
-                      isDark={isDark}
-                      label={t.forgotPasswordEmail}
-                      value={forgotEmail}
-                      onChange={(v) => {
-                        setForgotEmail(v);
-                        setForgotError("");
-                        setForgotSuccess("");
-                      }}
-                      placeholder={t.forgotPasswordEmailPh}
-                      autoComplete="email"
-                      name="forgot_email"
+                <button
+                  type="button"
+                  disabled={loading}
+                  onClick={() => handleQuickDemo("ibrahim_tkn03@hotmail.com", "/client-home")}
+                  className="flex items-center justify-between p-3.5 rounded-2xl border border-teal-500/30 bg-teal-500/10 text-teal-400 text-xs font-black hover:bg-teal-500/20 hover:scale-[1.02] transition disabled:opacity-50"
+                >
+                  <div className="flex items-center gap-2.5">
+                    <UserCheck className="h-4 w-4" />
+                    <span>{t.demoClient}</span>
+                  </div>
+                  <ArrowRight className="h-3.5 w-3.5" />
+                </button>
+              </div>
+            </div>
+          </div>
+
+          {/* Right Login Card Column */}
+          <div className="lg:col-span-6">
+            <div className={"relative rounded-[36px] border p-7 sm:p-9 backdrop-blur-2xl shadow-2xl transition-all " + (isDark ? "border-white/10 bg-slate-900/70 shadow-black/80" : "border-slate-200 bg-white/95 shadow-slate-300/40")}>
+              <div className="mb-6 border-b border-white/5 pb-4">
+                <h2 className="font-display text-2xl font-black">{t.cardTitle}</h2>
+                <p className="text-xs sm:text-sm text-slate-400 mt-1">{t.cardSub}</p>
+              </div>
+
+              {error && (
+                <div className="mb-6 p-4 rounded-2xl border border-rose-500/20 bg-rose-500/10 text-xs font-bold text-rose-400 flex items-center gap-2">
+                  <AlertCircle className="h-4 w-4 shrink-0" />
+                  <span>{error}</span>
+                </div>
+              )}
+
+              <form onSubmit={handleCredentialSubmit} className="space-y-4">
+                {/* Identifier Input */}
+                <div>
+                  <label className="text-xs font-black uppercase tracking-wider text-slate-300 block mb-1.5">
+                    {t.identifier}
+                  </label>
+                  <div className="relative">
+                    <Mail className="absolute left-4 top-3.5 h-4 w-4 text-slate-400" />
+                    <input
+                      type="text"
+                      placeholder={t.identifierPh}
+                      value={identifier}
+                      onChange={(e) => setIdentifier(e.target.value)}
+                      className={"w-full rounded-2xl border pl-11 pr-4 py-3.5 text-xs sm:text-sm font-medium outline-none transition " + (isDark ? "border-white/10 bg-black/40 text-white placeholder:text-slate-500 focus:border-emerald-500 focus:bg-black/60" : "border-slate-200 bg-slate-50 text-slate-900 placeholder:text-slate-400 focus:border-emerald-500 focus:bg-white")}
                     />
+                  </div>
+                </div>
 
-                    {forgotError ? <div className="rounded-xl border border-rose-500/25 bg-rose-500/10 px-3 py-2 text-xs text-rose-100">{forgotError}</div> : null}
-                    {forgotSuccess ? <div className="rounded-xl border border-emerald-500/25 bg-emerald-500/10 px-3 py-2 text-xs text-emerald-100">{forgotSuccess}</div> : null}
-
+                {/* Password Input */}
+                <div>
+                  <div className="flex items-center justify-between mb-1.5">
+                    <label className="text-xs font-black uppercase tracking-wider text-slate-300 block">
+                      {t.password}
+                    </label>
+                    {forgotPasswordEnabled && (
+                      <button
+                        type="button"
+                        onClick={() => setForgotOpen(true)}
+                        className="text-xs font-bold text-emerald-400 hover:underline"
+                      >
+                        {t.forgotPassword}
+                      </button>
+                    )}
+                  </div>
+                  <div className="relative">
+                    <Lock className="absolute left-4 top-3.5 h-4 w-4 text-slate-400" />
+                    <input
+                      type={showPassword ? "text" : "password"}
+                      placeholder="••••••••"
+                      value={password}
+                      onChange={(e) => setPassword(e.target.value)}
+                      className={"w-full rounded-2xl border pl-11 pr-11 py-3.5 text-xs sm:text-sm font-medium outline-none transition " + (isDark ? "border-white/10 bg-black/40 text-white placeholder:text-slate-500 focus:border-emerald-500 focus:bg-black/60" : "border-slate-200 bg-slate-50 text-slate-900 placeholder:text-slate-400 focus:border-emerald-500 focus:bg-white")}
+                    />
                     <button
                       type="button"
-                      onClick={() => void handleForgotPassword()}
-                      disabled={forgotLoading}
-                      className={isDark ? "w-full rounded-xl border border-amber-300/20 bg-white/5 px-4 py-3 text-sm font-bold text-white disabled:cursor-not-allowed disabled:opacity-60" : "w-full rounded-xl border border-amber-700/20 bg-white px-4 py-3 text-sm font-bold text-[#5d4823] disabled:cursor-not-allowed disabled:opacity-60"}
+                      onClick={() => setShowPassword(!showPassword)}
+                      className="absolute right-4 top-3.5 text-slate-400 hover:text-white transition"
                     >
-                      {forgotLoading ? t.forgotPasswordSending : t.forgotPasswordSend}
+                      {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                     </button>
                   </div>
                 </div>
-              ) : failedAttempts > 0 ? (
-                <div className={isDark ? "rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-xs text-zinc-300" : "rounded-2xl border border-[#325d51]/20 bg-white px-4 py-3 text-xs text-[#36544c]"}>
-                  {lang === "tr" ? `Hatali deneme: ${failedAttempts}/3` : `Failed attempts: ${failedAttempts}/3`}
-                </div>
-              ) : null}
 
-              <div className={isDark ? "pt-2 text-center text-xs text-zinc-400" : "pt-2 text-center text-xs text-[#4d6b62]"}>
-                {t.noAccount}{" "}
-                <Link to="/register" className={isDark ? "font-semibold text-emerald-200 hover:underline" : "font-semibold text-emerald-700 hover:underline"}>
-                  {t.toRegister}
-                </Link>
-              </div>
-            </form>
+                {/* Submit Button */}
+                <button
+                  type="submit"
+                  disabled={loading}
+                  className="w-full mt-4 flex items-center justify-center gap-2 rounded-2xl bg-gradient-to-r from-emerald-500 via-teal-500 to-cyan-400 py-4 text-sm font-black text-slate-950 shadow-xl shadow-emerald-500/25 hover:brightness-110 active:scale-[0.99] transition disabled:opacity-50"
+                >
+                  <span>{loading ? t.nextStepBusy : t.nextStep}</span>
+                  <CheckCircle2 className="h-4 w-4 stroke-[2.5]" />
+                </button>
+
+                <div className="pt-3 text-center text-xs sm:text-sm text-slate-400 font-medium">
+                  {t.noAccount}{" "}
+                  <Link to="/register" className="font-bold text-emerald-400 hover:underline">
+                    {t.toRegister}
+                  </Link>
+                </div>
+              </form>
+            </div>
           </div>
-        </section>
+        </div>
       </main>
 
-      {otpOpen ? (
-        <div className="fixed inset-0 z-50 grid place-items-center bg-black/60 p-4">
-          <div className={isDark ? "w-full max-w-md rounded-2xl border border-white/10 bg-[#0d1114] p-5 shadow-[0_30px_120px_rgba(0,0,0,0.55)]" : "w-full max-w-md rounded-2xl border border-[#325d51]/20 bg-white p-5 shadow-[0_30px_120px_rgba(0,0,0,0.25)]"}>
-            <div className="mb-4 flex items-start justify-between gap-3">
-              <div>
-                <h3 className={isDark ? "text-lg font-extrabold text-white" : "text-lg font-extrabold text-[#0e2d27]"}>{t.otpTitle}</h3>
-                <p className={isDark ? "mt-1 text-xs text-zinc-400" : "mt-1 text-xs text-[#4d6b62]"}>{t.otpSub}</p>
+      {/* Forgot Password Modal */}
+      {forgotOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-md p-4">
+          <div className={"w-full max-w-md p-7 rounded-[32px] border " + (isDark ? "border-white/10 bg-slate-900" : "border-slate-200 bg-white")}>
+            <h3 className="font-display text-lg font-black">{t.forgotPassword}</h3>
+            <p className="text-xs text-slate-400 mt-1">{t.forgotPasswordHint}</p>
+
+            {forgotError && <div className="mt-4 p-3 rounded-xl bg-rose-500/10 text-rose-400 text-xs font-bold">{forgotError}</div>}
+            {forgotSuccess && <div className="mt-4 p-3 rounded-xl bg-emerald-500/10 text-emerald-400 text-xs font-bold">{forgotSuccess}</div>}
+
+            <div className="mt-4 space-y-3">
+              <input
+                type="email"
+                placeholder={t.forgotPasswordEmailPh}
+                value={forgotEmail}
+                onChange={(e) => setForgotEmail(e.target.value)}
+                className={"w-full rounded-2xl border px-4 py-3 text-xs outline-none " + (isDark ? "border-white/10 bg-black/40 text-white" : "border-slate-200 bg-slate-50 text-slate-900")}
+              />
+              <div className="flex gap-3">
+                <button
+                  type="button"
+                  onClick={() => setForgotOpen(false)}
+                  className="flex-1 py-2.5 rounded-xl border border-white/10 text-xs font-bold text-slate-300 hover:bg-white/5"
+                >
+                  {t.cancelOtp}
+                </button>
+                <button
+                  type="button"
+                  disabled={forgotLoading}
+                  onClick={handleForgotPassword}
+                  className="flex-1 py-2.5 rounded-xl bg-emerald-500 text-slate-950 text-xs font-black hover:bg-emerald-400"
+                >
+                  {forgotLoading ? t.forgotPasswordSending : t.forgotPasswordSend}
+                </button>
               </div>
-              <button
-                onClick={() => {
-                  setOtpOpen(false);
-                  setPendingUser(null);
-                }}
-                className={isDark ? "rounded-lg border border-white/10 bg-white/5 px-2.5 py-1 text-xs text-zinc-200" : "rounded-lg border border-[#325d51]/20 bg-[#eef5f1] px-2.5 py-1 text-xs text-[#36544c]"}
-              >
-                {t.cancelOtp}
-              </button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* OTP Modal */}
+      {otpOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-md p-4">
+          <div className={"w-full max-w-md p-7 rounded-[32px] border " + (isDark ? "border-white/10 bg-slate-900" : "border-slate-200 bg-white")}>
+            <div className="flex items-center gap-3 mb-4">
+              <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-emerald-500/15 text-emerald-400">
+                <KeyRound className="h-5 w-5" />
+              </div>
+              <div>
+                <h3 className="font-display text-lg font-black">{t.otpTitle}</h3>
+                <p className="text-xs text-slate-400">{t.otpSub}</p>
+              </div>
+            </div>
+
+            {otpError && <div className="mb-4 p-3 rounded-xl bg-rose-500/10 text-rose-400 text-xs font-bold">{otpError}</div>}
+            {otpInfo && <div className="mb-4 p-3 rounded-xl bg-emerald-500/10 text-emerald-400 text-xs font-bold">{otpInfo}</div>}
 
             {!otpSent ? (
               <div className="space-y-4">
-                <div className="grid gap-2">
+                <div className="grid grid-cols-2 gap-3">
                   <button
                     type="button"
-                    disabled={!availableChannels.email || otpSending}
                     onClick={() => setOtpChannel("email")}
-                    className={[
-                      "w-full rounded-xl border px-4 py-3 text-left text-sm font-bold transition disabled:cursor-not-allowed disabled:opacity-50",
-                      otpChannel === "email"
-                        ? isDark
-                          ? "border-emerald-400/40 bg-emerald-500/15 text-emerald-100"
-                          : "border-emerald-700/30 bg-emerald-100 text-emerald-900"
-                        : isDark
-                          ? "border-white/10 bg-white/5 text-zinc-200"
-                          : "border-[#325d51]/20 bg-[#f4f8f6] text-[#36544c]",
-                    ].join(" ")}
+                    className={"p-3 rounded-2xl border text-xs font-bold transition " + (otpChannel === "email" ? "border-emerald-500 bg-emerald-500/10 text-emerald-400" : "border-white/5 bg-black/20 text-slate-400")}
                   >
                     {t.otpByEmail}
                   </button>
-
                   <button
                     type="button"
-                    disabled={!availableChannels.sms || otpSending}
                     onClick={() => setOtpChannel("sms")}
-                    className={[
-                      "w-full rounded-xl border px-4 py-3 text-left text-sm font-bold transition disabled:cursor-not-allowed disabled:opacity-50",
-                      otpChannel === "sms"
-                        ? isDark
-                          ? "border-emerald-400/40 bg-emerald-500/15 text-emerald-100"
-                          : "border-emerald-700/30 bg-emerald-100 text-emerald-900"
-                        : isDark
-                          ? "border-white/10 bg-white/5 text-zinc-200"
-                          : "border-[#325d51]/20 bg-[#f4f8f6] text-[#36544c]",
-                    ].join(" ")}
+                    className={"p-3 rounded-2xl border text-xs font-bold transition " + (otpChannel === "sms" ? "border-emerald-500 bg-emerald-500/10 text-emerald-400" : "border-white/5 bg-black/20 text-slate-400")}
                   >
                     {t.otpBySms}
                   </button>
                 </div>
 
-                {otpError ? <div className="rounded-xl border border-rose-500/30 bg-rose-500/10 px-3 py-2 text-xs text-rose-100">{otpError}</div> : null}
-
                 <button
                   type="button"
-                  onClick={handleSendOtp}
                   disabled={otpSending}
-                  className="w-full rounded-xl bg-gradient-to-r from-emerald-400 to-teal-300 px-4 py-3 text-sm font-extrabold text-zinc-950"
+                  onClick={handleSendOtp}
+                  className="w-full py-3 rounded-2xl bg-emerald-500 text-slate-950 text-xs font-black hover:bg-emerald-400 transition"
                 >
                   {otpSending ? t.sendingCode : t.sendCode}
                 </button>
               </div>
             ) : (
               <form onSubmit={handleVerifyOtp} className="space-y-4">
-                {otpInfo ? <div className="rounded-xl border border-emerald-500/30 bg-emerald-500/10 px-3 py-2 text-xs text-emerald-100">{otpInfo}</div> : null}
-                {maskedOtpTarget ? (
-                  <div className={isDark ? "text-xs text-zinc-300" : "text-xs text-[#36544c]"}>
-                    {t.otpSentTo} <span className="font-semibold">{maskedOtpTarget}</span>
-                  </div>
-                ) : null}
+                <div>
+                  <label className="text-xs font-bold text-slate-400 block mb-1.5">{t.codeLabel}</label>
+                  <input
+                    type="text"
+                    maxLength={6}
+                    placeholder={t.codePh}
+                    value={otpCode}
+                    onChange={(e) => setOtpCode(e.target.value)}
+                    className="w-full rounded-2xl border border-white/10 bg-black/40 py-3 text-center font-mono text-xl font-bold tracking-widest outline-none focus:border-emerald-500 text-white"
+                  />
+                </div>
 
-                {otpSecondsLeft > 0 ? (
-                  <div className={isDark ? "text-xs text-zinc-400" : "text-xs text-[#4d6b62]"}>
-                    {t.otpExpiresIn}: <span className="font-semibold">{formatCountdown(otpSecondsLeft)}</span>
-                  </div>
-                ) : (
-                  <div className="rounded-xl border border-rose-500/30 bg-rose-500/10 px-3 py-2 text-xs text-rose-100">{t.otpExpired}</div>
-                )}
-
-                <Field
-                  isDark={isDark}
-                  label={t.codeLabel}
-                  value={otpCode}
-                  onChange={(v) => {
-                    setOtpCode(v.replace(/\D/g, "").slice(0, 6));
-                    setOtpError("");
-                  }}
-                  placeholder={t.codePh}
-                  name="otp_code"
-                />
-
-                {otpError ? <div className="rounded-xl border border-rose-500/30 bg-rose-500/10 px-3 py-2 text-xs text-rose-100">{otpError}</div> : null}
+                <div className="flex items-center justify-between text-xs text-slate-400">
+                  <span>{t.otpExpiresIn}: {otpSecondsLeft}s</span>
+                  <button
+                    type="button"
+                    disabled={otpCooldown > 0}
+                    onClick={handleSendOtp}
+                    className="font-bold text-emerald-400 disabled:opacity-40"
+                  >
+                    {t.resendCode}
+                  </button>
+                </div>
 
                 <button
-                  disabled={otpVerifying || otpSecondsLeft <= 0}
                   type="submit"
-                  className="w-full rounded-xl bg-gradient-to-r from-emerald-400 to-teal-300 px-4 py-3 text-sm font-extrabold text-zinc-950"
+                  disabled={otpVerifying}
+                  className="w-full py-3.5 rounded-2xl bg-emerald-500 text-slate-950 text-xs font-black hover:bg-emerald-400 transition"
                 >
                   {otpVerifying ? t.verifyingCode : t.verifyCode}
                 </button>
-
-                <button
-                  type="button"
-                  onClick={handleResend}
-                  disabled={otpCooldown > 0}
-                  className={isDark ? "w-full rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-sm font-bold text-zinc-100 disabled:cursor-not-allowed disabled:opacity-60" : "w-full rounded-xl border border-[#325d51]/20 bg-[#f4f8f6] px-4 py-3 text-sm font-bold text-[#36544c] disabled:cursor-not-allowed disabled:opacity-60"}
-                >
-                  {otpCooldown > 0 ? `${t.resendIn} ${otpCooldown}s` : t.resendCode}
-                </button>
               </form>
             )}
+
+            <button
+              type="button"
+              onClick={() => setOtpOpen(false)}
+              className="w-full mt-3 py-2 text-xs font-bold text-slate-500 hover:text-white transition"
+            >
+              {t.cancelOtp}
+            </button>
           </div>
         </div>
-      ) : null}
-    </div>
-  );
-}
+      )}
 
-function Field({
-  isDark,
-  label,
-  value,
-  onChange,
-  placeholder,
-  type = "text",
-  autoComplete,
-  name,
-}: {
-  isDark: boolean;
-  label: string;
-  value: string;
-  onChange: (v: string) => void;
-  placeholder?: string;
-  type?: string;
-  autoComplete?: string;
-  name?: string;
-}) {
-  return (
-    <div>
-      <label className={isDark ? "mb-2 block text-xs font-semibold text-zinc-200" : "mb-2 block text-xs font-semibold text-[#36544c]"}>{label}</label>
-      <input
-        name={name}
-        value={value}
-        onChange={(e) => onChange(e.target.value)}
-        placeholder={placeholder}
-        type={type}
-        autoComplete={autoComplete}
-        className={[
-          "w-full rounded-2xl border px-4 py-3 text-sm outline-none transition",
-          isDark ? "bg-black/20 text-white" : "bg-white text-[#0e2d27]",
-          "border-[#325d51]/25 focus:border-emerald-400/40 focus:ring-4 focus:ring-emerald-500/10",
-        ].join(" ")}
-      />
-    </div>
-  );
-}
-
-function InfoPill({ isDark, icon, title, desc }: { isDark: boolean; icon: string; title: string; desc: string }) {
-  return (
-    <div className={isDark ? "rounded-2xl border border-white/10 bg-white/5 p-4" : "rounded-2xl border border-[#325d51]/25 bg-[#eaf2ed]/84 p-4"}>
-      <div className="flex items-center justify-between">
-        <div className={isDark ? "text-sm font-extrabold text-white" : "text-sm font-extrabold text-[#0e2d27]"}>{title}</div>
-        <div className={isDark ? "text-sm text-zinc-300" : "text-sm text-[#36544c]"}>{icon}</div>
-      </div>
-      <div className={isDark ? "mt-1 text-xs text-zinc-400" : "mt-1 text-xs text-[#4d6b62]"}>{desc}</div>
+      {/* Modern Global Footer */}
+      <footer className="relative z-10 border-t border-white/5 py-6 text-center text-xs text-slate-400">
+        © {new Date().getFullYear()} SmartDiet. All rights reserved.
+      </footer>
     </div>
   );
 }

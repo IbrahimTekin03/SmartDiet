@@ -1,8 +1,28 @@
 import { useState, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
+import { API_BASE_URL as API_BASE } from "../lib/api";
 import { useAppSettings } from "../context/AppSettingsContext";
+import { 
+  User, 
+  Lock, 
+  Mail, 
+  Phone, 
+  Calendar, 
+  Eye, 
+  EyeOff, 
+  ArrowRight, 
+  Sparkles, 
+  Building2, 
+  Ruler, 
+  UserCheck, 
+  Stethoscope,
+  Activity,
+  CheckCircle2,
+  Moon,
+  Sun,
+  Globe
+} from "lucide-react";
 
-type Lang = "tr" | "en";
 type Gender = "male" | "female";
 type AccountType = "client" | "Diyetisyen";
 
@@ -21,200 +41,133 @@ type RegisterPayload = {
 
 const PASSWORD_REGEX = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{8,}$/;
 
+const COPY = {
+  tr: {
+    brandSub: "Klinik ve Beslenme Yönetimi",
+    signIn: "Giriş Yap",
+    headChip: "Sağlıklı yaşam yolculuğunuza bugün başlayın",
+    titleA: "SmartDiet'e",
+    titleB: "Kayıt Olun",
+    subtitle: "Kişiselleştirilmiş diyet programları, ölçüm takibi ve uzman danışmanlığı tek bir ekosistemde.",
+    cardTitle: "Yeni Hesap Oluştur",
+    cardSub: "Rolünüzü seçin ve bilgilerinizi doldurarak aramıza katılın.",
+    successMsg: "Kaydınız başarıyla oluşturuldu! Şimdi giriş yapabilirsiniz.",
+    toLoginBtn: "Giriş Sayfasına Git",
+    firstName: "Ad",
+    lastName: "Soyad",
+    firstNamePh: "Ahmet",
+    lastNamePh: "Yılmaz",
+    emailOpt: "E-posta Adresi",
+    phoneOpt: "Telefon Numarası",
+    emailPh: "ahmet@smartdiet.com",
+    phonePh: "+90 555 123 45 67",
+    birthDate: "Doğum Tarihi",
+    gender: "Cinsiyet",
+    accountType: "Hesap Türü",
+    clientType: "Danışan (Bireysel)",
+    clientTypeDesc: "Diyetisyenimle beslenme ve ölçüm takibi yapmak istiyorum.",
+    dietitianType: "Diyetisyen (Uzman)",
+    dietitianTypeDesc: "Danışanlarıma özel programlar hazırlayıp klinik yönetmek istiyorum.",
+    male: "Erkek",
+    female: "Kadın",
+    height: "Boy (cm)",
+    heightPh: "175",
+    password: "Şifre",
+    passHint: "En az 8 karakter, büyük/küçük harf, rakam ve özel karakter.",
+    hide: "Gizle",
+    show: "Göster",
+    submitBusy: "Hesap oluşturuluyor...",
+    submit: "Kayıt İşlemini Tamamla",
+    haveAccount: "Zaten bir hesabınız var mı?",
+    toLogin: "Giriş Yap",
+    firstReq: "Ad alanı zorunludur.",
+    lastReq: "Soyad alanı zorunludur.",
+    birthReq: "Doğum tarihi zorunludur.",
+    birthFormat: "Geçersiz doğum tarihi.",
+    ageRule: "Kayıt için en az 18 yaşında olmalısınız.",
+    genderReq: "Lütfen cinsiyet seçiniz.",
+    passReq: "Şifre alanı zorunludur.",
+    passRule: "Şifre en az 8 karakter olmalı; büyük harf, küçük harf, rakam ve özel karakter içermelidir.",
+    contactReq: "En az bir iletişim bilgisi (e-posta veya telefon) girmelisiniz.",
+    invalidEmail: "Geçerli bir e-posta adresi giriniz.",
+    invalidPhone: "Geçerli bir telefon numarası giriniz.",
+    registerFail: "Kayıt işlemi başarısız oldu.",
+    genericErr: "Beklenmeyen bir hata oluştu.",
+    selectClinic: "Klinik Seçimi (Opsiyonel)",
+    clinicPH: "Bağlı olduğunuz kliniği seçin...",
+  },
+  en: {
+    brandSub: "Clinical & Nutrition Platform",
+    signIn: "Sign In",
+    headChip: "Start your personalized health journey today",
+    titleA: "Join",
+    titleB: "SmartDiet",
+    subtitle: "Tailored nutrition plans, bio-metric tracking, and dietitian communication in one place.",
+    cardTitle: "Create Your Account",
+    cardSub: "Select your role and enter your details to get started.",
+    successMsg: "Account created successfully! You can now log in.",
+    toLoginBtn: "Go to Login",
+    firstName: "First Name",
+    lastName: "Last Name",
+    firstNamePh: "John",
+    lastNamePh: "Doe",
+    emailOpt: "Email Address",
+    phoneOpt: "Phone Number",
+    emailPh: "john@smartdiet.com",
+    phonePh: "+1 555 123 4567",
+    birthDate: "Date of Birth",
+    gender: "Gender",
+    accountType: "Account Role",
+    clientType: "Client (Individual)",
+    clientTypeDesc: "Follow meal plans and track progress with my dietitian.",
+    dietitianType: "Dietitian (Practitioner)",
+    dietitianTypeDesc: "Create custom plans and manage clients and clinics.",
+    male: "Male",
+    female: "Female",
+    height: "Height (cm)",
+    heightPh: "175",
+    password: "Password",
+    passHint: "Min 8 chars, uppercase, lowercase, number and symbol.",
+    hide: "Hide",
+    show: "Show",
+    submitBusy: "Creating account...",
+    submit: "Complete Registration",
+    haveAccount: "Already have an account?",
+    toLogin: "Sign In",
+    firstReq: "First name is required.",
+    lastReq: "Last name is required.",
+    birthReq: "Date of birth is required.",
+    birthFormat: "Invalid birth date.",
+    ageRule: "You must be at least 18 years old.",
+    genderReq: "Please select your gender.",
+    passReq: "Password is required.",
+    passRule: "Password must have 8+ chars with upper, lower, number, and symbol.",
+    contactReq: "At least one contact method (email or phone) is required.",
+    invalidEmail: "Please enter a valid email.",
+    invalidPhone: "Please enter a valid phone.",
+    registerFail: "Registration failed.",
+    genericErr: "An unexpected error occurred.",
+    selectClinic: "Clinic Selection (Optional)",
+    clinicPH: "Select your clinic...",
+  }
+};
+
 function isAtLeast18(dateStr: string): boolean {
   const [yearRaw, monthRaw, dayRaw] = dateStr.split("-");
   const year = Number(yearRaw);
   const month = Number(monthRaw);
   const day = Number(dayRaw);
   if (!year || !month || !day) return false;
-
   const now = new Date();
   let age = now.getFullYear() - year;
   const monthDiff = now.getMonth() + 1 - month;
   if (monthDiff < 0 || (monthDiff === 0 && now.getDate() < day)) age -= 1;
-
   return age >= 18;
 }
 
-const COPY: Record<
-  Lang,
-  {
-    brandSub: string;
-    signIn: string;
-    headChip: string;
-    titleA: string;
-    titleB: string;
-    subtitle: string;
-    pillA: string;
-    pillAText: string;
-    pillB: string;
-    pillBText: string;
-    pillC: string;
-    pillCText: string;
-    cardTitle: string;
-    cardSub: string;
-    successMsg: string;
-    toLoginBtn: string;
-    firstName: string;
-    lastName: string;
-    firstNamePh: string;
-    lastNamePh: string;
-    emailOpt: string;
-    phoneOpt: string;
-    emailPh: string;
-    phonePh: string;
-    birthDate: string;
-    gender: string;
-    accountType: string;
-    clientType: string;
-    dietitianType: string;
-    male: string;
-    female: string;
-    password: string;
-    passHint: string;
-    hide: string;
-    show: string;
-    submitBusy: string;
-    submit: string;
-    haveAccount: string;
-    toLogin: string;
-    firstReq: string;
-    lastReq: string;
-    birthReq: string;
-    birthFormat: string;
-    ageRule: string;
-    genderReq: string;
-    passReq: string;
-    passRule: string;
-    contactReq: string;
-    invalidEmail: string;
-    invalidPhone: string;
-    registerFail: string;
-    genericErr: string;
-    selectClinic: string;
-    clinicPH: string;
-  }
-> = {
-  tr: {
-    brandSub: "Klinik ve Beslenme Yönetimi",
-    signIn: "Giriş Yap",
-    headChip: "Hesabını oluştur ve platforma güvenle başla",
-    titleA: "SmartDiet'e",
-    titleB: "kayıt ol",
-    subtitle: "Danışan yönetimi, plan oluşturma, ölçüm takibi ve iletişim süreçlerini tek panelden yürüt.",
-    pillA: "Abonelik",
-    pillAText: "Aktif / dondur / iptal",
-    pillB: "Ölçüm",
-    pillBText: "Geçmişe dönük takip",
-    pillC: "Sohbet",
-    pillCText: "Fotoğraf ve görüldü bilgisi",
-    cardTitle: "Kayıt Oluştur",
-    cardSub: "E-posta veya telefon alanlarından en az birini doldurarak hesabını oluştur.",
-    successMsg: "Kayıt başarıyla oluşturuldu. Şimdi giriş yapabilirsin.",
-    toLoginBtn: "Girişe Git",
-    firstName: "İsim",
-    lastName: "Soyisim",
-    firstNamePh: "İsim",
-    lastNamePh: "Soyisim",
-    emailOpt: "E-posta (opsiyonel)",
-    phoneOpt: "Telefon (opsiyonel)",
-    emailPh: "ornek@example.com",
-    phonePh: "+905555555555",
-    birthDate: "Doğum Tarihi",
-    gender: "Cinsiyet",
-    accountType: "Hesap Türü",
-    clientType: "Kullanıcı",
-    dietitianType: "Diyetisyen",
-    male: "Erkek",
-    female: "Kadın",
-    password: "Şifre",
-    passHint: "En az 8 karakter; büyük harf, küçük harf, rakam ve özel karakter içermelidir.",
-    hide: "Gizle",
-    show: "Göster",
-    submitBusy: "Kayıt oluşturuluyor...",
-    submit: "Kayıt Ol",
-    haveAccount: "Zaten hesabın var mı?",
-    toLogin: "Giriş yap",
-    firstReq: "İsim zorunludur.",
-    lastReq: "Soyisim zorunludur.",
-    birthReq: "Doğum tarihi zorunludur.",
-    birthFormat: "Geçerli format: YYYY-MM-DD",
-    ageRule: "Kayıt olmak için en az 18 yaşında olmalısın.",
-    genderReq: "Cinsiyet seçimi zorunludur.",
-    passReq: "Şifre zorunludur.",
-    passRule: "Şifren en az 8 karakter olmalı; büyük harf, küçük harf, rakam ve özel karakter içermelidir.",
-    contactReq: "E-posta veya telefon alanlarından en az biri zorunludur.",
-    invalidEmail: "Geçerli bir e-posta adresi gir.",
-    invalidPhone: "Geçerli bir telefon numarası gir. Örnek: +905555555555",
-    registerFail: "Kayıt oluşturulamadı. Bilgilerini kontrol ederek tekrar dene.",
-    genericErr: "Beklenmeyen bir hata oluştu.",
-    selectClinic: "Klinik Seçin",
-    clinicPH: "Hizmet aldığınız kliniği seçin",
-  },
-  en: {
-    brandSub: "Clinic and Nutrition Management",
-    signIn: "Sign In",
-    headChip: "Create your account and manage your clinic",
-    titleA: "Sign up to",
-    titleB: "SmartDiet",
-    subtitle: "Manage clients, create plans, track measurements and run messaging from one panel.",
-    pillA: "Subscription",
-    pillAText: "Activate / pause / cancel",
-    pillB: "Measurement",
-    pillBText: "Historical tracking",
-    pillC: "Chat",
-    pillCText: "Photo and seen status",
-    cardTitle: "Create Account",
-    cardSub: "Fill at least one of email or phone.",
-    successMsg: "Registration completed. Do you want to sign in now?",
-    toLoginBtn: "Go to Sign In",
-    firstName: "First Name",
-    lastName: "Last Name",
-    firstNamePh: "First Name",
-    lastNamePh: "Last Name",
-    emailOpt: "Email (optional)",
-    phoneOpt: "Phone (optional)",
-    emailPh: "example@email.com",
-    phonePh: "+905555555555",
-    birthDate: "Birth Date",
-    gender: "Gender",
-    accountType: "Account Type",
-    clientType: "Client",
-    dietitianType: "Dietitian",
-    male: "Male",
-    female: "Female",
-    password: "Password",
-    passHint: "At least 8 chars, 1 upper, 1 lower, 1 number, 1 special (@$!%*?&)",
-    hide: "Hide",
-    show: "Show",
-    submitBusy: "Creating account...",
-    submit: "Sign Up",
-    haveAccount: "Already have an account?",
-    toLogin: "Sign in",
-    firstReq: "First name is required.",
-    lastReq: "Last name is required.",
-    birthReq: "Birth date is required.",
-    birthFormat: "Valid format: YYYY-MM-DD",
-    ageRule: "You must be at least 18 years old to register.",
-    genderReq: "Gender is required.",
-    passReq: "Password is required.",
-    passRule: "Password must include 8+ chars, upper, lower, number and special character.",
-    contactReq: "At least one of email or phone is required.",
-    invalidEmail: "Enter a valid email.",
-    invalidPhone: "Enter a valid phone number. Example: +905555555555",
-    registerFail: "Registration failed. Check your details.",
-    genericErr: "An error occurred.",
-    selectClinic: "Select Clinic",
-    clinicPH: "Select the clinic you receive service from",
-  },
-};
-
 export default function Register() {
   const navigate = useNavigate();
-
-  const API_BASE = "http://localhost:3000";
-  const REGISTER_URL = `${API_BASE}/api/auth/register`;
-  const { lang, isDark } = useAppSettings();
+  const { lang, setLang, isDark, toggleTheme } = useAppSettings();
   const t = COPY[lang];
 
   const [form, setForm] = useState<RegisterPayload>({
@@ -227,6 +180,7 @@ export default function Register() {
     email: "",
     phone_number: "",
     height: "",
+    clinic_id: "",
   });
 
   const [showPass, setShowPass] = useState(false);
@@ -246,7 +200,6 @@ export default function Register() {
 
   const validate = () => {
     const e: Record<string, string> = {};
-
     if (!form.first_name.trim()) e.first_name = t.firstReq;
     if (!form.last_name.trim()) e.last_name = t.lastReq;
 
@@ -258,34 +211,23 @@ export default function Register() {
       e.birth_date = t.ageRule;
     }
 
-    if (!form.gender) e.gender = t.genderReq;
-
     if (!form.password) {
       e.password = t.passReq;
     } else if (!PASSWORD_REGEX.test(form.password)) {
       e.password = t.passRule;
     }
 
-    const email = form.email?.trim();
-    const phone = form.phone_number?.trim();
+    const hasEmail = Boolean(form.email?.trim());
+    const hasPhone = Boolean(form.phone_number?.trim());
 
-    if (!email && !phone) {
+    if (!hasEmail && !hasPhone) {
       e.contact = t.contactReq;
     } else {
-      if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) e.email = t.invalidEmail;
-      if (phone && !/^\+?[0-9\s()-]{10,}$/.test(phone)) e.phone_number = t.invalidPhone;
-    }
-
-    if (form.account_type === "client" && clinics.length > 0 && !form.clinic_id) {
-      e.clinic_id = t.selectClinic;
-    }
-
-    if (form.account_type === "client") {
-      const heightVal = Number(form.height);
-      if (!form.height || !form.height.trim()) {
-        e.height = lang === "tr" ? "Boy alanı zorunludur." : "Height is required.";
-      } else if (isNaN(heightVal) || heightVal < 50 || heightVal > 250) {
-        e.height = lang === "tr" ? "Geçerli bir boy giriniz (50 - 250 cm)." : "Enter a valid height (50 - 250 cm).";
+      if (hasEmail && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email!.trim())) {
+        e.email = t.invalidEmail;
+      }
+      if (hasPhone && !/^\+?[0-9\s\-()]{7,20}$/.test(form.phone_number!.trim())) {
+        e.phone_number = t.invalidPhone;
       }
     }
 
@@ -327,7 +269,7 @@ export default function Register() {
         height: (form.account_type === "client" && form.height) ? Number(form.height) : undefined,
       };
 
-      const res = await fetch(REGISTER_URL, {
+      const res = await fetch(`${API_BASE}/api/auth/register`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),
@@ -337,12 +279,7 @@ export default function Register() {
       if (!res.ok) {
         const msg = data?.message?.join?.(" - ") || data?.message || t.registerFail;
         const lowered = String(msg).toLowerCase();
-        if (
-          lowered.includes("already") ||
-          lowered.includes("zaten") ||
-          lowered.includes("email_exists") ||
-          lowered.includes("phone_number_exists")
-        ) {
+        if (lowered.includes("already") || lowered.includes("zaten") || lowered.includes("email_exists") || lowered.includes("phone_number_exists")) {
           setDuplicateContact(true);
         }
         throw new Error(msg);
@@ -359,6 +296,7 @@ export default function Register() {
         email: "",
         phone_number: "",
         height: "",
+        clinic_id: "",
       });
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : "";
@@ -369,334 +307,392 @@ export default function Register() {
   };
 
   return (
-    <div className="relative min-h-screen w-screen overflow-hidden">
-      <div className="pointer-events-none absolute inset-0">
-        <div
-          className={
-            isDark
-              ? "absolute inset-0 opacity-100 [background:radial-gradient(1100px_700px_at_18%_15%,rgba(16,185,129,0.18),transparent_60%),radial-gradient(900px_700px_at_90%_20%,rgba(20,184,166,0.12),transparent_60%),radial-gradient(900px_700px_at_60%_95%,rgba(56,189,248,0.10),transparent_60%),linear-gradient(180deg,#050608,#07090b_55%,#050608)]"
-              : "absolute inset-0 opacity-[0.99] [background:radial-gradient(1180px_740px_at_12%_0%,rgba(22,128,101,0.23),transparent_58%),radial-gradient(980px_640px_at_92%_8%,rgba(20,120,133,0.16),transparent_56%),radial-gradient(980px_680px_at_52%_108%,rgba(34,117,91,0.14),transparent_62%),linear-gradient(180deg,#e8f0eb,#dee8e2_56%,#dbe5df)]"
-          }
-        />
-        <div
-          className={
-            isDark
-              ? "absolute inset-0 opacity-[0.10] [background-image:radial-gradient(rgba(255,255,255,0.14)_1px,transparent_1px)] [background-size:18px_18px]"
-              : "absolute inset-0 opacity-[0.12] [background-image:radial-gradient(rgba(8,37,31,0.11)_1px,transparent_1px)] [background-size:22px_22px]"
-          }
-        />
+    <div className={`relative min-h-screen w-full overflow-x-hidden flex flex-col justify-between ${
+      isDark ? "bg-[#040711] text-white" : "bg-[#f8fafc] text-slate-900"
+    }`}>
+      {/* Dynamic Background Glows */}
+      <div className="pointer-events-none fixed inset-0 z-0 overflow-hidden">
+        {isDark ? (
+          <>
+            <div className="absolute top-[-10%] left-[-10%] h-[650px] w-[650px] rounded-full bg-emerald-500/15 blur-[140px]" />
+            <div className="absolute bottom-[-10%] right-[-10%] h-[650px] w-[650px] rounded-full bg-cyan-500/15 blur-[140px]" />
+            <div className="absolute inset-0 bg-grid-pattern opacity-100" />
+          </>
+        ) : (
+          <>
+            <div className="absolute top-[-10%] left-[-10%] h-[650px] w-[650px] rounded-full bg-emerald-500/10 blur-[130px]" />
+            <div className="absolute bottom-[-10%] right-[-10%] h-[650px] w-[650px] rounded-full bg-cyan-500/10 blur-[130px]" />
+            <div className="absolute inset-0 bg-grid-pattern opacity-40" />
+          </>
+        )}
       </div>
 
-      <header className="relative z-10 mx-auto flex w-full max-w-6xl items-center justify-between px-4 py-5 sm:px-6">
-        <Link to="/" className="flex items-center gap-3">
-          <div className={isDark ? "grid h-10 w-10 place-items-center rounded-xl bg-emerald-500/15 ring-1 ring-emerald-400/20" : "grid h-10 w-10 place-items-center rounded-xl bg-emerald-600/15 ring-1 ring-emerald-700/20"}>
-            <span className={isDark ? "text-sm font-extrabold text-emerald-200" : "text-sm font-extrabold text-emerald-800"}>SD</span>
+      {/* Global Navigation Header */}
+      <header className="relative z-10 mx-auto flex w-full max-w-7xl items-center justify-between px-6 py-6 sm:px-8">
+        <Link to="/" className="group flex items-center gap-3">
+          <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-gradient-to-tr from-emerald-500 to-teal-400 text-slate-950 font-display font-black text-lg shadow-lg shadow-emerald-500/25 group-hover:scale-105 transition">
+            SD
           </div>
-          <div className="leading-tight">
-            <div className={isDark ? "text-sm font-semibold text-white" : "text-sm font-semibold text-[#0e2d27]"}>SmartDiet</div>
-            <div className={isDark ? "text-xs text-zinc-400" : "text-xs text-[#4d6b62]"}>{t.brandSub}</div>
+          <div>
+            <span className="font-display text-xl font-black tracking-tight">SmartDiet</span>
+            <span className="block text-[11px] font-bold text-slate-400">{t.brandSub}</span>
           </div>
         </Link>
 
-        <Link
-          to="/login"
-          className={isDark ? "rounded-full border border-white/10 bg-white/5 px-4 py-2 text-xs font-semibold text-zinc-100 hover:bg-white/10" : "rounded-full border border-[#325d51]/25 bg-[#eaf2ed]/82 px-4 py-2 text-xs font-semibold text-[#1a4037] hover:bg-[#f3f7f4]"}
-        >
-          {t.signIn}
-        </Link>
+        <div className="flex items-center gap-3">
+          <button
+            type="button"
+            onClick={toggleTheme}
+            className={`p-2.5 rounded-2xl border transition hover:scale-105 ${
+              isDark ? "border-white/10 bg-slate-900/60 text-slate-300 hover:bg-slate-900" : "border-slate-200 bg-white text-slate-700 hover:bg-slate-100 shadow-sm"
+            }`}
+          >
+            {isDark ? <Sun className="h-4 w-4 text-amber-400" /> : <Moon className="h-4 w-4 text-slate-700" />}
+          </button>
+
+          <button
+            type="button"
+            onClick={() => setLang(lang === "tr" ? "en" : "tr")}
+            className={`flex items-center gap-1.5 px-3 py-2 rounded-2xl border text-xs font-black transition hover:scale-105 ${
+              isDark ? "border-white/10 bg-slate-900/60 text-slate-300 hover:bg-slate-900" : "border-slate-200 bg-white text-slate-700 hover:bg-slate-100 shadow-sm"
+            }`}
+          >
+            <Globe className="h-3.5 w-3.5 text-emerald-400" />
+            <span>{lang.toUpperCase()}</span>
+          </button>
+
+          <Link
+            to="/login"
+            className="flex items-center gap-2 rounded-2xl bg-gradient-to-r from-emerald-500 to-teal-400 px-5 py-2.5 text-xs font-black text-slate-950 shadow-lg shadow-emerald-500/20 hover:brightness-110 hover:scale-105 transition"
+          >
+            <span>{t.signIn}</span>
+            <ArrowRight className="h-3.5 w-3.5" />
+          </Link>
+        </div>
       </header>
 
-      <main className="relative z-10 mx-auto grid w-full max-w-6xl grid-cols-1 gap-10 px-4 pb-14 pt-4 sm:px-6 lg:grid-cols-[1fr_1.05fr] lg:items-center">
-        <section className="lg:pr-6">
-          <div className={isDark ? "inline-flex items-center gap-2 rounded-full border border-emerald-400/20 bg-emerald-500/10 px-3 py-1 text-xs text-emerald-100" : "inline-flex items-center gap-2 rounded-full border border-emerald-700/20 bg-emerald-500/10 px-3 py-1 text-xs text-emerald-900"}>
-            <span className={isDark ? "h-2 w-2 rounded-full bg-emerald-400" : "h-2 w-2 rounded-full bg-emerald-600"} />
-            {t.headChip}
-          </div>
-
-          <h1 className={isDark ? "mt-5 text-[40px] font-extrabold leading-[1.05] tracking-tight text-white sm:text-[52px]" : "mt-5 text-[40px] font-extrabold leading-[1.05] tracking-tight text-[#0e2d27] sm:text-[52px]"}>
-            {t.titleA}{" "}
-            <span className={isDark ? "bg-gradient-to-r from-emerald-300 to-teal-200 bg-clip-text text-transparent" : "bg-gradient-to-r from-[#135241] to-[#0f6b66] bg-clip-text text-transparent"}>
-              {t.titleB}
-            </span>
-            .
-          </h1>
-
-          <p className={isDark ? "mt-4 max-w-xl text-sm leading-7 text-zinc-300 sm:text-base" : "mt-4 max-w-xl text-sm leading-7 text-[#36544c] sm:text-base"}>
-            {t.subtitle}
-          </p>
-
-          <div className="mt-7 grid gap-3 sm:grid-cols-3">
-            <InfoPill isDark={isDark} icon="AB" title={t.pillA} desc={t.pillAText} />
-            <InfoPill isDark={isDark} icon="OL" title={t.pillB} desc={t.pillBText} />
-            <InfoPill isDark={isDark} icon="SB" title={t.pillC} desc={t.pillCText} />
-          </div>
-        </section>
-
-        <section>
-          <div className={isDark ? "rounded-[26px] border border-white/10 bg-white/5 p-5 shadow-[0_40px_140px_rgba(0,0,0,0.65)] sm:p-7" : "rounded-[26px] border border-[#325d51]/25 bg-[#eaf2ed]/84 p-5 shadow-[0_40px_120px_rgba(8,22,20,0.12)] sm:p-7"}>
-            <div className="mb-5">
-              <div className={isDark ? "text-base font-extrabold text-white" : "text-base font-extrabold text-[#0e2d27]"}>{t.cardTitle}</div>
-              <div className={isDark ? "mt-1 text-xs text-zinc-400" : "mt-1 text-xs text-[#4d6b62]"}>{t.cardSub}</div>
+      {/* Main Grid Content */}
+      <main className="relative z-10 mx-auto my-auto w-full max-w-7xl px-6 py-8 sm:px-8">
+        <div className="grid lg:grid-cols-12 gap-12 items-center">
+          <div className="lg:col-span-5 space-y-6">
+            <div className="inline-flex items-center gap-2 rounded-full border border-emerald-500/30 bg-emerald-500/10 px-4 py-1.5 text-xs font-black text-emerald-400">
+              <Sparkles className="h-3.5 w-3.5" />
+              <span>{t.headChip}</span>
             </div>
 
-            {serverError ? <div className="mb-4 rounded-xl border border-rose-500/25 bg-rose-500/10 px-4 py-3 text-sm text-rose-100">{serverError}</div> : null}
-            {duplicateContact ? (
-              <div className={isDark ? "mb-4 flex items-center justify-between gap-3 rounded-xl border border-amber-400/30 bg-amber-500/10 px-4 py-3 text-sm text-amber-100" : "mb-4 flex items-center justify-between gap-3 rounded-xl border border-amber-700/35 bg-amber-100 px-4 py-3 text-sm text-amber-900"}>
-                <span>{lang === "tr" ? "Bu e-posta/telefon zaten kayıtlı. Giriş yapmak ister misin?" : "This email/phone is already registered. Do you want to sign in?"}</span>
-                <button
-                  type="button"
-                  onClick={() => navigate("/login")}
-                  className={isDark ? "rounded-lg bg-amber-300 px-3 py-1.5 text-xs font-bold text-zinc-900 hover:brightness-110" : "rounded-lg bg-amber-500 px-3 py-1.5 text-xs font-bold text-white hover:brightness-110"}
-                >
-                  {lang === "tr" ? "Girişe Git" : "Go to Sign In"}
-                </button>
-              </div>
-            ) : null}
-            {successMsg ? (
-              <div className={isDark ? "mb-4 flex items-center justify-between gap-3 rounded-xl border border-emerald-400/30 bg-emerald-500/10 px-4 py-3 text-sm text-emerald-100" : "mb-4 flex items-center justify-between gap-3 rounded-xl border border-[#1b7358]/35 bg-[#dff0e8] px-4 py-3 text-sm text-[#145443]"}>
-                <span>{successMsg}</span>
-                <button
-                  type="button"
-                  onClick={() => navigate("/login")}
-                  className={isDark ? "rounded-lg bg-emerald-500 px-3 py-1.5 text-xs font-bold text-zinc-950 hover:brightness-110" : "rounded-lg bg-gradient-to-r from-[#1a7f5b] to-[#167f72] px-3 py-1.5 text-xs font-bold text-white hover:brightness-110"}
-                >
-                  {t.toLoginBtn}
-                </button>
-              </div>
-            ) : null}
+            <h1 className="font-display text-4xl sm:text-5xl lg:text-6xl font-black tracking-tight leading-[1.08]">
+              {t.titleA}{" "}
+              <span className="bg-gradient-to-r from-emerald-400 via-teal-300 to-cyan-400 bg-clip-text text-transparent">
+                {t.titleB}
+              </span>
+            </h1>
 
-            <form onSubmit={submit} className="space-y-4">
-              <div className="grid gap-3 sm:grid-cols-2">
-                <Field isDark={isDark} label={t.firstName} value={form.first_name} onChange={(v) => setField("first_name", v)} placeholder={t.firstNamePh} error={errors.first_name} />
-                <Field isDark={isDark} label={t.lastName} value={form.last_name} onChange={(v) => setField("last_name", v)} placeholder={t.lastNamePh} error={errors.last_name} />
-              </div>
+            <p className="text-sm sm:text-base leading-relaxed text-slate-300 max-w-xl">
+              {t.subtitle}
+            </p>
 
-              <div className="grid gap-3 sm:grid-cols-2">
-                <Field isDark={isDark} label={t.emailOpt} value={form.email ?? ""} onChange={(v) => setField("email", v)} placeholder={t.emailPh} error={errors.email} />
-                <Field isDark={isDark} label={t.phoneOpt} value={form.phone_number ?? ""} onChange={(v) => setField("phone_number", v)} placeholder={t.phonePh} error={errors.phone_number} />
-              </div>
-              {errors.contact ? <div className="text-xs text-rose-200">{errors.contact}</div> : null}
-
-              <div className="grid gap-3 sm:grid-cols-2">
-                <Field isDark={isDark} label={t.birthDate} value={form.birth_date} onChange={(v) => setField("birth_date", v)} placeholder="YYYY-MM-DD" error={errors.birth_date} type="date" />
-
+            <div className="space-y-3 pt-2">
+              <div className={`flex items-center gap-4 p-4 rounded-2xl border transition ${
+                isDark ? "border-white/10 bg-slate-900/60" : "border-slate-200 bg-white/80 shadow-sm"
+              }`}>
+                <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-emerald-500/15 text-emerald-400 font-black">
+                  <Activity className="h-5 w-5" />
+                </div>
                 <div>
-                  <label className={isDark ? "mb-2 block text-xs font-semibold text-zinc-200" : "mb-2 block text-xs font-semibold text-[#36544c]"}>{t.gender}</label>
-                  <div className="grid grid-cols-2 gap-2">
+                  <h4 className="text-sm font-bold font-display">Akıllı Makro Analizi</h4>
+                  <p className="text-xs text-slate-400 mt-0.5">Günlük hedeflerinize göre anlık besin değerleri hesaplaması.</p>
+                </div>
+              </div>
+
+              <div className={`flex items-center gap-4 p-4 rounded-2xl border transition ${
+                isDark ? "border-white/10 bg-slate-900/60" : "border-slate-200 bg-white/80 shadow-sm"
+              }`}>
+                <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-teal-500/15 text-teal-400 font-black">
+                  <Stethoscope className="h-5 w-5" />
+                </div>
+                <div>
+                  <h4 className="text-sm font-bold font-display">Diyetisyen & Klinik Entegrasyonu</h4>
+                  <p className="text-xs text-slate-400 mt-0.5">Uzmanınızla kesintisiz iletişim ve randevu koordinasyonu.</p>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div className="lg:col-span-7">
+            <div className={`relative rounded-[36px] border p-7 sm:p-9 backdrop-blur-2xl shadow-2xl transition-all ${
+              isDark ? "border-white/10 bg-slate-900/70 shadow-black/80" : "border-slate-200 bg-white/95 shadow-slate-300/40"
+            }`}>
+              <div className="mb-6 border-b border-white/5 pb-4">
+                <h2 className="font-display text-xl font-black">{t.cardTitle}</h2>
+                <p className="text-xs text-slate-400 mt-1">{t.cardSub}</p>
+              </div>
+
+              {serverError && (
+                <div className="mb-6 p-4 rounded-2xl border border-rose-500/20 bg-rose-500/10 text-xs font-bold text-rose-400">
+                  {serverError}
+                </div>
+              )}
+
+              {duplicateContact && (
+                <div className="mb-6 p-4 rounded-2xl border border-amber-500/30 bg-amber-500/10 flex items-center justify-between gap-3 text-xs text-amber-300">
+                  <span>{lang === "tr" ? "Bu e-posta/telefon zaten kayıtlı. Giriş yapmak ister misiniz?" : "Already registered. Sign in?"}</span>
+                  <button
+                    type="button"
+                    onClick={() => navigate("/login")}
+                    className="px-3 py-1.5 rounded-xl bg-amber-500 text-slate-950 font-black text-xs hover:bg-amber-400 transition"
+                  >
+                    {t.signIn}
+                  </button>
+                </div>
+              )}
+
+              {successMsg && (
+                <div className="mb-6 p-4 rounded-2xl border border-emerald-500/30 bg-emerald-500/10 flex items-center justify-between gap-3 text-xs text-emerald-300">
+                  <span>{successMsg}</span>
+                  <button
+                    type="button"
+                    onClick={() => navigate("/login")}
+                    className="px-4 py-2 rounded-xl bg-emerald-500 text-slate-950 font-black text-xs hover:bg-emerald-400 transition"
+                  >
+                    {t.toLoginBtn}
+                  </button>
+                </div>
+              )}
+
+              <form onSubmit={submit} className="space-y-4">
+                <div>
+                  <label className="text-[10px] font-black uppercase tracking-wider text-slate-400 block mb-2">{t.accountType}</label>
+                  <div className="grid sm:grid-cols-2 gap-3">
                     <button
                       type="button"
-                      onClick={() => setField("gender", "male")}
-                      className={[
-                        "rounded-2xl border px-4 py-3 text-sm font-extrabold transition",
-                        form.gender === "male"
-                          ? isDark
-                            ? "border-emerald-400/30 bg-emerald-500/15 text-emerald-100 shadow-[0_0_0_1px_rgba(16,185,129,0.18)_inset]"
-                            : "border-[#1b7358]/35 bg-[#dff0e8] text-[#145443] shadow-[0_0_0_1px_rgba(26,127,91,0.18)_inset]"
-                          : isDark
-                            ? "border-white/10 bg-white/5 text-zinc-200 hover:bg-white/10"
-                            : "border-[#325d51]/25 bg-white text-[#36544c] hover:bg-[#d7e4de]",
-                      ].join(" ")}
+                      onClick={() => setField("account_type", "client")}
+                      className={`p-4 rounded-2xl border text-left transition ${
+                        form.account_type === "client"
+                          ? "border-emerald-500 bg-emerald-500/10 ring-1 ring-emerald-500/30 shadow-lg shadow-emerald-500/10"
+                          : "border-white/5 bg-black/20 hover:border-white/10"
+                      }`}
                     >
-                      {t.male}
+                      <div className="flex items-center gap-2">
+                        <UserCheck className={`h-4 w-4 ${form.account_type === "client" ? "text-emerald-400" : "text-slate-400"}`} />
+                        <span className="font-display font-black text-xs">{t.clientType}</span>
+                      </div>
+                      <p className="text-[10px] text-slate-400 mt-1">{t.clientTypeDesc}</p>
                     </button>
+
                     <button
                       type="button"
-                      onClick={() => setField("gender", "female")}
-                      className={[
-                        "rounded-2xl border px-4 py-3 text-sm font-extrabold transition",
-                        form.gender === "female"
-                          ? isDark
-                            ? "border-emerald-400/30 bg-emerald-500/15 text-emerald-100 shadow-[0_0_0_1px_rgba(16,185,129,0.18)_inset]"
-                            : "border-[#1b7358]/35 bg-[#dff0e8] text-[#145443] shadow-[0_0_0_1px_rgba(26,127,91,0.18)_inset]"
-                          : isDark
-                            ? "border-white/10 bg-white/5 text-zinc-200 hover:bg-white/10"
-                            : "border-[#325d51]/25 bg-white text-[#36544c] hover:bg-[#d7e4de]",
-                      ].join(" ")}
+                      onClick={() => setField("account_type", "Diyetisyen")}
+                      className={`p-4 rounded-2xl border text-left transition ${
+                        form.account_type === "Diyetisyen"
+                          ? "border-emerald-500 bg-emerald-500/10 ring-1 ring-emerald-500/30 shadow-lg shadow-emerald-500/10"
+                          : "border-white/5 bg-black/20 hover:border-white/10"
+                      }`}
                     >
-                      {t.female}
+                      <div className="flex items-center gap-2">
+                        <Stethoscope className={`h-4 w-4 ${form.account_type === "Diyetisyen" ? "text-emerald-400" : "text-slate-400"}`} />
+                        <span className="font-display font-black text-xs">{t.dietitianType}</span>
+                      </div>
+                      <p className="text-[10px] text-slate-400 mt-1">{t.dietitianTypeDesc}</p>
                     </button>
                   </div>
-                  {errors.gender ? <div className="mt-2 text-xs text-rose-200">{errors.gender}</div> : null}
                 </div>
-              </div>
 
-              {form.account_type === "client" && (
-                <div className="animate-in fade-in slide-in-from-top-2 duration-300">
-                  <Field
-                    isDark={isDark}
-                    label={lang === "tr" ? "Boy (cm)" : "Height (cm)"}
-                    value={form.height || ""}
-                    onChange={(v) => setField("height", v)}
-                    placeholder={lang === "tr" ? "Örn. 175" : "e.g. 175"}
-                    error={errors.height}
-                    type="number"
-                  />
-                </div>
-              )}
+                <div className="grid sm:grid-cols-2 gap-4">
+                  <div>
+                    <label className="text-[10px] font-black uppercase tracking-wider text-slate-400 block mb-1">{t.firstName}</label>
+                    <div className="relative">
+                      <User className="absolute left-3.5 top-3.5 h-4 w-4 text-slate-500" />
+                      <input
+                        type="text"
+                        placeholder={t.firstNamePh}
+                        value={form.first_name}
+                        onChange={(e) => setField("first_name", e.target.value)}
+                        className={`w-full rounded-2xl border pl-10 pr-4 py-2.5 text-xs font-semibold outline-none ${
+                          errors.first_name ? "border-rose-500/50" : isDark ? "border-white/10 bg-black/40 text-white focus:border-emerald-500" : "border-slate-200 bg-white text-slate-900 focus:border-emerald-500"
+                        }`}
+                      />
+                    </div>
+                    {errors.first_name && <p className="text-[10px] font-bold text-rose-400 mt-1">{errors.first_name}</p>}
+                  </div>
 
-              <div>
-                <label className={isDark ? "mb-2 block text-xs font-semibold text-zinc-200" : "mb-2 block text-xs font-semibold text-[#36544c]"}>{t.accountType}</label>
-                <div className="grid grid-cols-2 gap-2">
-                  <button
-                    type="button"
-                    onClick={() => setField("account_type", "client")}
-                    className={[
-                      "rounded-2xl border px-4 py-3 text-sm font-extrabold transition",
-                      form.account_type === "client"
-                        ? isDark
-                          ? "border-emerald-400/30 bg-emerald-500/15 text-emerald-100"
-                          : "border-[#1b7358]/35 bg-[#dff0e8] text-[#145443]"
-                        : isDark
-                          ? "border-white/10 bg-white/5 text-zinc-200 hover:bg-white/10"
-                          : "border-[#325d51]/25 bg-white text-[#36544c] hover:bg-[#d7e4de]",
-                    ].join(" ")}
-                  >
-                    {t.clientType}
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setField("account_type", "Diyetisyen")}
-                    className={[
-                      "rounded-2xl border px-4 py-3 text-sm font-extrabold transition",
-                      form.account_type === "Diyetisyen"
-                        ? isDark
-                          ? "border-emerald-400/30 bg-emerald-500/15 text-emerald-100"
-                          : "border-[#1b7358]/35 bg-[#dff0e8] text-[#145443]"
-                        : isDark
-                          ? "border-white/10 bg-white/5 text-zinc-200 hover:bg-white/10"
-                          : "border-[#325d51]/25 bg-white text-[#36544c] hover:bg-[#d7e4de]",
-                    ].join(" ")}
-                  >
-                    {t.dietitianType}
-                  </button>
+                  <div>
+                    <label className="text-[10px] font-black uppercase tracking-wider text-slate-400 block mb-1">{t.lastName}</label>
+                    <div className="relative">
+                      <User className="absolute left-3.5 top-3.5 h-4 w-4 text-slate-500" />
+                      <input
+                        type="text"
+                        placeholder={t.lastNamePh}
+                        value={form.last_name}
+                        onChange={(e) => setField("last_name", e.target.value)}
+                        className={`w-full rounded-2xl border pl-10 pr-4 py-2.5 text-xs font-semibold outline-none ${
+                          errors.last_name ? "border-rose-500/50" : isDark ? "border-white/10 bg-black/40 text-white focus:border-emerald-500" : "border-slate-200 bg-white text-slate-900 focus:border-emerald-500"
+                        }`}
+                      />
+                    </div>
+                    {errors.last_name && <p className="text-[10px] font-bold text-rose-400 mt-1">{errors.last_name}</p>}
+                  </div>
                 </div>
-              </div>
 
-              {form.account_type === "client" && clinics.length > 0 && (
-                <div className="animate-in fade-in slide-in-from-top-2 duration-300">
-                  <label className={isDark ? "mb-2 block text-xs font-semibold text-zinc-200" : "mb-2 block text-xs font-semibold text-[#36544c]"}>
-                    {t.selectClinic}
-                  </label>
-                  <select
-                    value={form.clinic_id || ""}
-                    onChange={(e) => setField("clinic_id", e.target.value)}
-                    className={[
-                      "w-full rounded-2xl border px-4 py-3 text-sm outline-none transition",
-                      isDark ? "bg-black/20 text-white" : "bg-white text-[#0e2d27]",
-                      errors.clinic_id ? "border-rose-500/40" : isDark ? "border-white/10" : "border-[#325d51]/25",
-                      "focus:border-emerald-400/40 focus:ring-4 focus:ring-emerald-500/10",
-                    ].join(" ")}
-                  >
-                    <option value="">{t.clinicPH}</option>
-                    {clinics.map((c) => (
-                      <option key={c.id} value={c.id}>
-                        {c.name} - {c.city}
-                      </option>
-                    ))}
-                  </select>
-                  {errors.clinic_id ? <div className="mt-2 text-xs text-rose-200">{errors.clinic_id}</div> : null}
-                </div>
-              )}
+                <div className="grid sm:grid-cols-2 gap-4">
+                  <div>
+                    <label className="text-[10px] font-black uppercase tracking-wider text-slate-400 block mb-1">{t.emailOpt}</label>
+                    <div className="relative">
+                      <Mail className="absolute left-3.5 top-3.5 h-4 w-4 text-slate-500" />
+                      <input
+                        type="email"
+                        placeholder={t.emailPh}
+                        value={form.email || ""}
+                        onChange={(e) => setField("email", e.target.value)}
+                        className={`w-full rounded-2xl border pl-10 pr-4 py-2.5 text-xs font-semibold outline-none ${
+                          errors.email || errors.contact ? "border-rose-500/50" : isDark ? "border-white/10 bg-black/40 text-white focus:border-emerald-500" : "border-slate-200 bg-white text-slate-900 focus:border-emerald-500"
+                        }`}
+                      />
+                    </div>
+                    {errors.email && <p className="text-[10px] font-bold text-rose-400 mt-1">{errors.email}</p>}
+                  </div>
 
-              <div>
-                <label className={isDark ? "mb-2 block text-xs font-semibold text-zinc-200" : "mb-2 block text-xs font-semibold text-[#36544c]"}>{t.password}</label>
-                <div className="relative">
-                  <input
-                    value={form.password}
-                    onChange={(e) => setField("password", e.target.value)}
-                    type={showPass ? "text" : "password"}
-                    placeholder="StrongP@ssw0rd"
-                    className={[
-                      "w-full rounded-2xl border px-4 py-3 pr-12 text-sm outline-none transition",
-                      isDark ? "bg-black/20 text-white" : "bg-white text-[#0e2d27]",
-                      errors.password ? "border-rose-500/40" : isDark ? "border-white/10" : "border-[#325d51]/25",
-                      "focus:border-emerald-400/40 focus:ring-4 focus:ring-emerald-500/10",
-                    ].join(" ")}
-                  />
-                  <button
-                    type="button"
-                    onClick={() => setShowPass((p) => !p)}
-                    className={isDark ? "absolute right-3 top-1/2 -translate-y-1/2 rounded-xl border border-white/10 bg-white/5 px-2 py-1 text-[11px] font-semibold text-zinc-200 hover:bg-white/10" : "absolute right-3 top-1/2 -translate-y-1/2 rounded-xl border border-[#325d51]/25 bg-[#d7e4de] px-2 py-1 text-[11px] font-semibold text-[#36544c] hover:bg-[#c9dad3]"}
-                  >
-                    {showPass ? t.hide : t.show}
-                  </button>
+                  <div>
+                    <label className="text-[10px] font-black uppercase tracking-wider text-slate-400 block mb-1">{t.phoneOpt}</label>
+                    <div className="relative">
+                      <Phone className="absolute left-3.5 top-3.5 h-4 w-4 text-slate-500" />
+                      <input
+                        type="tel"
+                        placeholder={t.phonePh}
+                        value={form.phone_number || ""}
+                        onChange={(e) => setField("phone_number", e.target.value)}
+                        className={`w-full rounded-2xl border pl-10 pr-4 py-2.5 text-xs font-semibold outline-none ${
+                          errors.phone_number || errors.contact ? "border-rose-500/50" : isDark ? "border-white/10 bg-black/40 text-white focus:border-emerald-500" : "border-slate-200 bg-white text-slate-900 focus:border-emerald-500"
+                        }`}
+                      />
+                    </div>
+                    {errors.phone_number && <p className="text-[10px] font-bold text-rose-400 mt-1">{errors.phone_number}</p>}
+                  </div>
                 </div>
-                {errors.password ? (
-                  <div className="mt-2 text-xs text-rose-200">{errors.password}</div>
-                ) : (
-                  <div className={isDark ? "mt-2 text-[11px] text-zinc-400" : "mt-2 text-[11px] text-[#4d6b62]"}>
-                    {t.passHint}
+                {errors.contact && <p className="text-[10px] font-bold text-rose-400">{errors.contact}</p>}
+
+                <div className="grid sm:grid-cols-3 gap-4">
+                  <div>
+                    <label className="text-[10px] font-black uppercase tracking-wider text-slate-400 block mb-1">{t.birthDate}</label>
+                    <div className="relative">
+                      <Calendar className="absolute left-3.5 top-3.5 h-4 w-4 text-slate-500" />
+                      <input
+                        type="date"
+                        value={form.birth_date}
+                        onChange={(e) => setField("birth_date", e.target.value)}
+                        className={`w-full rounded-2xl border pl-10 pr-4 py-2.5 text-xs font-semibold outline-none ${
+                          errors.birth_date ? "border-rose-500/50" : isDark ? "border-white/10 bg-black/40 text-white focus:border-emerald-500" : "border-slate-200 bg-white text-slate-900 focus:border-emerald-500"
+                        }`}
+                      />
+                    </div>
+                    {errors.birth_date && <p className="text-[10px] font-bold text-rose-400 mt-1">{errors.birth_date}</p>}
+                  </div>
+
+                  <div>
+                    <label className="text-[10px] font-black uppercase tracking-wider text-slate-400 block mb-1">{t.gender}</label>
+                    <select
+                      value={form.gender}
+                      onChange={(e) => setField("gender", e.target.value as Gender)}
+                      className={`w-full rounded-2xl border px-3.5 py-2.5 text-xs font-semibold outline-none ${
+                        isDark ? "border-white/10 bg-black/40 text-white focus:border-emerald-500" : "border-slate-200 bg-white text-slate-900 focus:border-emerald-500"
+                      }`}
+                    >
+                      <option value="male">{t.male}</option>
+                      <option value="female">{t.female}</option>
+                    </select>
+                  </div>
+
+                  {form.account_type === "client" && (
+                    <div>
+                      <label className="text-[10px] font-black uppercase tracking-wider text-slate-400 block mb-1">{t.height}</label>
+                      <div className="relative">
+                        <Ruler className="absolute left-3.5 top-3.5 h-4 w-4 text-slate-500" />
+                        <input
+                          type="number"
+                          placeholder={t.heightPh}
+                          value={form.height || ""}
+                          onChange={(e) => setField("height", e.target.value)}
+                          className={`w-full rounded-2xl border pl-10 pr-4 py-2.5 text-xs font-semibold outline-none ${
+                            isDark ? "border-white/10 bg-black/40 text-white focus:border-emerald-500" : "border-slate-200 bg-white text-slate-900 focus:border-emerald-500"
+                          }`}
+                        />
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                {clinics.length > 0 && (
+                  <div>
+                    <label className="text-[10px] font-black uppercase tracking-wider text-slate-400 block mb-1">{t.selectClinic}</label>
+                    <div className="relative">
+                      <Building2 className="absolute left-3.5 top-3.5 h-4 w-4 text-slate-500" />
+                      <select
+                        value={form.clinic_id || ""}
+                        onChange={(e) => setField("clinic_id", e.target.value)}
+                        className={`w-full rounded-2xl border pl-10 pr-4 py-2.5 text-xs font-semibold outline-none ${
+                          isDark ? "border-white/10 bg-black/40 text-white focus:border-emerald-500" : "border-slate-200 bg-white text-slate-900 focus:border-emerald-500"
+                        }`}
+                      >
+                        <option value="">{t.clinicPH}</option>
+                        {clinics.map((c) => (
+                          <option key={c.id} value={c.id}>{c.name} ({c.city})</option>
+                        ))}
+                      </select>
+                    </div>
                   </div>
                 )}
-              </div>
 
-              <button
-                disabled={loading}
-                type="submit"
-                className="mt-2 w-full rounded-2xl bg-gradient-to-r from-emerald-400 to-teal-300 px-5 py-3 text-sm font-extrabold text-zinc-950 shadow-[0_18px_60px_rgba(16,185,129,0.20)] transition hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-60"
-              >
-                {loading ? t.submitBusy : t.submit}
-              </button>
+                <div>
+                  <label className="text-[10px] font-black uppercase tracking-wider text-slate-400 block mb-1">{t.password}</label>
+                  <div className="relative">
+                    <Lock className="absolute left-3.5 top-3.5 h-4 w-4 text-slate-500" />
+                    <input
+                      type={showPass ? "text" : "password"}
+                      placeholder="••••••••"
+                      value={form.password}
+                      onChange={(e) => setField("password", e.target.value)}
+                      className={`w-full rounded-2xl border pl-10 pr-10 py-2.5 text-xs font-semibold outline-none ${
+                        errors.password ? "border-rose-500/50" : isDark ? "border-white/10 bg-black/40 text-white focus:border-emerald-500" : "border-slate-200 bg-white text-slate-900 focus:border-emerald-500"
+                      }`}
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowPass(!showPass)}
+                      className="absolute right-3.5 top-3.5 text-slate-500 hover:text-white transition"
+                    >
+                      {showPass ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                    </button>
+                  </div>
+                  {errors.password ? (
+                    <p className="text-[10px] font-bold text-rose-400 mt-1">{errors.password}</p>
+                  ) : (
+                    <p className="text-[10px] text-slate-500 mt-1">{t.passHint}</p>
+                  )}
+                </div>
 
-              <div className={isDark ? "pt-2 text-center text-xs text-zinc-400" : "pt-2 text-center text-xs text-[#4d6b62]"}>
-                {t.haveAccount}{" "}
-                <Link to="/login" className={isDark ? "font-semibold text-emerald-200 hover:underline" : "font-semibold text-emerald-700 hover:underline"}>
-                  {t.toLogin}
-                </Link>
-              </div>
-            </form>
+                <button
+                  type="submit"
+                  disabled={loading}
+                  className="w-full mt-4 flex items-center justify-center gap-2 rounded-2xl bg-gradient-to-r from-emerald-500 via-teal-500 to-cyan-400 py-3.5 text-xs font-black text-slate-950 shadow-xl shadow-emerald-500/25 hover:brightness-110 active:scale-[0.99] transition disabled:opacity-50"
+                >
+                  <span>{loading ? t.submitBusy : t.submit}</span>
+                  <CheckCircle2 className="h-4 w-4 stroke-[2.5]" />
+                </button>
+
+                <div className="pt-2 text-center text-xs text-slate-400 font-medium">
+                  {t.haveAccount}{" "}
+                  <Link to="/login" className="font-bold text-emerald-400 hover:underline">
+                    {t.toLogin}
+                  </Link>
+                </div>
+              </form>
+            </div>
           </div>
-        </section>
+        </div>
       </main>
-    </div>
-  );
-}
 
-function Field({
-  isDark,
-  label,
-  value,
-  onChange,
-  placeholder,
-  error,
-  type = "text",
-}: {
-  isDark: boolean;
-  label: string;
-  value: string;
-  onChange: (v: string) => void;
-  placeholder?: string;
-  error?: string;
-  type?: string;
-}) {
-  return (
-    <div>
-      <label className={isDark ? "mb-2 block text-xs font-semibold text-zinc-200" : "mb-2 block text-xs font-semibold text-[#36544c]"}>{label}</label>
-      <input
-        value={value}
-        onChange={(e) => onChange(e.target.value)}
-        placeholder={placeholder}
-        type={type}
-        className={[
-          "w-full rounded-2xl border px-4 py-3 text-sm outline-none transition",
-          isDark ? "bg-black/20 text-white" : "bg-white text-[#0e2d27]",
-          error ? "border-rose-500/40" : isDark ? "border-white/10" : "border-[#325d51]/25",
-          "focus:border-emerald-400/40 focus:ring-4 focus:ring-emerald-500/10",
-        ].join(" ")}
-      />
-      {error ? <div className="mt-2 text-xs text-rose-200">{error}</div> : null}
-    </div>
-  );
-}
-
-function InfoPill({ isDark, icon, title, desc }: { isDark: boolean; icon: string; title: string; desc: string }) {
-  return (
-    <div className={isDark ? "rounded-2xl border border-white/10 bg-white/5 p-4" : "rounded-2xl border border-[#325d51]/25 bg-[#eaf2ed]/84 p-4"}>
-      <div className="flex items-center justify-between">
-        <div className={isDark ? "text-sm font-extrabold text-white" : "text-sm font-extrabold text-[#0e2d27]"}>{title}</div>
-        <div className={isDark ? "text-sm text-zinc-300" : "text-sm text-[#36544c]"}>{icon}</div>
-      </div>
-      <div className={isDark ? "mt-1 text-xs text-zinc-400" : "mt-1 text-xs text-[#4d6b62]"}>{desc}</div>
+      <footer className="relative z-10 border-t border-white/5 py-6 text-center text-xs text-slate-400">
+        © {new Date().getFullYear()} SmartDiet. All rights reserved.
+      </footer>
     </div>
   );
 }

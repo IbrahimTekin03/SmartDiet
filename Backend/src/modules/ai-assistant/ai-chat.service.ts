@@ -406,8 +406,8 @@ Sistemin hatalı miktarlar (örn: 1g domates, 1g tavuk) oluşturmasını engelle
   * Birim (unit) 'adet' seçilirse: Miktar (amount) sadece 1, 2 veya 3 olmalıdır. KESİNLİKLE '100 adet' veya '150 adet' yazma!
   * Birim (unit) 'gram' seçilirse: Miktar (amount) 100, 150, 200, 250 gibi mantıklı ve doyurucu gramajlar olmalıdır. KESİNLİKLE 1g veya 10g domates yazma!
 - Yumurta ve Zeytin:
-  * Yumurta için birim (unit) her zaman 'adet' olmalı, miktar (amount) 2, 3 veya 4 olmalıdır. KESİNLİKLE 1g veya 2g yumurta yazma!
-  * Zeytin için birim (unit) her zaman 'adet' olmalı, miktar (amount) 5, 8 veya 10 olmalıdır. KESİNLİKLE 1g veya 2g zeytin yazma!
+  * Yumurta için birim (unit) her zaman 'adet' olmalı, miktar (amount) 2, 3 veya 4 olmalıdır. 1 adet yumurta ~75 kcal'dir. KESİNLİKLE 1g veya 2g yumurta yazma!
+  * Zeytin için birim (unit) her zaman 'adet' olmalı, miktar (amount) 5, 8 veya 10 olmalıdır. 1 ADET ZEYTİN YALNIZCA ~5 KCAL'DİR! 5 ADET ZEYTİN İÇİN KESİNLİKLE 250 KCAL GİBİ UÇUK KALORİLER ATAMA (5 ADET ZEYTİN = 25 KCAL)!
 - Ekmek:
   * Dilim bazlı "Beyaz Ekmek" veya "Tam Buğday Ekmek" için birim (unit) her zaman 'dilim' ve miktar (amount) 2, 3 veya 4 olmalıdır.
   * Gram bazlı "Ekmek (Beyaz)" veya "Ekmek (Tam Buğday)" için birim (unit) her zaman 'gram' ve miktar (amount) 50, 80 veya 100 olmalıdır.
@@ -499,11 +499,11 @@ ${dbSchemaInfo}`;
       },
       {
         name: 'find_client_by_name',
-        description: 'Diyetisyenin danışanını ismine göre arar ve ID\'sini döndürür.',
+        description: 'Diyetisyenin danışanını ismine, soyismine veya e-posta adresine göre arar ve ID\'sini döndürür.',
         input_schema: {
           type: 'object',
           properties: {
-            name: { type: 'string', description: 'Danışanın tam veya kısmi adı' }
+            name: { type: 'string', description: 'Danışanın adı, soyadı veya e-posta adresi (Örn: "Ibrahim Tekin" veya "ibrahim_tkn03@hotmail.com")' }
           },
           required: ['name']
         }
@@ -847,7 +847,7 @@ ${dbSchemaInfo}`;
   ): Promise<string> {
     console.log('Gemini Fallback Execution initiated.');
     const geminiApiKey = process.env.GEMINI_API_KEY;
-    const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${geminiApiKey}`;
+    const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.6-flash:generateContent?key=${geminiApiKey}`;
 
     // Claude araçlarını Gemini function declarations formatına çevirelim
     const functionDeclarations = tools.map((t) => {
@@ -1093,22 +1093,78 @@ ${dbSchemaInfo}`;
         }
       case 'find_client_by_name':
         try {
-           const query = `
+           const normalizeText = (text: string = '') => {
+             return text
+               .replace(/İ/g, 'i')
+               .replace(/I/g, 'ı')
+               .replace(/ı/g, 'i')
+               .replace(/Ğ/g, 'g')
+               .replace(/ğ/g, 'g')
+               .replace(/Ü/g, 'u')
+               .replace(/ü/g, 'u')
+               .replace(/Ş/g, 's')
+               .replace(/ş/g, 's')
+               .replace(/Ö/g, 'o')
+               .replace(/ö/g, 'o')
+               .replace(/Ç/g, 'c')
+               .replace(/ç/g, 'c')
+               .toLowerCase()
+               .trim();
+           };
+
+           const searchKey = normalizeText(input.name);
+
+           // 1. Diyetisyene atanmış danışanları getir
+           const assignedQuery = `
              SELECT u.id, u.first_name, u.last_name, u.email
              FROM users u
              INNER JOIN user_assigned_dietitian uad ON uad."clientId"::text = u.id::text
              WHERE uad."dietitianId"::text = $1::text
            `;
-           const assignedClients = await this.dataSource.query(query, [user.id]);
-           const filtered = assignedClients.filter(c => {
-             const fullName = `${c.first_name} ${c.last_name}`.toLowerCase();
-             const searchName = input.name.toLowerCase();
-             return fullName.includes(searchName) || c.first_name.toLowerCase().includes(searchName) || c.last_name.toLowerCase().includes(searchName);
-           });
+           let candidateUsers = await this.dataSource.query(assignedQuery, [user.id]);
+
+           // 2. Eğer diyetisyene henüz atanmış danışan yoksa veya sorgu boş döndüyse tüm kullanıcıları aday al
+           if (!candidateUsers || candidateUsers.length === 0) {
+             const allUsersQuery = `
+               SELECT u.id, u.first_name, u.last_name, u.email
+               FROM users u
+             `;
+             candidateUsers = await this.dataSource.query(allUsersQuery);
+           }
+
+           const filterCandidates = (list: any[]) => {
+             return list.filter(c => {
+               const firstName = normalizeText(c.first_name);
+               const lastName = normalizeText(c.last_name);
+               const fullName = normalizeText(`${c.first_name} ${c.last_name}`);
+               const email = normalizeText(c.email || '');
+
+               return (
+                 fullName.includes(searchKey) ||
+                 searchKey.includes(fullName) ||
+                 firstName.includes(searchKey) ||
+                 lastName.includes(searchKey) ||
+                 (email.length > 0 && (email.includes(searchKey) || searchKey.includes(email)))
+               );
+             });
+           };
+
+           let filtered = filterCandidates(candidateUsers);
+
+           // 3. Eğer atanmış listesinde eşleşme bulunamadıysa, tüm sistem kullanıcıları arasında ara
+           if (filtered.length === 0) {
+             const allUsersQuery = `
+               SELECT u.id, u.first_name, u.last_name, u.email
+               FROM users u
+             `;
+             const allUsers = await this.dataSource.query(allUsersQuery);
+             filtered = filterCandidates(allUsers);
+           }
+
            if (filtered.length === 0) return JSON.stringify({ error: 'Danışan bulunamadı' });
-           return JSON.stringify(filtered.map(c => ({ id: c.id, name: c.first_name + ' ' + c.last_name })));
+           return JSON.stringify(filtered.map(c => ({ id: c.id, name: `${c.first_name} ${c.last_name}`, email: c.email })));
         } catch (err) {
-           return JSON.stringify({ error: 'Kullanıcı araması başarısız' });
+           return JSON.stringify({ error: 'Kullanıcı araması başarısız: ' + (err as any)?.message });
         }
 
       case 'search_foods':
@@ -1205,17 +1261,6 @@ ${dbSchemaInfo}`;
             if (exactMatch) {
               foodId = exactMatch.id;
               matchedFood = exactMatch;
-              const needsFix = Number(exactMatch.calories) === 0 || exactMatch.unit === '100g' || exactMatch.unit === '100 g';
-              if (needsFix) {
-                 const newCal = (item.calories && item.calories > 0) ? item.calories : exactMatch.calories;
-                 const newUnit = exactMatch.unit?.includes('100') ? 'gram' : exactMatch.unit;
-                 await this.dataSource.query(
-                    `UPDATE foods SET calories = $1, unit = $2 WHERE id = $3`,
-                    [newCal, newUnit, exactMatch.id]
-                 );
-                 matchedFood.unit = newUnit;
-                 matchedFood.calories = newCal;
-              }
             } else if (closeMatch) {
               const nameA = closeMatch.name.toLowerCase();
               const nameB = item.food_name.toLowerCase();

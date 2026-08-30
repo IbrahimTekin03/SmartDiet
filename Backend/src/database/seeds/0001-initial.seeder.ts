@@ -3,6 +3,7 @@ import { DataSource } from 'typeorm';
 import { Role } from '../../modules/acl/entities/role.entity';
 import { Permission } from '../../modules/acl/entities/permission.entity';
 import { User } from '../../modules/users/entities/user.entity';
+import { UserProfile } from '../../modules/users/entities/user.profile.entity';
 
 export default class InitialSeeder0001 implements Seeder {
   track = true;
@@ -11,6 +12,7 @@ export default class InitialSeeder0001 implements Seeder {
     const roleRepository = dataSource.getRepository(Role);
     const permissionRepository = dataSource.getRepository(Permission);
     const userRepository = dataSource.getRepository(User);
+    const userProfileRepository = dataSource.getRepository(UserProfile);
 
     const basePermissions: Array<Partial<Permission>> = [
       { name: 'user.create', description: 'Kullanıcı oluşturma', group: 'user' },
@@ -71,8 +73,9 @@ export default class InitialSeeder0001 implements Seeder {
       where: { email: 'admin@example.com' },
       relations: ['roles'],
     });
-    if (!adminUser) {
-      const created = userRepository.create({
+    let targetAdmin = adminUser;
+    if (!targetAdmin) {
+      targetAdmin = userRepository.create({
         first_name: 'Admin',
         last_name: 'User',
         email: 'admin@example.com',
@@ -84,13 +87,28 @@ export default class InitialSeeder0001 implements Seeder {
         verification_code: '000000',
         last_login: new Date(),
       });
-      await userRepository.save(created);
+      targetAdmin = await userRepository.save(targetAdmin);
     } else {
-      const hasAdminRole = adminUser.roles?.some((r) => r.name === 'admin');
+      const hasAdminRole = targetAdmin.roles?.some((r) => r.name === 'admin');
       if (!hasAdminRole) {
-        adminUser.roles = [...(adminUser.roles || []), ensuredAdminRole!];
-        await userRepository.save(adminUser);
+        targetAdmin.roles = [...(targetAdmin.roles || []), ensuredAdminRole!];
+        targetAdmin = await userRepository.save(targetAdmin);
       }
+    }
+
+    const adminProfile = await userProfileRepository.findOne({ where: { user_id: targetAdmin.id } });
+    if (!adminProfile) {
+      await userProfileRepository.save(
+        userProfileRepository.create({
+          user_id: targetAdmin.id,
+          first_name: targetAdmin.first_name,
+          last_name: targetAdmin.last_name,
+          client_verification_status: 'approved',
+        }),
+      );
+    } else if (adminProfile.client_verification_status !== 'approved') {
+      adminProfile.client_verification_status = 'approved';
+      await userProfileRepository.save(adminProfile);
     }
 
     const mertUser = await userRepository.findOne({

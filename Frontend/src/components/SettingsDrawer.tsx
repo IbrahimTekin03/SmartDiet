@@ -1,13 +1,13 @@
 import { useCallback, useEffect, useState } from "react";
 import { useAppSettings } from "../context/AppSettingsContext";
 import type { Lang, Theme } from "../context/AppSettingsContext";
+import { Settings, X, Moon, Sun, Globe, Check } from "lucide-react";
 
 export default function SettingsDrawer() {
-  const { theme, lang, applySettings } = useAppSettings();
+  const { theme, lang, applySettings, isDark } = useAppSettings();
   const [open, setOpen] = useState(false);
   const [draftTheme, setDraftTheme] = useState<Theme>(theme);
   const [draftLang, setDraftLang] = useState<Lang>(lang);
-  const isGreen = theme === "green";
 
   useEffect(() => {
     if (!open) return;
@@ -40,168 +40,164 @@ export default function SettingsDrawer() {
       <button
         type="button"
         onClick={openDrawerWithCurrentSettings}
-        title={lang === "tr" ? "Ayarlar" : "Settings"}
+        title={lang === "tr" ? "Görünüm ve Dil Ayarları" : "Appearance & Language Settings"}
         aria-label={lang === "tr" ? "Ayarlar" : "Settings"}
-        className={[
-          "fixed bottom-5 right-5 z-[90] inline-flex h-12 w-12 items-center justify-center rounded-2xl border text-white shadow-lg transition hover:-translate-y-0.5",
-          isGreen
-            ? "border-[#7fb897] bg-[#1f6b50] shadow-[0_16px_42px_rgba(31,107,80,0.32)]"
-            : "border-[#c8b18b] bg-[#8a6a3f] shadow-[0_16px_42px_rgba(138,106,63,0.28)]",
-        ].join(" ")}
+        className={`fixed bottom-6 right-6 z-[80] flex h-12 w-12 items-center justify-center rounded-2xl border backdrop-blur-xl transition-all duration-300 hover:scale-110 active:scale-95 ${
+          isDark
+            ? "border-emerald-500/30 bg-slate-900/80 text-emerald-400 shadow-[0_10px_30px_rgba(0,0,0,0.6)] shadow-emerald-500/10 hover:border-emerald-400"
+            : "border-slate-200/90 bg-white/90 text-emerald-700 shadow-xl shadow-slate-300/40 hover:border-emerald-300"
+        }`}
       >
-        <svg viewBox="0 0 24 24" fill="none" className="h-6 w-6" aria-hidden="true">
-          <circle cx="12" cy="12" r="7.2" className="stroke-current" strokeWidth="1.8" />
-          <circle cx="12" cy="12" r="3.2" className="stroke-current" strokeWidth="1.8" />
-          <path d="M12 2.8v2.1M12 19.1v2.1M2.8 12h2.1M19.1 12h2.1M5.5 5.5l1.5 1.5M17 17l1.5 1.5M5.5 18.5L7 17M17 7l1.5-1.5" className="stroke-current" strokeWidth="1.8" strokeLinecap="round" />
-        </svg>
+        <Settings className="h-5 w-5 animate-spin-slow" />
       </button>
 
-      {open ? (
-        <div className="fixed inset-0 z-[100] grid place-items-center bg-black/45 p-4">
+      {open && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 p-4 backdrop-blur-md animate-fadeInUp">
           <div
-            className={[
-              "relative w-full max-w-md overflow-hidden rounded-2xl border p-6 shadow-[0_32px_100px_rgba(0,0,0,0.30)]",
-              isGreen
-                ? "border-transparent bg-[#07100d] text-zinc-50"
-                : "border-[#dfd0b9] bg-[#fffaf0] text-[#342b1d]",
-            ].join(" ")}
+            className={`relative w-full max-w-md overflow-hidden rounded-3xl border p-6 sm:p-7 shadow-2xl backdrop-blur-2xl transition-all ${
+              isDark
+                ? "border-white/15 bg-slate-900/95 text-white shadow-black"
+                : "border-slate-200 bg-white/95 text-slate-900 shadow-slate-400/30"
+            }`}
           >
-            <div className="mb-5 flex items-start justify-between gap-4">
+            {/* Header */}
+            <div className="mb-6 flex items-start justify-between gap-4">
               <div>
-                <h3 className="text-lg font-black">{draftLang === "tr" ? "Ayarlar" : "Settings"}</h3>
-                <p className={["mt-1 text-sm leading-6", isGreen ? "text-zinc-400" : "text-[#7b6d58]"].join(" ")}>
-                  {draftLang === "tr" ? "Arayüz temasını ve dil tercihini güncelle." : "Update interface theme and language."}
+                <div className="flex items-center gap-2">
+                  <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-emerald-500/15 text-emerald-400">
+                    <Settings className="h-4 w-4" />
+                  </div>
+                  <h3 className="font-display text-lg font-black tracking-tight">
+                    {draftLang === "tr" ? "Tercihler ve Görünüm" : "Preferences & Appearance"}
+                  </h3>
+                </div>
+                <p className={`mt-1.5 text-xs leading-relaxed ${isDark ? "text-slate-400" : "text-slate-500"}`}>
+                  {draftLang === "tr" 
+                    ? "Kişisel çalışma alanı deneyiminizi özelleştirin." 
+                    : "Customize your personalized workspace experience."}
                 </p>
               </div>
               <button
                 type="button"
                 onClick={() => setOpen(false)}
-                className={[
-                  "rounded-md border px-3 py-1.5 text-xs font-bold transition",
-                  isGreen
-                    ? "border-transparent bg-white/5 text-zinc-100 hover:bg-white/10"
-                    : "border-[#dfd0b9] bg-white text-[#6d5433] hover:bg-[#fbf4e8]",
-                ].join(" ")}
+                className={`rounded-xl p-2 transition ${
+                  isDark ? "text-slate-400 hover:bg-white/10 hover:text-white" : "text-slate-500 hover:bg-slate-100"
+                }`}
               >
-                {draftLang === "tr" ? "Kapat" : "Close"}
+                <X className="h-5 w-5" />
               </button>
             </div>
 
-            <section className="space-y-5">
+            <div className="space-y-6">
+              {/* Theme Selector */}
               <div>
-                <div className={["mb-2 text-xs font-black uppercase", isGreen ? "text-emerald-200" : "text-[#806f57]"].join(" ")}>
-                  {draftLang === "tr" ? "Tema" : "Theme"}
+                <div className="mb-3 flex items-center gap-1.5 text-xs font-black uppercase tracking-wider text-emerald-400">
+                  <Moon className="h-3.5 w-3.5" />
+                  {draftLang === "tr" ? "Görünüm Teması" : "Theme Mode"}
                 </div>
-                <div className="grid gap-2 sm:grid-cols-2">
-                  <ThemeButton
-                    active={draftTheme === "green"}
-                    title={draftLang === "tr" ? "Yeşil" : "Green"}
-                    description={draftLang === "tr" ? "Daha klinik, canlı ve operasyon odaklı." : "Clinical, fresh and operational."}
+                <div className="grid grid-cols-2 gap-3">
+                  <button
+                    type="button"
                     onClick={() => setDraftTheme("green")}
-                    tone="green"
-                  />
-                  <ThemeButton
-                    active={draftTheme === "cream"}
-                    title={draftLang === "tr" ? "Krem" : "Cream"}
-                    description={draftLang === "tr" ? "Daha sıcak, sakin ve okunaklı." : "Warm, calm and highly readable."}
+                    className={`flex flex-col rounded-2xl border p-4 text-left transition-all ${
+                      draftTheme === "green"
+                        ? "border-emerald-500 bg-emerald-500/10 shadow-lg shadow-emerald-500/10 ring-1 ring-emerald-500"
+                        : isDark ? "border-white/10 bg-white/5 hover:border-white/20" : "border-slate-200 bg-slate-50 hover:bg-slate-100"
+                    }`}
+                  >
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <Moon className="h-4 w-4 text-emerald-400" />
+                        <span className="text-xs font-black">{draftLang === "tr" ? "Karanlık (Neon)" : "Dark Mode"}</span>
+                      </div>
+                      {draftTheme === "green" && <Check className="h-3.5 w-3.5 text-emerald-400" />}
+                    </div>
+                    <p className={`mt-2 text-[11px] leading-relaxed ${isDark ? "text-slate-400" : "text-slate-500"}`}>
+                      {draftLang === "tr" ? "SaaS odaklı koyu tonlar ve neon yeşil." : "Dark sleek background with emerald neon accents."}
+                    </p>
+                  </button>
+
+                  <button
+                    type="button"
                     onClick={() => setDraftTheme("cream")}
-                    tone="cream"
-                  />
+                    className={`flex flex-col rounded-2xl border p-4 text-left transition-all ${
+                      draftTheme === "cream"
+                        ? "border-emerald-500 bg-emerald-500/10 shadow-lg shadow-emerald-500/10 ring-1 ring-emerald-500"
+                        : isDark ? "border-white/10 bg-white/5 hover:border-white/20" : "border-slate-200 bg-slate-50 hover:bg-slate-100"
+                    }`}
+                  >
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <Sun className="h-4 w-4 text-amber-500" />
+                        <span className="text-xs font-black">{draftLang === "tr" ? "Aydınlık (Sade)" : "Light Mode"}</span>
+                      </div>
+                      {draftTheme === "cream" && <Check className="h-3.5 w-3.5 text-emerald-400" />}
+                    </div>
+                    <p className={`mt-2 text-[11px] leading-relaxed ${isDark ? "text-slate-400" : "text-slate-500"}`}>
+                      {draftLang === "tr" ? "Ferah, temiz ve yüksek kontrastlı görünüm." : "Clean, bright, high-contrast daylight aesthetic."}
+                    </p>
+                  </button>
                 </div>
               </div>
 
+              {/* Language Selector */}
               <div>
-                <div className={["mb-2 text-xs font-black uppercase", isGreen ? "text-emerald-200" : "text-[#806f57]"].join(" ")}>
-                  {draftLang === "tr" ? "Dil" : "Language"}
+                <div className="mb-3 flex items-center gap-1.5 text-xs font-black uppercase tracking-wider text-emerald-400">
+                  <Globe className="h-3.5 w-3.5" />
+                  {draftLang === "tr" ? "Dil / Language" : "Language"}
                 </div>
-                <div className={["grid grid-cols-2 rounded-lg border p-1", isGreen ? "border-transparent bg-white/5" : "border-[#dfd0b9] bg-[#f7eedf]"].join(" ")}>
+                <div className={`grid grid-cols-2 rounded-2xl border p-1.5 ${
+                  isDark ? "border-white/10 bg-black/40" : "border-slate-200 bg-slate-100"
+                }`}>
                   <button
                     type="button"
                     onClick={() => setDraftLang("tr")}
-                    className={languageButtonClass(draftLang === "tr", draftTheme)}
+                    className={`rounded-xl py-2.5 text-xs font-bold transition-all ${
+                      draftLang === "tr"
+                        ? "bg-emerald-500 text-slate-950 shadow-md shadow-emerald-500/30"
+                        : isDark ? "text-slate-400 hover:text-white" : "text-slate-600 hover:text-slate-900"
+                    }`}
                   >
-                    Türkçe
+                    🇹🇷 Türkçe
                   </button>
                   <button
                     type="button"
                     onClick={() => setDraftLang("en")}
-                    className={languageButtonClass(draftLang === "en", draftTheme)}
+                    className={`rounded-xl py-2.5 text-xs font-bold transition-all ${
+                      draftLang === "en"
+                        ? "bg-emerald-500 text-slate-950 shadow-md shadow-emerald-500/30"
+                        : isDark ? "text-slate-400 hover:text-white" : "text-slate-600 hover:text-slate-900"
+                    }`}
                   >
-                    EN
+                    🇬🇧 English
                   </button>
                 </div>
               </div>
-            </section>
+            </div>
 
-            <button
-              type="button"
-              onClick={saveSettings}
-              className={[
-                "mt-6 w-full rounded-lg px-4 py-3 text-sm font-black text-white shadow-sm transition hover:-translate-y-0.5",
-                draftTheme === "green" ? "bg-[#1f6b50] hover:bg-[#185840]" : "bg-[#8a6a3f] hover:bg-[#765932]",
-              ].join(" ")}
-            >
-              {draftLang === "tr" ? "Kaydet ve Uygula" : "Save and Apply"}
-            </button>
+            {/* Save Action */}
+            <div className="mt-8 flex gap-3">
+              <button
+                type="button"
+                onClick={() => setOpen(false)}
+                className={`flex-1 rounded-2xl border py-3 text-xs font-bold transition ${
+                  isDark ? "border-white/10 bg-white/5 text-slate-300 hover:bg-white/10" : "border-slate-200 bg-slate-100 text-slate-700 hover:bg-slate-200"
+                }`}
+              >
+                {draftLang === "tr" ? "Vazgeç" : "Cancel"}
+              </button>
+              <button
+                type="button"
+                onClick={saveSettings}
+                className="flex-1 rounded-2xl bg-gradient-to-r from-emerald-500 to-teal-400 py-3 text-xs font-black text-slate-950 shadow-lg shadow-emerald-500/30 transition hover:brightness-110 active:scale-[0.98]"
+              >
+                {draftLang === "tr" ? "Kaydet ve Uygula" : "Save Changes"}
+              </button>
+            </div>
           </div>
         </div>
-      ) : null}
+      )}
     </>
   );
 }
 
-function ThemeButton({
-  active,
-  title,
-  description,
-  tone,
-  onClick,
-}: {
-  active: boolean;
-  title: string;
-  description: string;
-  tone: Theme;
-  onClick: () => void;
-}) {
-  const isGreen = tone === "green";
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      className={[
-        "rounded-lg border p-3 text-left transition hover:-translate-y-0.5",
-        active
-          ? isGreen
-            ? "border-[#1f6b50] bg-[#e2f1e6] shadow-sm"
-            : "border-[#8a6a3f] bg-[#f5ead7] shadow-sm"
-          : isGreen
-            ? "border-[#bfd8c5] bg-white hover:bg-[#f3faf5]"
-            : "border-[#dfd0b9] bg-white hover:bg-[#fbf4e8]",
-      ].join(" ")}
-    >
-      <div className="flex items-center gap-2">
-        <span className={["h-3 w-3 rounded-full", isGreen ? "bg-[#1f6b50]" : "bg-[#b28a52]"].join(" ")} />
-        <span className={["text-sm font-black", isGreen ? "text-[#12372e]" : "text-[#4f3d25]"].join(" ")}>
-          {title}
-        </span>
-      </div>
-      <p className={["mt-2 text-xs leading-5", isGreen ? "text-[#527164]" : "text-[#7b6d58]"].join(" ")}>
-        {description}
-      </p>
-    </button>
-  );
-}
-
-function languageButtonClass(active: boolean, theme: Theme) {
-  const isGreen = theme === "green";
-  return [
-    "rounded-md px-3 py-2 text-xs font-black transition",
-    active
-      ? isGreen
-        ? "bg-[#1f6b50] text-white shadow-sm"
-        : "bg-[#8a6a3f] text-white shadow-sm"
-      : isGreen
-        ? "text-zinc-300 hover:bg-white/10"
-        : "text-[#756449] hover:bg-white",
-  ].join(" ");
-}

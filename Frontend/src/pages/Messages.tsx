@@ -4,8 +4,20 @@ import { DashboardShell } from "../components/DashboardShell";
 import { useAppSettings } from "../context/AppSettingsContext";
 import { useSocket } from "../context/SocketContext";
 import { parseStoredUser, useAuthSession } from "../lib/authSession";
+import { API_BASE_URL as API_BASE } from "../lib/api";
+import { 
+  MessageSquare, 
+  Paperclip, 
+  Send, 
+  Check, 
+  CheckCheck, 
+  Search, 
+  User, 
+  ArrowRight, 
+  X,
+  FileText
+} from "lucide-react";
 
-const API_BASE = "http://localhost:3000";
 
 type Contact = {
   user_id: string;
@@ -37,29 +49,31 @@ type Message = {
 const COPY = {
   tr: {
     title: "Mesajlaşma",
-    subtitle: "Diyetisyeniniz veya danışanlarınız ile anlık olarak iletişim kurun.",
+    subtitle: "Diyetisyeniniz veya danışanlarınız ile anlık olarak güvenli iletişim kurun.",
     noContacts: "Henüz atanmış bir sohbet bağlantınız bulunmuyor.",
-    selectContact: "Sohbete başlamak için soldan bir kişi seçin.",
-    typePlaceholder: "Mesajınızı yazın...",
+    selectContact: "Sohbete başlamak için soldaki listeden bir kişi seçin.",
+    typePlaceholder: "Bir mesaj yazın...",
     send: "Gönder",
     online: "Çevrimiçi",
+    offline: "Çevrimdışı",
     assignedDietitian: "Atanmış Diyetisyen",
     assignedClients: "Danışanlarım",
     historyErr: "Geçmiş yüklenirken bir hata oluştu.",
-    connecting: "Sohbet sunucusuna bağlanılıyor...",
+    connecting: "Bağlantı kuruluyor...",
   },
   en: {
     title: "Messaging",
-    subtitle: "Communicate instantly with your dietitian or clients.",
+    subtitle: "Real-time encrypted communication with your dietitian or clients.",
     noContacts: "You do not have any assigned chat connections yet.",
-    selectContact: "Select a contact from the left to start chatting.",
-    typePlaceholder: "Type your message...",
+    selectContact: "Select a contact from the sidebar to start chatting.",
+    typePlaceholder: "Type a message...",
     send: "Send",
     online: "Online",
+    offline: "Offline",
     assignedDietitian: "Assigned Dietitian",
     assignedClients: "My Clients",
     historyErr: "Error loading chat history.",
-    connecting: "Connecting to chat server...",
+    connecting: "Connecting...",
   },
 } as const;
 
@@ -75,6 +89,7 @@ export default function Messages() {
   const [messages, setMessages] = useState<Message[]>([]);
   const [newMessage, setNewMessage] = useState("");
   const [loadingContacts, setLoadingContacts] = useState(true);
+  const [searchContact, setSearchContact] = useState("");
 
   const [plans, setPlans] = useState<any[]>([]);
   const [showPlansDropdown, setShowPlansDropdown] = useState(false);
@@ -90,7 +105,6 @@ export default function Messages() {
   const typingTimeoutRef = useRef<Record<string, any>>({});
   const [isTypingLocal, setIsTypingLocal] = useState(false);
 
-  // Fetch contacts (assigned connections)
   useEffect(() => {
     if (!accessToken) return;
 
@@ -102,7 +116,6 @@ export default function Messages() {
         const network = data.data || {};
         const contactList: Contact[] = [];
 
-        // If client, add dietitian
         if (network.assignedDietitian) {
           contactList.push({
             user_id: network.assignedDietitian.user_id,
@@ -113,7 +126,6 @@ export default function Messages() {
           });
         }
 
-        // If dietitian, add assigned clients
         if (Array.isArray(network.clients)) {
           network.clients.forEach((c: any) => {
             contactList.push({
@@ -134,9 +146,6 @@ export default function Messages() {
       });
   }, [accessToken]);
 
-  // Global WebSocket is connected via SocketProvider
-
-  // Request online statuses when socket connects or contacts load
   useEffect(() => {
     if (socket && contactIds.length > 0) {
       socket.emit("check_online_statuses", { userIds: contactIds }, (res: any) => {
@@ -147,7 +156,6 @@ export default function Messages() {
     }
   }, [socket, contactIdsKey]);
 
-  // Handle incoming real-time messages & active status updates
   useEffect(() => {
     if (!socket) return;
 
@@ -206,7 +214,6 @@ export default function Messages() {
     };
   }, [socket, selectedContact, accessToken]);
 
-  // Fetch history when selecting contact
   useEffect(() => {
     if (!selectedContact || !accessToken) return;
 
@@ -216,24 +223,20 @@ export default function Messages() {
       .then((res) => res.json())
       .then((data) => {
         setMessages(data.data || []);
-        // Reset unread count for this contact
         setContacts((prev) =>
           prev.map((c) =>
             c.user_id === selectedContact.user_id ? { ...c, unreadCount: 0 } : c
           )
         );
-        // Refresh the global unread count badge
         refreshUnreadCount();
       })
       .catch((err) => console.error(err));
   }, [selectedContact, accessToken]);
 
-  // Auto scroll to bottom on new messages
   useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ block: "end" });
+    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
 
-  // Send message
   const handleSendMessage = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newMessage.trim() || !selectedContact || !accessToken) return;
@@ -305,7 +308,7 @@ export default function Messages() {
         setPlans(data.data || []);
       }
     } catch (err) {
-      console.error("Failed to load diet plans for attachment:", err);
+      console.error("Failed to load diet plans:", err);
     } finally {
       setLoadingPlans(false);
     }
@@ -334,7 +337,7 @@ export default function Messages() {
         setShowPlansDropdown(false);
       }
     } catch (err) {
-      console.error("Failed to send diet plan card:", err);
+      console.error(err);
     }
   };
 
@@ -364,37 +367,9 @@ export default function Messages() {
     }
     const status = onlineStatuses[contactId] || "offline";
     if (status === "online") {
-      return lang === "tr" ? "çevrimiçi" : "online";
+      return lang === "tr" ? "Çevrimiçi" : "Online";
     }
-    return lang === "tr" ? "çevrimdışı" : "offline";
-  };
-
-  const renderCheckmarks = (msg: Message) => {
-    if (msg.is_read) {
-      return (
-        <span className="text-sky-400 ml-1 flex shrink-0 select-none items-center">
-          <svg className="h-3 w-4 fill-current" viewBox="0 0 24 24">
-            <path d="M0.41 13.41L6 19l1.41-1.41L1.83 12m20.34-5.66L11 17.17l-4.17-4.17-1.42 1.41 5.59 5.59 12.02-12.02M18 7l-1.41-1.41-6.59 6.59 1.41 1.41L18 7z"/>
-          </svg>
-        </span>
-      );
-    }
-    if (msg.is_delivered) {
-      return (
-        <span className="text-zinc-400 ml-1 flex shrink-0 select-none items-center opacity-65">
-          <svg className="h-3 w-4 fill-current" viewBox="0 0 24 24">
-            <path d="M0.41 13.41L6 19l1.41-1.41L1.83 12m20.34-5.66L11 17.17l-4.17-4.17-1.42 1.41 5.59 5.59 12.02-12.02M18 7l-1.41-1.41-6.59 6.59 1.41 1.41L18 7z"/>
-          </svg>
-        </span>
-      );
-    }
-    return (
-      <span className="text-zinc-400 ml-1 flex shrink-0 select-none items-center opacity-45">
-        <svg className="h-3 w-3 fill-current" viewBox="0 0 24 24">
-          <path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z" />
-        </svg>
-      </span>
-    );
+    return lang === "tr" ? "Çevrimdışı" : "Offline";
   };
 
   const formatTime = (dateStr: string) => {
@@ -409,65 +384,106 @@ export default function Messages() {
     }
   };
 
+  const filteredContacts = contacts.filter((c) =>
+    c.name.toLowerCase().includes(searchContact.toLowerCase()) ||
+    (c.email && c.email.toLowerCase().includes(searchContact.toLowerCase()))
+  );
+
   return (
     <DashboardShell isDark={isDark} title={t.title} subtitle={t.subtitle} backUrl="/">
-      <div className={["flex h-[calc(100vh-12rem)] min-h-[480px] w-full overflow-hidden border", isDark ? "rounded-2xl border-white/10 bg-white/5" : "rounded-lg border-[#dfd0b9] bg-[#fffaf0]"].join(" ")}>
-        
+      <div className={`flex h-[calc(100vh-14rem)] min-h-[520px] w-full overflow-hidden rounded-[32px] border ${
+        isDark ? "border-white/10 bg-slate-950/60 backdrop-blur-2xl shadow-2xl" : "border-slate-200 bg-white shadow-xl"
+      }`}>
         {/* Left Contacts Sidebar */}
-        <aside className={["w-80 flex flex-col border-r", isDark ? "border-white/10 bg-black/20" : "border-[#dfd0b9] bg-[#fdf8ee]"].join(" ")}>
-          <div className={["flex items-center justify-between border-b p-4", isDark ? "border-white/10" : "border-[#dfd0b9]"].join(" ")}>
-            <h3 className={["text-xs font-black uppercase", isDark ? "text-zinc-400" : "text-[#806f57]"].join(" ")}>
-              {contacts.length > 0 && contacts[0].clinic_name ? t.assignedDietitian : t.assignedClients}
-            </h3>
-            {isSocketConnected ? (
-              <span className="flex h-2 w-2 rounded-full bg-emerald-500 shadow-md shadow-emerald-500/50" title="Connected" />
-            ) : (
-              <span className="flex h-2 w-2 rounded-full bg-amber-500" title={t.connecting} />
-            )}
+        <aside className={`w-80 flex flex-col border-r shrink-0 ${
+          isDark ? "border-white/5 bg-slate-900/40" : "border-slate-100 bg-slate-50/50"
+        }`}>
+          {/* Header & Status */}
+          <div className="p-4 border-b border-white/5 space-y-3">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <MessageSquare className="h-4 w-4 text-emerald-400" />
+                <h3 className="font-display text-xs font-black uppercase tracking-wider">
+                  {contacts.length > 0 && contacts[0].clinic_name ? t.assignedDietitian : t.assignedClients}
+                </h3>
+              </div>
+              <div className="flex items-center gap-1.5 text-[10px] font-bold">
+                <span className={`h-2 w-2 rounded-full ${isSocketConnected ? "bg-emerald-500 shadow-lg shadow-emerald-500/50 animate-pulse" : "bg-amber-500"}`} />
+                <span className="text-slate-500 font-mono">{isSocketConnected ? "Canlı" : "..."}</span>
+              </div>
+            </div>
+
+            {/* Search Input */}
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-400" />
+              <input
+                type="text"
+                placeholder={lang === "tr" ? "Kişilerde ara..." : "Search contacts..."}
+                value={searchContact}
+                onChange={(e) => setSearchContact(e.target.value)}
+                className={`w-full rounded-xl border pl-8 pr-3 py-1.5 text-xs outline-none transition ${
+                  isDark ? "border-white/10 bg-black/40 text-white focus:border-emerald-500" : "border-slate-200 bg-white text-slate-900 focus:border-emerald-500"
+                }`}
+              />
+            </div>
           </div>
 
-          <div className="flex-1 space-y-2 overflow-y-auto p-3">
+          {/* Contact List */}
+          <div className="flex-1 space-y-1.5 overflow-y-auto p-3 scrollbar-hide">
             {loadingContacts ? (
-              <div className="space-y-3">
-                <div className={["h-14 w-full animate-pulse", isDark ? "rounded-xl bg-white/5" : "rounded-md bg-[#f1e4cf]"].join(" ")} />
-                <div className={["h-14 w-full animate-pulse", isDark ? "rounded-xl bg-white/5" : "rounded-md bg-[#f1e4cf]"].join(" ")} />
+              <div className="space-y-2 p-2">
+                <div className="h-14 rounded-2xl bg-white/5 animate-pulse" />
+                <div className="h-14 rounded-2xl bg-white/5 animate-pulse" />
               </div>
-            ) : contacts.length === 0 ? (
-              <div className="p-6 text-center text-xs font-semibold text-zinc-500">
+            ) : filteredContacts.length === 0 ? (
+              <div className="p-6 text-center text-xs font-medium text-slate-500">
                 {t.noContacts}
               </div>
             ) : (
-              contacts.map((contact) => {
+              filteredContacts.map((contact) => {
                 const isSelected = selectedContact?.user_id === contact.user_id;
+                const isOnline = onlineStatuses[contact.user_id] === "online";
+
                 return (
                   <button
                     key={contact.user_id}
                     onClick={() => setSelectedContact(contact)}
-                    className={[
-                      "w-full flex items-center gap-3 border p-3 text-left transition",
+                    className={`w-full flex items-center gap-3 p-3 rounded-2xl border transition text-left group ${
                       isSelected
-                        ? (isDark ? "rounded-xl border-emerald-400/30 bg-emerald-500/10 text-white" : "rounded-md border-[#c7dbc7] bg-[#edf6ec] text-[#285743]")
-                        : (isDark ? "rounded-xl border-transparent bg-white/5 text-zinc-400 hover:bg-white/10 hover:text-white" : "rounded-md border-[#eadcc8] bg-white text-[#7b6d58] hover:border-[#cbb48d] hover:text-[#342b1d]")
-                    ].join(" ")}
+                        ? "border-emerald-500/30 bg-emerald-500/10 shadow-lg shadow-emerald-500/10"
+                        : isDark ? "border-transparent bg-white/[0.02] hover:bg-white/[0.05]" : "border-transparent bg-white hover:bg-slate-100/70"
+                    }`}
                   >
-                    <div className={["flex h-10 w-10 shrink-0 items-center justify-center rounded-xl text-sm font-black", isSelected ? (isDark ? "bg-emerald-400 text-zinc-950" : "bg-[#8a6a3f] text-white") : (isDark ? "bg-black/30 text-zinc-400" : "bg-[#f1e4cf] text-[#745737]")].join(" ")}>
-                      {contact.name.substring(0, 2).toUpperCase()}
-                    </div>
-                    
-                    <div className="flex-1 min-w-0">
-                      <h4 className={["text-xs font-bold truncate", isSelected ? (isDark ? "text-white" : "text-[#0e2d27]") : (isDark ? "text-zinc-300" : "text-[#0e2d27]")].join(" ")}>
-                        {contact.name}
-                      </h4>
-                      <p className={["mt-0.5 truncate text-[10px]", isDark ? "text-zinc-500" : "text-[#8a7a61]"].join(" ")}>
-                        {contact.email}
-                      </p>
+                    <div className="relative shrink-0">
+                      <div className={`flex h-11 w-11 items-center justify-center rounded-2xl font-display font-black text-sm transition ${
+                        isSelected
+                          ? "bg-emerald-500 text-slate-950 shadow-md shadow-emerald-500/30"
+                          : isDark ? "bg-slate-800 text-slate-300 group-hover:bg-slate-700" : "bg-slate-100 text-slate-700"
+                      }`}>
+                        {contact.name.substring(0, 2).toUpperCase()}
+                      </div>
+                      <span className={`absolute -bottom-0.5 -right-0.5 h-3 w-3 rounded-full border-2 ${
+                        isDark ? "border-slate-900" : "border-white"
+                      } ${isOnline ? "bg-emerald-500" : "bg-slate-500"}`} />
                     </div>
 
-                    {!!contact.unreadCount && contact.unreadCount > 0 && (
-                      <span className="flex h-5 min-w-5 px-1.5 items-center justify-center rounded-full bg-emerald-500 text-[10px] font-bold text-white shadow-lg shadow-emerald-500/20">
-                        {contact.unreadCount}
-                      </span>
-                    )}
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-center justify-between">
+                        <h4 className={`truncate text-xs font-black ${
+                          isSelected ? "text-emerald-400" : isDark ? "text-white" : "text-slate-900"
+                        }`}>
+                          {contact.name}
+                        </h4>
+                        {!!contact.unreadCount && contact.unreadCount > 0 && (
+                          <span className="flex h-4 min-w-4 px-1 items-center justify-center rounded-full bg-emerald-500 text-[9px] font-black text-slate-950">
+                            {contact.unreadCount}
+                          </span>
+                        )}
+                      </div>
+                      <p className="text-[10px] text-slate-500 truncate mt-0.5">
+                        {contact.clinic_name || contact.email || getSubStatusText(contact.user_id)}
+                      </p>
+                    </div>
                   </button>
                 );
               })
@@ -476,119 +492,130 @@ export default function Messages() {
         </aside>
 
         {/* Right Active Chat Box */}
-        <section className="flex-1 flex flex-col bg-transparent">
+        <section className="flex-1 flex flex-col min-w-0">
           {selectedContact ? (
             <>
               {/* Chat Header */}
-              <div className={["flex items-center justify-between border-b p-4", isDark ? "border-white/10 bg-black/20" : "border-[#dfd0b9] bg-[#fffaf0]"].join(" ")}>
+              <div className={`flex items-center justify-between p-4 border-b ${
+                isDark ? "border-white/5 bg-slate-900/20" : "border-slate-100 bg-white"
+              }`}>
                 <div className="flex items-center gap-3">
-                  <div className={["flex h-10 w-10 items-center justify-center rounded-xl text-sm font-black", isDark ? "bg-emerald-500/15 text-emerald-200" : "bg-[#edf6ec] text-[#285743]"].join(" ")}>
-                    {selectedContact.name.substring(0, 2).toUpperCase()}
+                  <div className="relative">
+                    <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-emerald-500/15 text-emerald-400 font-display font-black text-xs">
+                      {selectedContact.name.substring(0, 2).toUpperCase()}
+                    </div>
+                    <span className={`absolute -bottom-0.5 -right-0.5 h-2.5 w-2.5 rounded-full border-2 ${
+                      isDark ? "border-slate-900" : "border-white"
+                    } ${onlineStatuses[selectedContact.user_id] === "online" ? "bg-emerald-500" : "bg-slate-500"}`} />
                   </div>
                   <div>
-                    <h3 className={["text-sm font-black tracking-tight", isDark ? "text-white" : "text-[#342b1d]"].join(" ")}>
-                      {selectedContact.name}
-                    </h3>
-                    <p className={[
-                      "mt-0.5 text-[10px] font-bold transition",
-                      (typingStatuses[selectedContact.user_id] || onlineStatuses[selectedContact.user_id] === "online") ? "text-emerald-400" : "text-zinc-500"
-                    ].join(" ")}>
+                    <h3 className="font-display text-sm font-black tracking-tight">{selectedContact.name}</h3>
+                    <p className={`text-[10px] font-bold mt-0.5 ${
+                      typingStatuses[selectedContact.user_id] || onlineStatuses[selectedContact.user_id] === "online"
+                        ? "text-emerald-400 animate-pulse"
+                        : "text-slate-500"
+                    }`}>
                       {getSubStatusText(selectedContact.user_id)}
                     </p>
                   </div>
                 </div>
               </div>
 
-              {/* Chat Messages Log */}
-              <div className="flex-1 space-y-3 overflow-y-auto p-4">
-                {messages.map((msg) => {
-                  const isOwn = msg.sender_id === currentUser?.id;
-                  return (
-                    <div
-                      key={msg.id}
-                      className={["flex w-full", isOwn ? "justify-end" : "justify-start"].join(" ")}
-                    >
-                      <div
-                        className={[
-                          "max-w-[70%] px-4 py-3 text-sm shadow-sm",
+              {/* Chat Messages Body */}
+              <div className="flex-1 space-y-3 overflow-y-auto p-5 scrollbar-hide">
+                {messages.length === 0 ? (
+                  <div className="flex h-full flex-col items-center justify-center text-center p-6 opacity-40">
+                    <MessageSquare className="h-10 w-10 text-emerald-400 mb-2" />
+                    <p className="text-xs font-bold">{lang === "tr" ? "Henüz bir mesajlaşma yok." : "No messages yet."}</p>
+                  </div>
+                ) : (
+                  messages.map((msg) => {
+                    const isOwn = msg.sender_id === currentUser?.id;
+
+                    return (
+                      <div key={msg.id} className={`flex w-full ${isOwn ? "justify-end" : "justify-start"}`}>
+                        <div className={`max-w-[75%] md:max-w-[60%] p-4 rounded-3xl transition ${
                           isOwn
-                            ? (isDark ? "rounded-2xl rounded-tr-md bg-emerald-400 text-zinc-950" : "rounded-lg rounded-tr-sm bg-[#8a6a3f] text-white")
-                            : (isDark ? "rounded-2xl rounded-tl-md border border-white/10 bg-black/30 text-zinc-100" : "rounded-lg rounded-tl-sm border border-[#eadcc8] bg-white text-[#342b1d]")
-                        ].join(" ")}
-                      >
-                        {msg.plan_id && msg.plan ? (
-                          <div 
-                            onClick={() => navigate(`/plan/${msg.plan_id}`)}
-                            className={[
-                              "flex items-center gap-3 rounded-xl border p-3 text-left transition hover:brightness-105",
-                              isOwn
-                                ? "bg-white/10 border-white/20 text-white"
-                                : (isDark ? "bg-zinc-700/50 border-white/10 text-white" : "bg-emerald-50 border-emerald-200 text-[#0e2d27]")
-                            ].join(" ")}
-                          >
-                            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-emerald-500 text-white shadow-md shadow-emerald-500/20">
-                              <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01" />
-                              </svg>
+                            ? "rounded-tr-sm bg-gradient-to-br from-emerald-500 to-teal-600 text-slate-950 font-medium shadow-lg shadow-emerald-500/15"
+                            : isDark
+                            ? "rounded-tl-sm border border-white/10 bg-slate-900 text-white"
+                            : "rounded-tl-sm border border-slate-200 bg-white text-slate-900 shadow-sm"
+                        }`}>
+                          {msg.plan_id && msg.plan ? (
+                            <div
+                              onClick={() => navigate(`/plan/${msg.plan_id}`)}
+                              className={`cursor-pointer rounded-2xl p-3 border transition flex items-center gap-3 ${
+                                isOwn
+                                  ? "border-black/10 bg-black/10 hover:bg-black/20 text-slate-950"
+                                  : isDark ? "border-white/10 bg-black/30 hover:border-emerald-500/50" : "border-emerald-200 bg-emerald-50 hover:bg-emerald-100"
+                              }`}
+                            >
+                              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-emerald-500 text-slate-950 shadow-md">
+                                <FileText className="h-5 w-5" />
+                              </div>
+                              <div className="min-w-0 flex-1">
+                                <span className="block text-[9px] font-black uppercase tracking-wider opacity-70">
+                                  {lang === "tr" ? "Diyet Planı Kartı" : "Diet Plan Card"}
+                                </span>
+                                <h4 className="text-xs font-black truncate mt-0.5">{msg.plan.title}</h4>
+                                <p className="text-[10px] opacity-80 mt-0.5">
+                                  {msg.plan.plan_type === "weekly" ? "Haftalık Program" : "Aylık Program"}
+                                </p>
+                              </div>
+                              <ArrowRight className="h-4 w-4 shrink-0 opacity-60" />
                             </div>
-                            <div className="flex-1 min-w-0">
-                              <span className="block text-[8px] font-black uppercase tracking-wider opacity-70">
-                                {lang === "tr" ? "Diyet Programı Kartı" : "Diet Plan Card"}
-                              </span>
-                              <h4 className="text-xs font-bold truncate mt-0.5">{msg.plan.title}</h4>
-                              <p className="text-[9px] opacity-80 truncate mt-0.5">
-                                {msg.plan.plan_type === "weekly" ? (lang === "tr" ? "Haftalık Program" : "Weekly Plan") : (lang === "tr" ? "Aylık Program" : "Monthly Plan")}
-                              </p>
-                            </div>
-                            <div className="shrink-0 text-xs opacity-75">
-                              ➡️
-                            </div>
+                          ) : (
+                            <p className="text-xs leading-relaxed whitespace-pre-wrap">{msg.content}</p>
+                          )}
+
+                          <div className={`flex items-center justify-end gap-1 mt-1.5 text-[9px] font-mono font-bold ${
+                            isOwn ? "text-slate-900/70" : "text-slate-500"
+                          }`}>
+                            <span>{formatTime(msg.created_at)}</span>
+                            {isOwn && (
+                              msg.is_read ? (
+                                <CheckCheck className="h-3.5 w-3.5 text-slate-950 stroke-[2.5]" />
+                              ) : msg.is_delivered ? (
+                                <CheckCheck className="h-3.5 w-3.5 text-slate-900/70 stroke-[2]" />
+                              ) : (
+                                <Check className="h-3 w-3 text-slate-900/60" />
+                              )
+                            )}
                           </div>
-                        ) : (
-                          <p className="text-xs leading-relaxed whitespace-pre-wrap">{msg.content}</p>
-                        )}
-                        <div className="flex items-center justify-end gap-1 mt-1.5 opacity-80 text-[9px] font-semibold text-right">
-                          <span>{formatTime(msg.created_at)}</span>
-                          {isOwn && renderCheckmarks(msg)}
                         </div>
                       </div>
-                    </div>
-                  );
-                })}
+                    );
+                  })
+                )}
                 <div ref={messagesEndRef} />
               </div>
 
               {/* Chat Input Field */}
-              <form
-                onSubmit={handleSendMessage}
-                className={["relative flex items-center gap-3 border-t p-4", isDark ? "border-white/10 bg-black/30" : "border-[#dfd0b9] bg-[#fdf8ee]"].join(" ")}
-              >
+              <form onSubmit={handleSendMessage} className={`relative flex items-center gap-2 p-4 border-t ${
+                isDark ? "border-white/5 bg-slate-900/30" : "border-slate-100 bg-slate-50/50"
+              }`}>
+                {/* Diet Plans Attachment Popup */}
                 {showPlansDropdown && (
-                  <div className={[
-                    "absolute bottom-full right-4 z-50 mb-2 w-80 overflow-hidden border p-4 shadow-2xl",
-                    isDark ? "rounded-2xl border-white/10 bg-[#080b0a]/95" : "rounded-lg border-[#dfd0b9] bg-[#fffaf0]"
-                  ].join(" ")}>
-                    <div className="flex items-center justify-between mb-3">
-                      <h4 className={["text-[10px] font-black uppercase tracking-wider", isDark ? "text-zinc-400" : "text-[#0e2d27]"].join(" ")}>
-                        {lang === "tr" ? "Paylaşılacak Programı Seçin" : "Select Diet Plan to Share"}
+                  <div className={`absolute bottom-full right-4 z-50 mb-3 w-80 rounded-3xl border p-4 shadow-2xl backdrop-blur-2xl animate-fadeInUp ${
+                    isDark ? "border-white/10 bg-slate-900/95 text-white" : "border-slate-200 bg-white text-slate-900"
+                  }`}>
+                    <div className="flex items-center justify-between pb-2 mb-3 border-b border-white/5">
+                      <h4 className="font-display text-xs font-black uppercase text-emerald-400">
+                        {lang === "tr" ? "Diyet Planı Paylaş" : "Share Diet Plan"}
                       </h4>
-                      <button 
-                        type="button" 
-                        onClick={() => setShowPlansDropdown(false)}
-                        className="text-xs font-semibold text-rose-400 hover:text-rose-500"
-                      >
-                        ✕
+                      <button type="button" onClick={() => setShowPlansDropdown(false)} className="text-slate-400 hover:text-white">
+                        <X className="h-4 w-4" />
                       </button>
                     </div>
 
                     <div className="max-h-48 overflow-y-auto space-y-2 pr-1">
                       {loadingPlans ? (
-                        <div className="text-center py-4 text-xs text-zinc-500 font-semibold animate-pulse">
-                          {lang === "tr" ? "Programlar yükleniyor..." : "Loading plans..."}
+                        <div className="py-4 text-center text-xs text-slate-400 animate-pulse">
+                          {lang === "tr" ? "Yükleniyor..." : "Loading..."}
                         </div>
                       ) : plans.length === 0 ? (
-                        <div className="text-center py-4 text-xs text-zinc-500 font-semibold">
-                          {lang === "tr" ? "Aktif program bulunamadı." : "No active plans found."}
+                        <div className="py-4 text-center text-xs text-slate-500">
+                          {lang === "tr" ? "Aktif plan bulunamadı." : "No plans found."}
                         </div>
                       ) : (
                         plans.map((p) => (
@@ -596,22 +623,13 @@ export default function Messages() {
                             key={p.id}
                             type="button"
                             onClick={() => handleSendPlanCard(p.id, p.title)}
-                            className={[
-                              "flex w-full items-center justify-between border p-3 text-left text-xs transition",
-                              isDark 
-                                ? "rounded-xl border-transparent bg-white/5 text-zinc-300 hover:border-emerald-400/25 hover:bg-emerald-500/10 hover:text-white"
-                                : "rounded-md border-[#eadcc8] bg-white text-[#7b6d58] hover:border-[#cbb48d] hover:text-[#342b1d]"
-                            ].join(" ")}
+                            className="w-full flex items-center justify-between p-2.5 rounded-xl border border-white/5 hover:border-emerald-500/30 hover:bg-emerald-500/10 text-left transition"
                           >
                             <div className="min-w-0 flex-1 mr-2">
-                              <div className="font-bold truncate">{p.title}</div>
-                              <div className="text-[9px] opacity-75 mt-0.5">
-                                {p.plan_type === "weekly" ? (lang === "tr" ? "Haftalık Program" : "Weekly Plan") : (lang === "tr" ? "Aylık Program" : "Monthly Plan")}
-                              </div>
+                              <h5 className="font-bold text-xs truncate">{p.title}</h5>
+                              <span className="text-[9px] text-slate-400 uppercase font-mono">{p.plan_type}</span>
                             </div>
-                            <span className="text-[10px] shrink-0 text-emerald-500 font-bold">
-                              {lang === "tr" ? "Gönder" : "Send"}
-                            </span>
+                            <span className="text-[10px] font-black text-emerald-400">{lang === "tr" ? "Gönder" : "Send"}</span>
                           </button>
                         ))
                       )}
@@ -622,17 +640,12 @@ export default function Messages() {
                 <button
                   type="button"
                   onClick={togglePlanDropdown}
-                  className={[
-                    "flex h-10 w-10 shrink-0 items-center justify-center border transition",
-                    isDark 
-                      ? "rounded-xl border-white/10 bg-white/5 text-zinc-400 hover:bg-white/10 hover:text-white" 
-                      : "rounded-md border-[#dfd0b9] bg-white text-[#806f57] hover:bg-[#fffaf0] hover:text-[#342b1d]"
-                  ].join(" ")}
-                  title={lang === "tr" ? "Diyet Programı Ekle" : "Attach Diet Plan"}
+                  className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl border transition ${
+                    isDark ? "border-white/10 bg-slate-800/80 text-slate-300 hover:text-emerald-400" : "border-slate-200 bg-white text-slate-700 hover:text-emerald-600"
+                  }`}
+                  title="Diyet Planı Ekle"
                 >
-                  <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13" />
-                  </svg>
+                  <Paperclip className="h-4 w-4" />
                 </button>
 
                 <input
@@ -640,39 +653,37 @@ export default function Messages() {
                   placeholder={t.typePlaceholder}
                   value={newMessage}
                   onChange={handleInputChange}
-                  className={["flex-1 border px-4 py-3 text-xs outline-none transition", isDark ? "rounded-xl border-white/10 bg-black/40 text-white focus:border-emerald-400" : "rounded-md border-[#dfd0b9] bg-white text-[#342b1d] focus:border-[#8a6a3f]/55"].join(" ")}
+                  className={`flex-1 rounded-2xl border px-4 py-3 text-xs font-medium outline-none transition ${
+                    isDark ? "border-white/10 bg-black/40 text-white focus:border-emerald-500" : "border-slate-200 bg-white text-slate-900 focus:border-emerald-500"
+                  }`}
                 />
-                
+
                 <button
                   type="submit"
                   disabled={!newMessage.trim()}
-                  className={["flex h-10 w-24 shrink-0 items-center justify-center gap-2 text-xs font-black transition", (!newMessage.trim()) ? (isDark ? "cursor-not-allowed rounded-xl bg-emerald-400/35 text-zinc-950/70" : "cursor-not-allowed rounded-md bg-[#b9a37f] text-white/80") : (isDark ? "rounded-xl bg-emerald-400 text-zinc-950 hover:brightness-110" : "rounded-md bg-[#8a6a3f] text-white hover:bg-[#765932]")].join(" ")}
+                  className={`flex h-11 px-5 items-center justify-center gap-2 rounded-2xl font-display text-xs font-black transition ${
+                    !newMessage.trim()
+                      ? "bg-slate-800 text-slate-500 cursor-not-allowed opacity-50"
+                      : "bg-emerald-500 text-slate-950 hover:bg-emerald-400 shadow-lg shadow-emerald-500/25 hover:scale-105 active:scale-95"
+                  }`}
                 >
-                  <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
-                  </svg>
-                  {t.send}
+                  <span>{t.send}</span>
+                  <Send className="h-3.5 w-3.5 stroke-[2.5]" />
                 </button>
               </form>
             </>
           ) : (
-            <div className="flex-1 flex flex-col items-center justify-center text-center p-8">
-              <div className="h-16 w-16 rounded-full bg-emerald-500/10 text-emerald-500 flex items-center justify-center mb-4">
-                <svg className="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
-                </svg>
+            <div className="flex-1 flex flex-col items-center justify-center p-8 text-center opacity-60">
+              <div className="flex h-16 w-16 items-center justify-center rounded-3xl bg-emerald-500/10 text-emerald-400 mb-4">
+                <MessageSquare className="h-8 w-8" />
               </div>
-              <h3 className={["text-sm font-bold", isDark ? "text-white" : "text-[#0e2d27]"].join(" ")}>
-                {t.title}
-              </h3>
-              <p className="text-xs text-zinc-500 mt-2 max-w-xs leading-relaxed">
-                {t.selectContact}
-              </p>
+              <h3 className="font-display text-base font-black">{t.title}</h3>
+              <p className="mt-1 text-xs text-slate-400 max-w-sm">{t.selectContact}</p>
             </div>
           )}
         </section>
-
       </div>
     </DashboardShell>
   );
 }
+

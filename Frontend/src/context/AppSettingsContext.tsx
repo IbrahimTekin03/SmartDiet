@@ -10,6 +10,7 @@ type AppSettingsContextValue = {
   isDark: boolean;
   setTheme: (theme: Theme) => void;
   setLang: (lang: Lang) => void;
+  toggleTheme: () => void;
   applySettings: (theme: Theme, lang: Lang) => void;
 };
 
@@ -52,6 +53,10 @@ export function AppSettingsProvider({ children }: { children: React.ReactNode })
     return () => window.removeEventListener("storage", onStorage);
   }, []);
 
+  const toggleTheme = () => {
+    setTheme((prev) => (prev === "green" ? "cream" : "green"));
+  };
+
   const value = useMemo<AppSettingsContextValue>(
     () => ({
       theme,
@@ -59,6 +64,7 @@ export function AppSettingsProvider({ children }: { children: React.ReactNode })
       isDark: theme === "green",
       setTheme,
       setLang,
+      toggleTheme,
       applySettings: (nextTheme: Theme, nextLang: Lang) => {
         setTheme(nextTheme);
         setLang(nextLang);

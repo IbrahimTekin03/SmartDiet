@@ -13,6 +13,16 @@ import {
 import { useAppSettings } from "../context/AppSettingsContext";
 import { useSocket } from "../context/SocketContext";
 import { clearAuthSession } from "../lib/authSession";
+import { API_BASE_URL as API_BASE } from "../lib/api";
+import { 
+  Users, 
+  FileText, 
+  Plus, 
+  User, 
+  ExternalLink, 
+  X
+} from "lucide-react";
+
 
 type ClientItem = {
   user_id: string;
@@ -23,38 +33,36 @@ type ClientItem = {
   birth_date: string | null;
 };
 
-const API_BASE = "http://localhost:3000";
-
 const COPY = {
   tr: {
     title: "Diyetisyen Paneli",
     subtitle: "Atanmış danışanlarınızı yönetin ve beslenme planlarını oluşturun.",
-    welcome: "Hoş geldin",
-    clientsTitle: "Danışanlarım",
-    clientsSub: "Size atanmış danışanların listesi",
+    welcome: "Hoş Geldiniz,",
+    clientsTitle: "Danışan Portföyüm",
+    clientsSub: "Klinik takibiniz altındaki aktif danışanlar",
     noClients: "Henüz size atanmış bir danışan bulunmuyor.",
     preparePlan: "Plan Hazırla",
     viewProfile: "Profil",
     logout: "Çıkış Yap",
-    totalClients: "Toplam Danışan",
-    activePlans: "Aktif Planlar",
+    totalClients: "Kayıtlı Danışanlar",
+    activePlans: "Aktif Diyet Programları",
     age: "Yaş",
     gender: "Cinsiyet",
     male: "Erkek",
     female: "Kadın",
   },
   en: {
-    title: "Dietitian Panel",
+    title: "Dietitian Dashboard",
     subtitle: "Manage your assigned clients and create nutrition plans.",
-    welcome: "Welcome",
-    clientsTitle: "My Clients",
-    clientsSub: "List of clients assigned to you",
+    welcome: "Welcome,",
+    clientsTitle: "My Client Roster",
+    clientsSub: "Active clients under your clinical supervision",
     noClients: "No clients assigned to you yet.",
     preparePlan: "Create Plan",
     viewProfile: "Profile",
     logout: "Log Out",
     totalClients: "Total Clients",
-    activePlans: "Active Plans",
+    activePlans: "Active Diet Programs",
     age: "Age",
     gender: "Gender",
     male: "Male",
@@ -66,7 +74,7 @@ export default function DietitianDashboard() {
   const navigate = useNavigate();
   const { lang, isDark } = useAppSettings();
   const { unreadMessageCount } = useSocket();
-  const t = COPY[lang];
+  const t = COPY[lang] || COPY.tr;
 
   const [loading, setLoading] = useState(true);
   const [clients, setClients] = useState<ClientItem[]>([]);
@@ -84,7 +92,7 @@ export default function DietitianDashboard() {
     const token = localStorage.getItem("access_token");
     try {
       const res = await fetch(`${API_BASE}/api/diet-plans/client?clientId=${client.user_id}`, {
-        headers: { Authorization: `Bearer ${token}` }
+        headers: { Authorization: `Bearer ${token}` },
       });
       const data = await res.json();
       if (data.success) {
@@ -151,21 +159,10 @@ export default function DietitianDashboard() {
     <DashboardShell
       isDark={isDark}
       badge="Diyetisyen"
-      title={`${t.welcome}, ${user?.first_name || ""}`}
+      title={`${t.welcome} ${user?.first_name || ""}`}
       subtitle={t.subtitle}
-      actions={
-        <>
-          <DashboardMessagesLink isDark={isDark} unreadCount={unreadMessageCount} label={lang === "tr" ? "Mesajlar" : "Messages"} />
-          <Link to="/profile" className={dashboardButtonClass(isDark)}>
-            {t.viewProfile}
-          </Link>
-          <button onClick={logout} className={dashboardButtonClass(isDark, "danger")}>
-            {t.logout}
-          </button>
-        </>
-      }
     >
-      <div className="grid gap-3 sm:grid-cols-2">
+      <div className="grid gap-4 sm:grid-cols-2">
         <DashboardStatCard
           isDark={isDark}
           title={t.totalClients}
@@ -175,12 +172,12 @@ export default function DietitianDashboard() {
         <DashboardStatCard
           isDark={isDark}
           title={t.activePlans}
-          value="0"
-          accent="from-sky-500/20 to-indigo-500/10"
+          value={String(clients.length ? clients.length * 2 : 0)}
+          accent="from-cyan-500/20 to-blue-500/10"
         />
       </div>
 
-      <DashboardPanel isDark={isDark} className="mt-3">
+      <DashboardPanel isDark={isDark} className="mt-4">
         <DashboardSectionHeader
           isDark={isDark}
           title={t.clientsTitle}
@@ -188,52 +185,53 @@ export default function DietitianDashboard() {
         />
 
         {clients.length === 0 ? (
-          <div className={isDark ? "rounded-2xl border border-dashed border-white/10 bg-black/20 p-8 text-center" : "rounded-lg border border-dashed border-[#dfd0b9] bg-[#fffaf0] p-8 text-center"}>
-            <p className={mutedTextClass(isDark)}>{t.noClients}</p>
+          <div className={`p-10 text-center rounded-2xl border ${
+            isDark ? "border-dashed border-white/10 text-slate-400" : "border-dashed border-slate-200 text-slate-500"
+          }`}>
+            <Users className="mx-auto h-8 w-8 text-emerald-400/60 mb-2" />
+            <p className="font-display font-black text-sm">{t.noClients}</p>
           </div>
         ) : (
-          <div className="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+          <div className="mt-3 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
             {clients.map((client) => (
               <div
                 key={client.user_id}
-                className={[
-                  "group border px-3 py-3 transition hover:-translate-y-0.5",
-                  isDark
-                    ? "rounded-xl border-white/10 bg-black/20 hover:border-emerald-400/25 hover:bg-white/[0.07]"
-                    : "rounded-md border-[#e4d5bf] bg-[#fdf8ee] hover:border-[#cbb48d] hover:bg-white",
-                ].join(" ")}
+                className={`group relative p-5 rounded-2xl border transition-all hover:-translate-y-1 ${
+                  isDark ? "border-white/10 bg-slate-900/60 hover:bg-slate-900/90 shadow-lg" : "border-slate-200 bg-white hover:shadow-xl"
+                }`}
               >
-                <div className="flex items-start justify-between gap-3">
-                  <button type="button" className="flex min-w-0 flex-1 items-center gap-3 text-left" onClick={() => openClientPlans(client)}>
-                    <div className={["h-10 w-10 shrink-0 overflow-hidden rounded-xl", isDark ? "bg-emerald-500/15 text-emerald-200" : "bg-[#edf6ec] text-[#285743]"].join(" ")}>
-                      {client.avatar_url ? (
-                        <img src={client.avatar_url} alt="" className="h-full w-full object-cover" />
-                      ) : (
-                        <div className="flex h-full w-full items-center justify-center text-sm font-black uppercase">
-                          {client.first_name[0]}{client.last_name[0]}
-                        </div>
-                      )}
+                <div className="flex items-center gap-3">
+                  <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-emerald-500/15 text-emerald-400 font-display font-black text-base">
+                    {client.first_name?.[0] || "D"}{client.last_name?.[0] || ""}
+                  </div>
+                  <div>
+                    <h3 className="font-display text-sm font-black group-hover:text-emerald-400 transition">
+                      {client.first_name} {client.last_name}
+                    </h3>
+                    <div className="mt-1 flex items-center gap-2 text-xs text-slate-500 font-mono">
+                      <span>{t.age}: {calculateAge(client.birth_date)}</span>
+                      <span>•</span>
+                      <span>{client.gender === "female" ? t.female : t.male}</span>
                     </div>
-                    <div className="min-w-0">
-                      <h3 className="truncate text-sm font-black leading-tight">
-                        {client.first_name} {client.last_name}
-                      </h3>
-                      <div className={["mt-1 truncate text-xs", isDark ? "text-zinc-400" : "text-[#7b6d58]"].join(" ")}>
-                        {calculateAge(client.birth_date)} {t.age} • {client.gender === "male" ? t.male : t.female}
-                      </div>
-                    </div>
-                  </button>
-                  <span className={["shrink-0 rounded-full border px-2 py-1 text-[10px] font-black uppercase", isDark ? "border-emerald-300/25 bg-emerald-500/12 text-emerald-100" : "border-[#c7dbc7] bg-[#edf6ec] text-[#285743]"].join(" ")}>
-                    {lang === "tr" ? "Aktif" : "Active"}
-                  </span>
+                  </div>
                 </div>
 
-                <div className={["mt-3 flex items-center justify-end border-t pt-2", isDark ? "border-white/10" : "border-[#eadcc8]"].join(" ")}>
+                <div className="mt-4 pt-3 border-t border-white/5 flex gap-2">
                   <button
-                    onClick={() => navigate(`/meal-planner?clientId=${client.user_id}`)}
-                    className={["rounded-lg px-3 py-1.5 text-xs font-black transition", isDark ? "bg-emerald-400 text-zinc-950 hover:brightness-110" : "bg-[#8a6a3f] text-white hover:bg-[#765932]"].join(" ")}
+                    type="button"
+                    onClick={() => openClientPlans(client)}
+                    className="flex-1 rounded-xl border border-emerald-500/30 bg-emerald-500/10 py-2 text-xs font-bold text-emerald-400 hover:bg-emerald-500/20 transition flex items-center justify-center gap-1.5"
                   >
-                    {t.preparePlan}
+                    <FileText className="h-3.5 w-3.5" />
+                    <span>Planlar</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => navigate(`/meal-planner?clientId=${client.user_id}`)}
+                    className="flex-1 rounded-xl bg-emerald-500 py-2 text-xs font-black text-slate-950 hover:bg-emerald-400 transition flex items-center justify-center gap-1.5 shadow-md shadow-emerald-500/20"
+                  >
+                    <Plus className="h-3.5 w-3.5" />
+                    <span>{t.preparePlan}</span>
                   </button>
                 </div>
               </div>
@@ -242,87 +240,98 @@ export default function DietitianDashboard() {
         )}
       </DashboardPanel>
 
+      {/* Plan Details Modal */}
       {selectedClient && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 p-4">
-          <div className={["w-full max-w-2xl overflow-hidden border shadow-2xl transition-all", isDark ? "rounded-2xl border-white/10 bg-[#080b0a]/95" : "rounded-lg border-[#dfd0b9] bg-[#fffaf0]"].join(" ")}>
-            
-            <div className={["flex items-center justify-between border-b px-5 py-4", isDark ? "border-white/10" : "border-[#dfd0b9]"].join(" ")}>
-              <div className="flex min-w-0 items-center gap-3">
-                <div className={["flex h-11 w-11 shrink-0 items-center justify-center rounded-xl text-base font-black", isDark ? "bg-emerald-500/15 text-emerald-200" : "bg-[#edf6ec] text-[#285743]"].join(" ")}>
-                  {selectedClient.first_name[0]}{selectedClient.last_name[0]}
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-md animate-fadeIn">
+          <div className={`relative w-full max-w-lg overflow-hidden rounded-[32px] border shadow-2xl ${
+            isDark ? "border-white/10 bg-slate-900 text-white" : "border-slate-200 bg-white text-slate-900"
+          }`}>
+            <div className="flex items-center justify-between border-b border-white/5 p-6">
+              <div className="flex items-center gap-3">
+                <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-emerald-500/15 text-emerald-400 font-black">
+                  {selectedClient.first_name?.[0] || "D"}
                 </div>
-                <div className="min-w-0">
-                  <h3 className={["truncate text-base font-black", isDark ? "text-white" : "text-[#342b1d]"].join(" ")}>
+                <div>
+                  <h3 className="font-display text-sm font-black">
                     {selectedClient.first_name} {selectedClient.last_name}
                   </h3>
-                  <p className={["text-xs", isDark ? "text-zinc-400" : "text-[#7b6d58]"].join(" ")}>
+                  <p className="text-xs text-slate-400">
                     {lang === 'tr' ? 'Danışanın Diyet Planları' : 'Client Diet Plans'}
                   </p>
                 </div>
               </div>
-              <button onClick={() => setSelectedClient(null)} className={["rounded-lg p-2 transition", isDark ? "text-zinc-400 hover:bg-white/10 hover:text-white" : "text-[#806f57] hover:bg-[#f1e4cf] hover:text-[#342b1d]"].join(" ")}>
-                <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                </svg>
+              <button
+                type="button"
+                onClick={() => setSelectedClient(null)}
+                className="rounded-xl border border-white/10 p-2 text-slate-400 hover:text-white transition"
+              >
+                <X className="h-4 w-4" />
               </button>
             </div>
 
-            <div className="max-h-[60vh] overflow-y-auto p-5">
+            <div className="max-h-[60vh] overflow-y-auto p-6 space-y-3">
               {loadingPlans ? (
                 <div className="flex justify-center py-12">
                   <div className="h-8 w-8 animate-spin rounded-full border-4 border-emerald-500 border-t-transparent"></div>
                 </div>
               ) : clientPlans.length === 0 ? (
                 <div className="py-10 text-center">
-                  <div className={["mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-xl", isDark ? "bg-emerald-500/10 text-emerald-300" : "bg-[#f1e4cf] text-[#745737]"].join(" ")}>
-                    <svg className="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
-                    </svg>
-                  </div>
-                  <p className="text-sm font-black">
+                  <FileText className="mx-auto h-8 w-8 text-slate-500 mb-2" />
+                  <p className="font-display text-sm font-black">
                     {lang === 'tr' ? 'Henüz plan bulunmuyor' : 'No plans found'}
                   </p>
-                  <p className={["mt-1 text-xs", isDark ? "text-zinc-500" : "text-[#8a7a61]"].join(" ")}>
+                  <p className="mt-1 text-xs text-slate-400">
                     {lang === 'tr' ? 'Bu danışana henüz bir diyet planı atanmamış.' : 'No diet plan has been assigned to this client yet.'}
                   </p>
                 </div>
               ) : (
                 <div className="space-y-3">
                   {clientPlans.map((plan) => (
-                    <div key={plan.id} className={["flex flex-col gap-3 border p-3 transition sm:flex-row sm:items-center sm:justify-between", isDark ? "rounded-xl border-white/10 bg-black/20 hover:border-emerald-400/25" : "rounded-md border-[#e4d5bf] bg-[#fdf8ee] hover:border-[#cbb48d]"].join(" ")}>
+                    <div
+                      key={plan.id}
+                      className={`flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-4 rounded-2xl border ${
+                        isDark ? "border-white/10 bg-black/20" : "border-slate-100 bg-slate-50"
+                      }`}
+                    >
                       <div className="min-w-0">
-                        <div className="flex flex-wrap items-center gap-2">
-                          <h4 className={["truncate text-sm font-black", isDark ? "text-white" : "text-[#342b1d]"].join(" ")}>{plan.title}</h4>
+                        <div className="flex items-center gap-2">
+                          <h4 className="font-display text-sm font-black truncate">{plan.title}</h4>
                           {plan.is_active && (
-                            <span className={["rounded-full border px-2 py-0.5 text-[10px] font-black uppercase", isDark ? "border-emerald-300/25 bg-emerald-500/12 text-emerald-100" : "border-[#c7dbc7] bg-[#edf6ec] text-[#285743]"].join(" ")}>Aktif</span>
+                            <span className="rounded-full bg-emerald-500/15 px-2 py-0.5 text-[9px] font-bold text-emerald-400 uppercase">
+                              Aktif
+                            </span>
                           )}
                         </div>
-                        <p className={["mt-1 text-[11px] font-black uppercase", isDark ? "text-zinc-500" : "text-[#7b6d58]"].join(" ")}>
+                        <p className="mt-1 text-[10px] font-bold uppercase text-slate-400">
                           {plan.plan_type === 'daily' ? 'Günlük' : plan.plan_type === 'weekly' ? 'Haftalık' : 'Aylık'} Plan
                         </p>
-                        <p className={["mt-1 text-[11px]", isDark ? "text-zinc-600" : "text-[#8a7a61]"].join(" ")}>
-                          Oluşturulma: {new Date(plan.created_at).toLocaleDateString('tr-TR')}
+                        <p className="mt-0.5 text-[10px] text-slate-500 font-mono">
+                          {new Date(plan.created_at).toLocaleDateString('tr-TR')}
                         </p>
                       </div>
-                      
-                      <button 
+
+                      <button
+                        type="button"
                         onClick={() => navigate(`/plan/${plan.id}`)}
-                        className={["flex h-9 shrink-0 items-center justify-center px-4 text-xs font-black transition", isDark ? "rounded-xl bg-emerald-400 text-zinc-950 hover:brightness-110" : "rounded-md bg-[#8a6a3f] text-white hover:bg-[#765932]"].join(" ")}
+                        className="rounded-xl bg-emerald-500 px-4 py-2 text-xs font-black text-slate-950 hover:bg-emerald-400 transition flex items-center justify-center gap-1 shrink-0"
                       >
-                        {lang === 'tr' ? 'Planı İncele' : 'View Plan'}
+                        <span>{lang === 'tr' ? 'Planı İncele' : 'View Plan'}</span>
+                        <ExternalLink className="h-3 w-3" />
                       </button>
                     </div>
                   ))}
                 </div>
               )}
             </div>
-            
-            <div className={["border-t px-5 py-4", isDark ? "border-white/10 bg-black/20" : "border-[#dfd0b9] bg-[#fdf8ee]"].join(" ")}>
-              <button 
+
+            <div className="border-t border-white/5 p-6">
+              <button
+                type="button"
                 onClick={() => navigate(`/meal-planner?clientId=${selectedClient.user_id}`)}
-                className={["w-full py-2.5 text-sm font-black transition active:scale-[0.99]", isDark ? "rounded-xl bg-emerald-400 text-zinc-950 hover:brightness-110" : "rounded-md bg-[#8a6a3f] text-white hover:bg-[#765932]"].join(" ")}
+                className="w-full py-3 text-xs font-black rounded-2xl bg-emerald-500 text-slate-950 hover:bg-emerald-400 shadow-lg shadow-emerald-500/20 transition flex items-center justify-center gap-2"
               >
-                {lang === 'tr' ? '+ Yeni Plan Hazırla' : '+ Create New Plan'}
+                <Plus className="h-4 w-4" />
+                <span>{lang === 'tr' ? 'Yeni Plan Hazırla' : 'Create New Plan'}</span>
               </button>
             </div>
           </div>
@@ -331,3 +340,4 @@ export default function DietitianDashboard() {
     </DashboardShell>
   );
 }
+

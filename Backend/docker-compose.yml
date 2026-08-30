@@ -20,15 +20,16 @@ services:
       - backend-network
 
   db:
-    image: mariadb:10.6
+    image: postgres:16-alpine
     restart: always
     environment:
-      MYSQL_ROOT_PASSWORD: ${DB_PASSWORD}
-      MYSQL_DATABASE: ${DB_DATABASE}
+      POSTGRES_USER: ${DB_USERNAME}
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+      POSTGRES_DB: ${DB_DATABASE}
     ports:
-      - ${DB_PORT}:3306
+      - ${DB_PORT}:5432
     volumes:
-      - mariadb_data:/var/lib/mysql
+      - postgres_data:/var/lib/postgresql/data
     networks:
       - backend-network
 
@@ -53,10 +54,10 @@ services:
     networks:
       - backend-network
 
+volumes:
+  postgres_data:
+  redis_data:
+
 networks:
   backend-network:
     driver: bridge
-
-volumes:
-  mariadb_data:
-  redis_data: 

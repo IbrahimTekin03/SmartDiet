@@ -2,7 +2,7 @@ import React, { createContext, useContext, useEffect, useState } from "react";
 import { io, Socket } from "socket.io-client";
 import { parseStoredUser, useAuthSession } from "../lib/authSession";
 
-const API_BASE = "http://localhost:3000";
+import { API_BASE_URL as API_BASE } from "../lib/api";
 
 type SocketContextType = {
   socket: Socket | null;

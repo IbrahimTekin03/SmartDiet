@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect } from "react";
 import { useAuthSession, parseStoredUser } from "../lib/authSession";
 import { useAppSettings } from "../context/AppSettingsContext";
+import { API_BASE_URL } from "../lib/api";
 
 type ScannedMealItem = {
   name: string;
@@ -350,7 +351,7 @@ export default function AIAssistantWidget() {
             const formData = new FormData();
             formData.append("image", file);
 
-            const res = await fetch("http://localhost:3000/api/ai-assistant/scan-meal", {
+            const res = await fetch(`${API_BASE_URL}/api/ai-assistant/scan-meal`, {
               method: "POST",
               headers: {
                 Authorization: `Bearer ${accessToken}`,
@@ -420,7 +421,7 @@ export default function AIAssistantWidget() {
 
       const payloadPrompt = systemContext + userMessage.content;
 
-      const res = await fetch("http://localhost:3000/api/ai-assistant/chat", {
+      const res = await fetch(`${API_BASE_URL}/api/ai-assistant/chat`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -462,7 +463,7 @@ export default function AIAssistantWidget() {
       const formData = new FormData();
       formData.append("image", file);
 
-      const res = await fetch("http://localhost:3000/api/ai-assistant/scan-meal", {
+      const res = await fetch(`${API_BASE_URL}/api/ai-assistant/scan-meal`, {
         method: "POST",
         headers: {
           Authorization: `Bearer ${accessToken}`,
@@ -512,7 +513,7 @@ export default function AIAssistantWidget() {
     setExpandedFormIndex(index);
     setLoadingPlansData(true);
     try {
-      const res = await fetch("http://localhost:3000/api/diet-plans/client", {
+      const res = await fetch(`${API_BASE_URL}/api/diet-plans/client`, {
         headers: {
           Authorization: `Bearer ${accessToken}`,
         },
@@ -624,7 +625,7 @@ export default function AIAssistantWidget() {
         try { uiContext = JSON.parse(contextStr); } catch (e) {}
       }
 
-      const res = await fetch("http://localhost:3000/api/ai-assistant/chat", {
+      const res = await fetch(`${API_BASE_URL}/api/ai-assistant/chat`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -656,15 +657,15 @@ export default function AIAssistantWidget() {
         type="button"
         onClick={() => setIsOpen(!isOpen)}
         title={lang === "tr" ? "Yapay Zeka Asistanı" : "AI Assistant"}
-        className="fixed bottom-[84px] right-5 z-[90] inline-flex h-12 w-12 items-center justify-center rounded-2xl border border-indigo-300/30 bg-gradient-to-r from-indigo-500 to-purple-500 text-white shadow-[0_16px_50px_rgba(99,102,241,0.45)] transition hover:brightness-110 hover:scale-105"
+        className="fixed bottom-[84px] right-5 z-[90] inline-flex h-14 w-14 items-center justify-center rounded-2xl border border-emerald-400/40 bg-gradient-to-r from-emerald-500 via-teal-500 to-cyan-400 text-slate-950 shadow-[0_16px_50px_rgba(16,185,129,0.45)] transition-all hover:brightness-110 hover:scale-105 active:scale-95 animate-pulseGlow"
       >
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-6 w-6">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="h-6 w-6">
           <path d="m12 3-1.912 5.813a2 2 0 0 1-1.275 1.275L3 12l5.813 1.912a2 2 0 0 1 1.275 1.275L12 21l1.912-5.813a2 2 0 0 1 1.275-1.275L21 12l-5.813-1.912a2 2 0 0 1-1.275-1.275L12 3Z" />
         </svg>
       </button>
 
       {isOpen && (
-        <div className={`fixed bottom-[144px] right-5 z-[90] flex w-[380px] flex-col overflow-hidden rounded-3xl border shadow-[0_32px_120px_rgba(0,0,0,0.45)] ${isDark ? "border-transparent bg-[#0d1114] text-white" : "border-[#2f6154]/20 bg-[#f7fbf9] text-[#123a32]"}`} style={{ height: '540px' }}>
+        <div className={`fixed bottom-[150px] right-5 z-[90] flex w-[390px] flex-col overflow-hidden rounded-[32px] border border-emerald-500/30 backdrop-blur-2xl shadow-[0_32px_120px_rgba(0,0,0,0.85)] ${isDark ? "bg-[#070a11]/95 text-zinc-100" : "bg-white/95 text-zinc-900"}`} style={{ height: '560px' }}>
           
           {/* Live Camera View Overlay Console */}
           {isCameraOpen && (

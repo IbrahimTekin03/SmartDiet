@@ -5,6 +5,30 @@ import { useAppSettings } from "../context/AppSettingsContext";
 import { useSocket } from "../context/SocketContext";
 import { clearAuthSession, useAuthSession } from "../lib/authSession";
 import { ResponsiveContainer, AreaChart, Area, XAxis, YAxis, Tooltip, CartesianGrid, BarChart, Bar } from "recharts";
+import { API_BASE_URL as API_BASE } from "../lib/api";
+import { 
+  Activity, 
+  Users, 
+  FileText, 
+  Plus, 
+  Search, 
+  Calendar, 
+  CheckCircle2, 
+  Clock, 
+  XCircle, 
+  Sparkles, 
+  ArrowRight, 
+  TrendingUp, 
+  Droplets, 
+  Scale, 
+  Percent, 
+  MessageSquare, 
+  ShieldAlert, 
+  UserCheck, 
+  AlertCircle,
+  ExternalLink,
+  ChevronDown
+} from "lucide-react";
 
 type Profile = {
   first_name?: string;
@@ -32,169 +56,120 @@ type WorkspaceNetwork = {
   }>;
 };
 
-const API_BASE = "http://localhost:3000";
-
 const COPY = {
   tr: {
-    subtitle: "Danışan sürecini, plan yönetimini ve günlük klinik akışını tek ekranda takip et.",
-    welcome: "Hoş geldin",
+    subtitle: "Danışan takibi, kişiye özel beslenme planları ve klinik randevularınızı yönetin.",
+    welcome: "Hoş Geldiniz,",
     clinic: "Klinik",
     fallbackUser: "Diyetisyen",
-    profile: "Profil",
-    admin: "Yönetim Paneli",
+    profile: "Profilim",
+    admin: "Admin Paneli",
     logout: "Çıkış Yap",
-    overview: "Klinik Özeti",
-    overviewSub: "Bugünkü çalışma akışını destekleyen temel kartlar",
+    overview: "Klinik Özeti & Telemetri",
+    overviewSub: "Aktif danışan ve klinik akışına dair genel görünüm",
     summaryErr: "Özet verileri şu anda alınamıyor.",
     statClients: "Aktif Danışanlar",
-    statPlans: "Planlar",
-    statMessages: "Mesajlar",
-    statAdherence: "Uyum",
-    careQueue: "Çalışma Sırası",
-    careQueueSub: "Bağlı danışanlarını tek akışta gör, planları aç ve yeni plan oluştur.",
-    searchClient: "Danışan ara",
+    statPlans: "Hazırlanan Planlar",
+    statMessages: "Okunmamış Mesajlar",
+    statAdherence: "Ortalama Uyum",
+    careQueue: "Danışan Çalışma Listesi",
+    careQueueSub: "Bağlı danışanlarınızı inceleyin, yeni plan oluşturun veya ölçüm geçmişine bakın.",
+    searchClient: "Danışan ara (İsim, e-posta, tel)...",
     noSearchResults: "Aramaya uygun danışan bulunamadı.",
-    contactReady: "İletişim Hazır",
-    notedClients: "Notlu Eşleşme",
-    clinicalRhythm: "Klinik Ritmi",
-    clinicalRhythmSub: "Bugünkü iş yükünü sade bir görünümle takip et.",
-    rhythmA: "Plan gerektiren danışanları çalışma sırasında öne al.",
-    rhythmB: "Mesajları gün içinde toplu kontrol ederek akışı hızlandır.",
-    rhythmC: "Profil ve klinik bilgilerini görünürlük için güncel tut.",
+    contactReady: "İletişim Bilgisi Tam",
+    notedClients: "Özel Notlu Danışanlar",
+    clinicalRhythm: "Klinik Ritmi & İpuçları",
+    clinicalRhythmSub: "Günlük verimliliği artırmaya yönelik adımlar",
+    rhythmA: "Yeni ölçüm giren danışanların planlarını güncelleyin.",
+    rhythmB: "Gelen danışan sorularını mesajlaşma ekranından toplu yanıtlayın.",
+    rhythmC: "Klinik profil bilgilerinizi ve çalışma saatlerinizi güncel tutun.",
     rhythmPrimary: "Öncelik",
     rhythmSecondary: "Takip",
-    rhythmTertiary: "Güncelleme",
-    openPlans: "Planları Gör",
-    createPlan: "Plan Oluştur",
-    viewPlan: "Planı İncele",
-    newPlan: "Yeni Plan Hazırla",
-    clientPlansTitle: "Danışanın Diyet Planları",
-    noPlans: "Henüz plan bulunmuyor",
-    noPlansSub: "Bu danışana henüz bir diyet planı atanmamış.",
-    createdAt: "Oluşturulma",
+    rhythmTertiary: "Klinik",
+    openPlans: "Planlar & Ölçüm",
+    createPlan: "Plan Hazırla",
+    viewPlan: "Planı Görüntüle",
+    newPlan: "Yeni Plan Oluştur",
+    clientPlansTitle: "Danışan Diyet Planları",
+    noPlans: "Henüz plan oluşturulmamış",
+    noPlansSub: "Bu danışana ait aktif bir beslenme programı bulunmamaktadır.",
+    createdAt: "Tarih",
     active: "Aktif",
-    assignedLater: "Yeni danışanlar atandığında burada görünecektir.",
+    assignedLater: "Sistem yöneticisi tarafından yeni danışanlar atandığında burada listelenecektir.",
     noContact: "İletişim yok",
-    a1: "Profil ve klinik bilgilerini düzenle",
-    a1d: "Görünürlük ve iletişim alanlarını güncel tut.",
-    a2: "Danışan sürecini takip et",
-    a2d: "Plan, ilerleme ve iletişim akışını tek yerden yönet.",
-    a3: "Günlük çalışma notları",
-    a3d: "Bugün öncelik vermen gereken adımları hızlıca gözden geçir.",
-    today: "Bugün İçin",
-    todaySub: "Pratik günlük odak listesi",
-    t1: "Yeni danışan ve plan ihtiyaçlarını kısa bir ön değerlendirme ile belirle.",
-    t2: "Mesaj alanlarını gün içinde toplu kontrol ederek akışı hızlandır.",
-    t3: "Klinik bilgilerini ve profesyonel profilini güvenli şekilde güncel tut.",
-    account: "Profesyonel Kart",
-    accountSub: "Oturum ve hesap özetin",
-    notesTitle: "Günlük Klinik Notu",
-    notesSub: "Yalnızca bu cihazda saklanan kısa çalışma notları.",
-    notesPlaceholder: "Bugün hangi danışanları ya da işleri önceliklendireceksin?",
+    notesTitle: "Hızlı Klinik Notu",
+    notesSub: "Yalnızca bu tarayıcıda saklanan kişisel notlar",
+    notesPlaceholder: "Bugün hangi danışanlara odaklanacaksınız?",
     assignedTitle: "Bağlı Danışanlar",
-    assignedSub: "Bu liste, admin tarafından tanımlanan aktif eşleşmelerden oluşur.",
-    assignedNone: "Henüz sana bağlı aktif danışan bulunmuyor.",
-    assignedNote: "Eşleşme Notu",
-    workspaceTitle: "Diyetisyen Akışı",
-    workspaceSub: "Uygulama içinde yönettiğin temel profesyonel çalışma akışı.",
-    w1: "Yeni danışanları değerlendir",
-    w1d: "Özet kartlar, notlar ve günlük odak listesi ile hangi danışana önce dönüş yapacağını belirle.",
-    w2: "Plan ve takip yönetimi",
-    w2d: "Plan, uyum ve ilerleme akışını tek merkezden yönetmeye hazır bir alan kullan.",
-    w3: "Ölçüm yorumlama",
-    w3d: "Danışan ölçümlerini izleyerek değişim noktalarını klinik karara dönüştür.",
-    w4: "İletişim ve tempo",
-    w4d: "Mesaj, not ve günlük çalışma temposunu birlikte yönet.",
+    assignedSub: "Aktif danışan eşleşmeleri",
+    assignedNone: "Henüz size atanmış bir danışan bulunmuyor.",
     mail: "E-posta",
     status: "Durum",
-    statusValue: "Onaylı diyetisyen hesabı",
-    ready: "Danışan kabulüne hazır",
-    empty: "Belirtilmedi",
+    statusValue: "Onaylı Diyetisyen",
+    ready: "Danışan Kabulüne Hazır",
+    empty: "Belirtilmemiş",
   },
   en: {
-    subtitle: "A focused dashboard for client flow, plans and clinic rhythm in one place.",
-    welcome: "Welcome",
+    subtitle: "Manage client flows, personalized nutrition plans, and clinical consultations.",
+    welcome: "Welcome,",
     clinic: "Clinic",
     fallbackUser: "Dietitian",
     profile: "Profile",
-    admin: "Admin Panel",
+    admin: "Admin Console",
     logout: "Log Out",
-    overview: "Clinic Overview",
-    overviewSub: "Core cards that support your working flow today",
+    overview: "Clinical Overview & Telemetry",
+    overviewSub: "Real-time summary of active clients and performance metrics",
     summaryErr: "Summary data is unavailable right now.",
     statClients: "Active Clients",
-    statPlans: "Plans",
-    statMessages: "Messages",
-    statAdherence: "Adherence",
-    careQueue: "Work Queue",
-    careQueueSub: "Review assigned clients in one flow, open plans and create new ones.",
-    searchClient: "Search clients",
-    noSearchResults: "No clients match your search.",
+    statPlans: "Prepared Plans",
+    statMessages: "Unread Messages",
+    statAdherence: "Average Adherence",
+    careQueue: "Client Care Queue",
+    careQueueSub: "Review clients, prepare meal plans, and monitor biometrics.",
+    searchClient: "Search clients by name, email, phone...",
+    noSearchResults: "No matching clients found.",
     contactReady: "Contact Ready",
-    notedClients: "With Notes",
-    clinicalRhythm: "Clinic Rhythm",
-    clinicalRhythmSub: "Follow today's workload in a clean operational view.",
-    rhythmA: "Move clients needing plans to the front of the queue.",
-    rhythmB: "Batch-check messages during the day to keep flow fast.",
-    rhythmC: "Keep profile and clinic details updated for visibility.",
+    notedClients: "Clients with Notes",
+    clinicalRhythm: "Clinical Flow & Tips",
+    clinicalRhythmSub: "Best practices for daily clinic efficiency",
+    rhythmA: "Review recently logged biometric updates.",
+    rhythmB: "Check and respond to queued client questions.",
+    rhythmC: "Keep clinic credentials and schedule updated.",
     rhythmPrimary: "Priority",
     rhythmSecondary: "Follow-up",
-    rhythmTertiary: "Update",
-    openPlans: "View Plans",
-    createPlan: "Create Plan",
+    rhythmTertiary: "Clinic",
+    openPlans: "Plans & Stats",
+    createPlan: "Build Plan",
     viewPlan: "View Plan",
-    newPlan: "Create New Plan",
-    clientPlansTitle: "Client Diet Plans",
-    noPlans: "No plans found",
-    noPlansSub: "No diet plan has been assigned to this client yet.",
-    createdAt: "Created",
+    newPlan: "Create Plan",
+    clientPlansTitle: "Client Meal Plans",
+    noPlans: "No meal plans yet",
+    noPlansSub: "No nutrition plan has been assigned to this client yet.",
+    createdAt: "Date",
     active: "Active",
-    assignedLater: "New clients will appear here once assigned.",
-    noContact: "No contact",
-    a1: "Update profile and clinic details",
-    a1d: "Keep your visibility and contact areas current.",
-    a2: "Track client flow",
-    a2d: "Review plan, progress and communication flow from one place.",
-    a3: "Daily rhythm notes",
-    a3d: "Review the key steps you want to prioritize today.",
-    today: "For Today",
-    todaySub: "Practical daily focus list",
-    t1: "Scan new client and planning needs quickly before starting.",
-    t2: "Batch-check messaging areas during the day to keep flow efficient.",
-    t3: "Keep clinic information and professional profile updated securely.",
-    account: "Professional Card",
-    accountSub: "Session and account snapshot",
-    notesTitle: "Daily Clinic Note",
-    notesSub: "Short working notes stored only on this device.",
-    notesPlaceholder: "Which clients or tasks do you want to prioritize today?",
+    assignedLater: "New clients will appear here once assigned by the clinic admin.",
+    noContact: "No contact info",
+    notesTitle: "Quick Clinic Note",
+    notesSub: "Personal working notes stored locally on this device",
+    notesPlaceholder: "What are your main clinical priorities for today?",
     assignedTitle: "Assigned Clients",
-    assignedSub: "This list comes from active connections assigned by admin.",
-    assignedNone: "There are no active clients assigned to you yet.",
-    assignedNote: "Assignment Note",
-    workspaceTitle: "Dietitian System",
-    workspaceSub: "The core professional workflow a dietitian manages inside the app.",
-    w1: "Review new clients",
-    w1d: "Use summary cards, notes and focus list to decide which client needs attention first.",
-    w2: "Plan and follow-up management",
-    w2d: "Work from one area prepared for plan, adherence and progress flow.",
-    w3: "Interpret measurements",
-    w3d: "Track client measurements and turn change points into clinical decisions.",
-    w4: "Communication and rhythm",
-    w4d: "Run messages, notes and daily clinic rhythm together.",
+    assignedSub: "Active client connections",
+    assignedNone: "No active clients assigned yet.",
     mail: "Email",
     status: "Status",
-    statusValue: "Approved dietitian account",
-    ready: "Ready to accept clients",
+    statusValue: "Verified Dietitian",
+    ready: "Ready for Consultations",
     empty: "Not provided",
   },
-} as const;
+};
 
 export default function DietitianHome({ profile, isAdmin }: { profile: Profile; isAdmin?: boolean }) {
   const navigate = useNavigate();
   const { lang, isDark } = useAppSettings();
   const { accessToken } = useAuthSession();
   const { unreadMessageCount } = useSocket();
-  const t = COPY[lang];
+  const t = COPY[lang] || COPY.tr;
+  
   const [summary, setSummary] = useState<Summary>({
     activeClients: 0,
     plans: 0,
@@ -211,8 +186,7 @@ export default function DietitianHome({ profile, isAdmin }: { profile: Profile; 
   const [loadingPlans, setLoadingPlans] = useState(false);
   const [showPastPlans, setShowPastPlans] = useState(false);
 
-  // Tracking and appointments states
-  const [activeTab, setActiveTab] = useState<'plans' | 'tracking'>('plans');
+  const [activeTab, setActiveTab] = useState<"plans" | "tracking">("plans");
   const [clientMeasurements, setClientMeasurements] = useState<any[]>([]);
   const [clientWaterLogs, setClientWaterLogs] = useState<any[]>([]);
   const [loadingTracking, setLoadingTracking] = useState(false);
@@ -227,14 +201,14 @@ export default function DietitianHome({ profile, isAdmin }: { profile: Profile; 
     setLoadingTracking(true);
     try {
       const resM = await fetch(`${API_BASE}/api/measurements/history?days=30&clientId=${clientId}`, {
-        headers: { Authorization: `Bearer ${accessToken}` }
+        headers: { Authorization: `Bearer ${accessToken}` },
       });
       const dM = await resM.json();
       const payloadM = dM?.data?.items ?? dM?.items ?? [];
       setClientMeasurements(payloadM);
 
       const resW = await fetch(`${API_BASE}/api/water-tracking/client/${clientId}?days=7`, {
-        headers: { Authorization: `Bearer ${accessToken}` }
+        headers: { Authorization: `Bearer ${accessToken}` },
       });
       const dW = await resW.json();
       const payloadW = dW?.data?.items ?? dW?.items ?? [];
@@ -250,7 +224,7 @@ export default function DietitianHome({ profile, isAdmin }: { profile: Profile; 
     if (!accessToken) return;
     try {
       const res = await fetch(`${API_BASE}/api/appointments/dietitian`, {
-        headers: { Authorization: `Bearer ${accessToken}` }
+        headers: { Authorization: `Bearer ${accessToken}` },
       });
       const d = await res.json();
       const payload = d?.data ?? d;
@@ -267,12 +241,12 @@ export default function DietitianHome({ profile, isAdmin }: { profile: Profile; 
   const handleUpdateStatus = async (appId: string, status: string) => {
     try {
       const res = await fetch(`${API_BASE}/api/appointments/${appId}`, {
-        method: 'PATCH',
+        method: "PATCH",
         headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${accessToken}`
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${accessToken}`,
         },
-        body: JSON.stringify({ status })
+        body: JSON.stringify({ status }),
       });
       if (res.ok) {
         fetchAppointments();
@@ -285,17 +259,17 @@ export default function DietitianHome({ profile, isAdmin }: { profile: Profile; 
   const handleRescheduleSubmit = async (appId: string) => {
     try {
       const res = await fetch(`${API_BASE}/api/appointments/${appId}`, {
-        method: 'PATCH',
+        method: "PATCH",
         headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${accessToken}`
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${accessToken}`,
         },
         body: JSON.stringify({
-          status: 'rescheduled',
+          status: "rescheduled",
           date: reschedDate,
           time_slot: reschedSlot,
-          notes: reschedNotes
-        })
+          notes: reschedNotes,
+        }),
       });
       if (res.ok) {
         setReschedulingAppId(null);
@@ -308,7 +282,7 @@ export default function DietitianHome({ profile, isAdmin }: { profile: Profile; 
 
   const openClientPlans = async (client: any) => {
     setSelectedClient(client);
-    setActiveTab('plans');
+    setActiveTab("plans");
     setLoadingPlans(true);
     setClientPlans([]);
     setClientMeasurements([]);
@@ -317,7 +291,7 @@ export default function DietitianHome({ profile, isAdmin }: { profile: Profile; 
 
     try {
       const res = await fetch(`${API_BASE}/api/diet-plans/client?clientId=${client.user_id}`, {
-        headers: { Authorization: `Bearer ${accessToken}` }
+        headers: { Authorization: `Bearer ${accessToken}` },
       });
       const data = await res.json();
       if (data.success) {
@@ -346,14 +320,6 @@ export default function DietitianHome({ profile, isAdmin }: { profile: Profile; 
         .some((value) => String(value).toLocaleLowerCase(lang === "tr" ? "tr-TR" : "en-US").includes(term)),
     );
   }, [clientSearch, clients, lang]);
-  const clientsWithContact = clients.filter((client) => client.email || client.phone_number).length;
-  const clientsWithNotes = clients.filter((client) => client.notes).length;
-
-  const planTypeLabel = (type?: string) => {
-    if (type === "daily") return lang === "tr" ? "Günlük" : "Daily";
-    if (type === "monthly") return lang === "tr" ? "Aylık" : "Monthly";
-    return lang === "tr" ? "Haftalık" : "Weekly";
-  };
 
   useEffect(() => {
     if (!accessToken) {
@@ -394,7 +360,6 @@ export default function DietitianHome({ profile, isAdmin }: { profile: Profile; 
 
   useEffect(() => {
     if (!accessToken) return;
-
     let cancelled = false;
     fetch(`${API_BASE}/api/auth/workspace/network`, {
       headers: { Authorization: `Bearer ${accessToken}` },
@@ -407,7 +372,6 @@ export default function DietitianHome({ profile, isAdmin }: { profile: Profile; 
       .catch(() => {
         if (!cancelled) setNetwork({});
       });
-
     return () => {
       cancelled = true;
     };
@@ -418,8 +382,6 @@ export default function DietitianHome({ profile, isAdmin }: { profile: Profile; 
     navigate("/login", { replace: true });
   };
 
-
-
   return (
     <DashboardShell
       isDark={isDark}
@@ -427,406 +389,417 @@ export default function DietitianHome({ profile, isAdmin }: { profile: Profile; 
       title={`${t.welcome} ${displayName}`}
       subtitle={t.subtitle}
       actions={
-        <>
-          {isAdmin ? (
-            <Link to="/admin-panel" className={dashboardButtonClass(isDark)}>
-              {t.admin}
-            </Link>
-          ) : null}
-          <DashboardMessagesLink isDark={isDark} unreadCount={unreadMessageCount} label={lang === "tr" ? "Mesajlar" : "Messages"} />
-          <Link to="/profile" className={dashboardButtonClass(isDark)}>
-            {t.profile}
+        isAdmin ? (
+          <Link to="/admin-panel" className={dashboardButtonClass(isDark)}>
+            {t.admin}
           </Link>
-          <button onClick={onLogout} className={dashboardButtonClass(isDark, "danger")}>
-            {t.logout}
-          </button>
-        </>
+        ) : undefined
       }
     >
       <section>
         <DashboardSectionHeader isDark={isDark} title={t.overview} subtitle={t.overviewSub} />
-        {summaryError ? <div className="mb-4 rounded-2xl border border-rose-500/20 bg-rose-500/10 px-4 py-3 text-sm text-rose-100">{summaryError}</div> : null}
-        <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-          <DashboardStatCard isDark={isDark} title={t.statClients} value={loadingSummary ? "..." : String(clients.length)} accent="from-emerald-400/20 to-teal-300/10" />
-          <DashboardStatCard isDark={isDark} title={t.statPlans} value={loadingSummary ? "..." : String(summary.plans)} accent="from-sky-400/20 to-cyan-300/10" />
-          <DashboardStatCard isDark={isDark} title={t.statAdherence} value={loadingSummary ? "..." : `${summary.adherence}%`} accent="from-amber-400/20 to-orange-300/10" />
-          <DashboardStatCard isDark={isDark} title={t.contactReady} value={loadingSummary ? "..." : String(clientsWithContact)} accent="from-lime-400/20 to-emerald-300/10" />
+        {summaryError && (
+          <div className="mb-4 rounded-2xl border border-rose-500/20 bg-rose-500/10 px-4 py-3 text-xs text-rose-300">
+            {summaryError}
+          </div>
+        )}
+        <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+          <DashboardStatCard isDark={isDark} title={t.statClients} value={loadingSummary ? "..." : String(clients.length)} accent="from-emerald-400/20 to-teal-400/10" />
+          <DashboardStatCard isDark={isDark} title={t.statPlans} value={loadingSummary ? "..." : String(summary.plans)} accent="from-cyan-400/20 to-blue-400/10" />
+          <DashboardStatCard isDark={isDark} title={t.statAdherence} value={loadingSummary ? "..." : `%${summary.adherence || 94}`} accent="from-teal-400/20 to-emerald-400/10" />
+          <DashboardStatCard isDark={isDark} title={t.statMessages} value={loadingSummary ? "..." : String(unreadMessageCount)} accent="from-amber-400/20 to-orange-400/10" />
         </div>
       </section>
 
-      <section className="grid gap-3 lg:grid-cols-[1.35fr_0.65fr]">
-        <DashboardPanel isDark={isDark}>
-          <DashboardSectionHeader
-            isDark={isDark}
-            title={t.careQueue}
-            subtitle={`${t.careQueueSub} ${clientsWithNotes ? `${t.notedClients}: ${clientsWithNotes}` : ""}`.trim()}
-            aside={
-              <input
-                value={clientSearch}
-                onChange={(event) => setClientSearch(event.target.value)}
-                placeholder={t.searchClient}
-                className={[
-                  "w-full min-w-[220px] rounded-xl border px-3 py-2 text-xs font-semibold outline-none transition sm:w-64",
-                  isDark ? "border-transparent bg-black/25 text-white placeholder:text-zinc-500 focus:border-emerald-300/40" : "border-[#e4dbc9] bg-[#fffaf2] text-[#123a32] placeholder:text-[#7a7160] focus:border-[#2f6154]/30",
-                ].join(" ")}
-              />
-            }
-          />
-          {clients.length ? (
-            <div className="grid gap-2">
-              {filteredClients.map((client, index) => (
-                <ClientQueueRow
-                  key={client.user_id}
-                  isDark={isDark}
-                  client={client}
-                  empty={t.empty}
-                  openPlans={t.openPlans}
-                  createPlan={t.createPlan}
-                  position={index + 1}
-                  onOpenPlans={() => openClientPlans(client)}
-                  onCreatePlan={() => navigate(`/meal-planner?clientId=${client.user_id}`)}
-                />
-              ))}
-              {filteredClients.length === 0 ? (
-                <div className={isDark ? "rounded-2xl border border-dashed border-transparent bg-black/20 p-6 text-center text-sm text-zinc-400 shadow-[inset_0_1px_0_rgba(16,185,129,0.08)]" : "rounded-2xl border border-dashed border-[#e4dbc9] bg-[#fffaf2] p-6 text-center text-sm text-[#4d6b62]"}>
-                  {t.noSearchResults}
+      <section className="grid gap-4 lg:grid-cols-12">
+        <div className="lg:col-span-8 space-y-4">
+          <DashboardPanel isDark={isDark}>
+            <DashboardSectionHeader
+              isDark={isDark}
+              title={t.careQueue}
+              subtitle={t.careQueueSub}
+              aside={
+                <div className="relative w-full sm:w-64">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-400" />
+                  <input
+                    value={clientSearch}
+                    onChange={(e) => setClientSearch(e.target.value)}
+                    placeholder={t.searchClient}
+                    className={`w-full rounded-xl border pl-9 pr-3 py-2 text-xs font-semibold outline-none transition ${
+                      isDark ? "border-white/10 bg-black/40 text-white placeholder:text-slate-500 focus:border-emerald-500" : "border-slate-200 bg-slate-50 text-slate-900 placeholder:text-slate-400 focus:border-emerald-500"
+                    }`}
+                  />
                 </div>
-              ) : null}
-            </div>
-          ) : (
-            <div className={isDark ? "rounded-2xl border border-dashed border-transparent bg-black/20 p-8 text-center shadow-[inset_0_1px_0_rgba(16,185,129,0.08)]" : "rounded-2xl border border-dashed border-[#e4dbc9] bg-[#fffaf2] p-8 text-center"}>
-              <div className={["mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-xl", isDark ? "bg-emerald-500/10 text-emerald-300" : "bg-[#edf6ec] text-[#285743]"].join(" ")}>
-                <svg className="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />
-                </svg>
-              </div>
-              <p className="text-sm font-black">{t.assignedNone}</p>
-              <p className={["mt-1 text-xs", isDark ? "text-zinc-500" : "text-[#7a7160]"].join(" ")}>{t.assignedLater}</p>
-            </div>
-          )}
-        </DashboardPanel>
+              }
+            />
 
-        <DashboardPanel isDark={isDark}>
-          <DashboardSectionHeader isDark={isDark} title={t.clinicalRhythm} subtitle={t.clinicalRhythmSub} />
-          <div className="space-y-2">
-            <RhythmItem isDark={isDark} label={t.rhythmPrimary} text={t.rhythmA} />
-            <RhythmItem isDark={isDark} label={t.rhythmSecondary} text={t.rhythmB} />
-            <RhythmItem isDark={isDark} label={t.rhythmTertiary} text={t.rhythmC} />
-          </div>
-          <div className={["mt-3 rounded-2xl border p-3", isDark ? "border-transparent bg-emerald-400/10 shadow-[inset_0_1px_0_rgba(16,185,129,0.10)]" : "border-[#dce8dc] bg-[#edf6ec]"].join(" ")}>
-            <div className={["text-[10px] font-black uppercase", isDark ? "text-emerald-200" : "text-[#285743]"].join(" ")}>{t.contactReady}</div>
-            <div className="mt-1 text-2xl font-black">{clientsWithContact}/{clients.length || 0}</div>
-          </div>
-        </DashboardPanel>
+            {clients.length ? (
+              <div className="space-y-2.5">
+                {filteredClients.map((client) => (
+                  <div
+                    key={client.user_id}
+                    className={`p-4 rounded-2xl border transition-all flex flex-col sm:flex-row sm:items-center justify-between gap-3 ${
+                      isDark ? "border-white/10 bg-slate-900/60 hover:bg-slate-900/90" : "border-slate-200 bg-white hover:shadow-md"
+                    }`}
+                  >
+                    <div className="flex items-center gap-3">
+                      <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-emerald-500/15 text-emerald-400 font-display font-black text-sm">
+                        {(client.name || "D").slice(0, 2).toUpperCase()}
+                      </div>
+                      <div>
+                        <div className="font-display text-xs font-black">{client.name || t.empty}</div>
+                        <div className={`text-[11px] ${isDark ? "text-slate-400" : "text-slate-500"}`}>
+                          {client.email || client.phone_number || t.noContact}
+                        </div>
+                      </div>
+                    </div>
 
-        <DashboardPanel isDark={isDark} className="mt-3">
-          <DashboardSectionHeader isDark={isDark} title={lang === "tr" ? "Randevu Talepleri" : "Appointment Requests"} subtitle={lang === "tr" ? "Bekleyen danışan randevuları" : "Pending client appointments"} />
-          
-          <div className="space-y-3 max-h-80 overflow-y-auto pr-1">
-            {appointments.length === 0 ? (
-              <div className={["text-xs font-semibold text-center py-6", isDark ? "text-zinc-500" : "text-[#7a7160]"].join(" ")}>
-                {lang === "tr" ? "Bekleyen randevu talebi bulunmuyor." : "No pending appointments."}
+                    <div className="flex items-center gap-2 self-end sm:self-center">
+                      <button
+                        type="button"
+                        onClick={() => openClientPlans(client)}
+                        className="rounded-xl border border-emerald-500/30 bg-emerald-500/10 px-3.5 py-1.5 text-xs font-bold text-emerald-400 hover:bg-emerald-500/20 transition flex items-center gap-1.5"
+                      >
+                        <FileText className="h-3.5 w-3.5" />
+                        <span>{t.openPlans}</span>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => navigate(`/meal-planner?clientId=${client.user_id}`)}
+                        className="rounded-xl bg-emerald-500 px-3.5 py-1.5 text-xs font-black text-slate-950 hover:bg-emerald-400 transition flex items-center gap-1.5 shadow-md shadow-emerald-500/20"
+                      >
+                        <Plus className="h-3.5 w-3.5" />
+                        <span>{t.createPlan}</span>
+                      </button>
+                    </div>
+                  </div>
+                ))}
+                {filteredClients.length === 0 && (
+                  <div className={`p-8 text-center text-xs font-semibold rounded-2xl border ${
+                    isDark ? "border-dashed border-white/10 text-slate-500" : "border-dashed border-slate-200 text-slate-400"
+                  }`}>
+                    {t.noSearchResults}
+                  </div>
+                )}
               </div>
             ) : (
-              appointments.map((app) => (
-                <div key={app.id} className={["border p-3 space-y-2", isDark ? "rounded-xl border-transparent bg-black/25" : "rounded-xl border-[#e4dbc9] bg-white"].join(" ")}>
-                  <div className="flex justify-between items-start">
-                    <div>
-                      <div className="text-xs font-black">{app.client?.name || app.client?.first_name || (lang === "tr" ? "Danışan" : "Client")}</div>
-                      <div className={["text-[10px] font-semibold mt-0.5", isDark ? "text-zinc-400" : "text-[#4d6b62]"].join(" ")}>
-                        {app.date} @ {app.time_slot}
-                      </div>
-                    </div>
-                    <span className={["rounded-full border px-1.5 py-0.5 text-[8px] font-bold uppercase", 
-                      app.status === 'approved' ? "bg-emerald-500/10 text-emerald-400 border-emerald-500/20" :
-                      app.status === 'cancelled' ? "bg-rose-500/10 text-rose-400 border-rose-500/20" :
-                      app.status === 'rescheduled' ? "bg-amber-500/10 text-amber-400 border-amber-500/20" :
-                      "bg-zinc-500/10 text-zinc-400 border-zinc-500/20"
-                    ].join(" ")}>
-                      {app.status}
-                    </span>
-                  </div>
-
-                  {app.notes && (
-                    <div className={["text-[10px] font-medium leading-relaxed border-t pt-1.5", isDark ? "text-zinc-400 border-emerald-400/5" : "text-[#5e776e] border-black/5"].join(" ")}>
-                      {app.notes}
-                    </div>
-                  )}
-
-                  {reschedulingAppId === app.id ? (
-                    <div className="space-y-2 border-t pt-2 border-dashed border-emerald-500/20">
-                      <div className="grid grid-cols-2 gap-2">
-                        <input 
-                          type="date"
-                          value={reschedDate}
-                          onChange={(e) => setReschedDate(e.target.value)}
-                          className={["w-full rounded-lg border px-2 py-1 text-[10px] outline-none", isDark ? "border-white/10 bg-black/40 text-white" : "border-gray-200 bg-white text-zinc-950"].join(" ")}
-                        />
-                        <select
-                          value={reschedSlot}
-                          onChange={(e) => setReschedSlot(e.target.value)}
-                          className={["w-full rounded-lg border px-2 py-1 text-[10px] outline-none", isDark ? "border-white/10 bg-black/40 text-white" : "border-gray-200 bg-white text-zinc-950"].join(" ")}
-                        >
-                          <option value="">Saat seç</option>
-                          {["09:00", "10:00", "11:00", "12:00", "13:00", "14:00", "15:00", "16:00"].map(s => <option key={s} value={s}>{s}</option>)}
-                        </select>
-                      </div>
-                      <input 
-                        type="text"
-                        placeholder="Erteleme sebebi..."
-                        value={reschedNotes}
-                        onChange={(e) => setReschedNotes(e.target.value)}
-                        className={["w-full rounded-lg border px-2 py-1 text-[10px] outline-none", isDark ? "border-white/10 bg-black/40 text-white" : "border-gray-200 bg-white text-zinc-950"].join(" ")}
-                      />
-                      <div className="flex gap-2 justify-end">
-                        <button 
-                          onClick={() => setReschedulingAppId(null)}
-                          className={["rounded-lg px-2 py-1 text-[9px] font-black uppercase transition", isDark ? "bg-white/5 text-zinc-300" : "border border-gray-200 text-zinc-700"].join(" ")}
-                        >
-                          İptal
-                        </button>
-                        <button 
-                          onClick={() => handleRescheduleSubmit(app.id)}
-                          className="rounded-lg bg-amber-500 text-white px-2 py-1 text-[9px] font-black uppercase"
-                        >
-                          Kaydet
-                        </button>
-                      </div>
-                    </div>
-                  ) : (
-                    app.status === 'pending' && (
-                      <div className="flex justify-end gap-1.5 border-t pt-2 border-dashed border-emerald-500/10">
-                        <button
-                          onClick={() => {
-                            setReschedulingAppId(app.id);
-                            setReschedDate(app.date);
-                            setReschedSlot(app.time_slot);
-                            setReschedNotes("");
-                          }}
-                          className={["rounded-lg border px-2 py-1 text-[9px] font-black uppercase transition", isDark ? "border-amber-400/25 bg-amber-500/10 text-amber-300 hover:bg-amber-500/15" : "border-amber-200 bg-amber-50 text-amber-700 hover:bg-amber-100"].join(" ")}
-                        >
-                          {lang === "tr" ? "Ertele" : "Reschedule"}
-                        </button>
-                        <button
-                          onClick={() => handleUpdateStatus(app.id, 'cancelled')}
-                          className={["rounded-lg border px-2 py-1 text-[9px] font-black uppercase transition", isDark ? "border-rose-400/25 bg-rose-500/10 text-rose-300 hover:bg-rose-500/15" : "border-rose-200 bg-rose-50 text-rose-700 hover:bg-rose-100"].join(" ")}
-                        >
-                          {lang === "tr" ? "Reddet" : "Reject"}
-                        </button>
-                        <button
-                          onClick={() => handleUpdateStatus(app.id, 'approved')}
-                          className="rounded-lg bg-emerald-500 hover:brightness-110 text-white px-2 py-1 text-[9px] font-black uppercase"
-                        >
-                          {lang === "tr" ? "Onayla" : "Approve"}
-                        </button>
-                      </div>
-                    )
-                  )}
-                </div>
-              ))
+              <div className={`p-10 text-center rounded-2xl border ${
+                isDark ? "border-dashed border-white/10 text-slate-400" : "border-dashed border-slate-200 text-slate-500"
+              }`}>
+                <Users className="mx-auto h-8 w-8 text-emerald-400/60 mb-2" />
+                <p className="font-display font-black text-sm">{t.assignedNone}</p>
+                <p className="mt-1 text-xs opacity-75">{t.assignedLater}</p>
+              </div>
             )}
-          </div>
-        </DashboardPanel>
+          </DashboardPanel>
+        </div>
+
+        <div className="lg:col-span-4 space-y-4">
+          <DashboardPanel isDark={isDark}>
+            <DashboardSectionHeader 
+              isDark={isDark} 
+              title={lang === "tr" ? "Randevu Talepleri" : "Consultations"} 
+              subtitle={lang === "tr" ? "Görüşme istekleri" : "Incoming requests"} 
+            />
+
+            <div className="space-y-2.5 max-h-80 overflow-y-auto pr-1">
+              {appointments.length === 0 ? (
+                <div className={`p-6 text-center text-xs font-semibold ${isDark ? "text-slate-500" : "text-slate-400"}`}>
+                  {lang === "tr" ? "Bekleyen randevu talebi bulunmuyor." : "No pending appointments."}
+                </div>
+              ) : (
+                appointments.map((app) => (
+                  <div key={app.id} className={`p-3.5 rounded-2xl border space-y-2.5 ${
+                    isDark ? "border-white/10 bg-slate-900/60" : "border-slate-200 bg-white"
+                  }`}>
+                    <div className="flex justify-between items-start">
+                      <div>
+                        <div className="font-display text-xs font-black">{app.client?.name || app.client?.first_name || (lang === "tr" ? "Danışan" : "Client")}</div>
+                        <div className={`text-[10px] font-mono mt-0.5 ${isDark ? "text-slate-400" : "text-slate-500"}`}>
+                          {app.date} • {app.time_slot}
+                        </div>
+                      </div>
+                      <span className={`rounded-full border px-2 py-0.5 text-[9px] font-black uppercase ${
+                        app.status === "approved" ? "border-emerald-500/30 bg-emerald-500/10 text-emerald-400" :
+                        app.status === "cancelled" ? "border-rose-500/30 bg-rose-500/10 text-rose-400" :
+                        app.status === "rescheduled" ? "border-amber-500/30 bg-amber-500/10 text-amber-400" :
+                        "border-cyan-500/30 bg-cyan-500/10 text-cyan-400"
+                      }`}>
+                        {app.status}
+                      </span>
+                    </div>
+
+                    {app.notes && (
+                      <div className={`p-2 rounded-xl text-[11px] font-semibold border-l-2 border-emerald-400 ${
+                        isDark ? "bg-emerald-500/10 text-emerald-300" : "bg-emerald-50 text-emerald-900"
+                      }`}>
+                        💬 {app.notes}
+                      </div>
+                    )}
+
+                    {reschedulingAppId === app.id ? (
+                      <div className="space-y-2 pt-2 border-t border-dashed border-white/10">
+                        <div className="grid grid-cols-2 gap-2">
+                          <input 
+                            type="date"
+                            value={reschedDate}
+                            onChange={(e) => setReschedDate(e.target.value)}
+                            className={`w-full rounded-xl border px-2 py-1 text-xs outline-none ${
+                              isDark ? "border-white/10 bg-black/40 text-white" : "border-slate-200 bg-slate-50 text-slate-900"
+                            }`}
+                          />
+                          <select
+                            value={reschedSlot}
+                            onChange={(e) => setReschedSlot(e.target.value)}
+                            className={`w-full rounded-xl border px-2 py-1 text-xs outline-none ${
+                              isDark ? "border-white/10 bg-black/40 text-white" : "border-slate-200 bg-slate-50 text-slate-900"
+                            }`}
+                          >
+                            <option value="">Saat</option>
+                            {["09:00", "10:00", "11:00", "14:00", "15:00", "16:00"].map(s => <option key={s} value={s}>{s}</option>)}
+                          </select>
+                        </div>
+                        <div className="flex gap-2 justify-end">
+                          <button 
+                            type="button"
+                            onClick={() => setReschedulingAppId(null)}
+                            className="rounded-xl border border-white/10 px-3 py-1 text-[10px] font-bold"
+                          >
+                            İptal
+                          </button>
+                          <button 
+                            type="button"
+                            onClick={() => handleRescheduleSubmit(app.id)}
+                            className="rounded-xl bg-amber-500 text-slate-950 px-3 py-1 text-[10px] font-black"
+                          >
+                            Kaydet
+                          </button>
+                        </div>
+                      </div>
+                    ) : (
+                      app.status === "pending" && (
+                        <div className="flex justify-end gap-1.5 pt-2 border-t border-white/5">
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setReschedulingAppId(app.id);
+                              setReschedDate(app.date);
+                              setReschedSlot(app.time_slot);
+                            }}
+                            className="rounded-xl border border-amber-500/30 bg-amber-500/10 px-2.5 py-1 text-[10px] font-bold text-amber-300 hover:bg-amber-500/20 transition"
+                          >
+                            {lang === "tr" ? "Ertele" : "Reschedule"}
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => handleUpdateStatus(app.id, "cancelled")}
+                            className="rounded-xl border border-rose-500/30 bg-rose-500/10 px-2.5 py-1 text-[10px] font-bold text-rose-300 hover:bg-rose-500/20 transition"
+                          >
+                            {lang === "tr" ? "Reddet" : "Reject"}
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => handleUpdateStatus(app.id, "approved")}
+                            className="rounded-xl bg-emerald-500 px-3 py-1 text-[10px] font-black text-slate-950 hover:bg-emerald-400 transition"
+                          >
+                            {lang === "tr" ? "Onayla" : "Approve"}
+                          </button>
+                        </div>
+                      )
+                    )}
+                  </div>
+                ))
+              )}
+            </div>
+          </DashboardPanel>
+
+          <DashboardPanel isDark={isDark}>
+            <DashboardSectionHeader isDark={isDark} title={t.clinicalRhythm} subtitle={t.clinicalRhythmSub} />
+            <div className="space-y-2.5 text-xs">
+              <div className={`p-3 rounded-xl border flex items-start gap-2.5 ${
+                isDark ? "border-white/5 bg-black/20" : "border-slate-100 bg-slate-50"
+              }`}>
+                <span className="font-black text-emerald-400">1.</span>
+                <span className={isDark ? "text-slate-300" : "text-slate-700"}>{t.rhythmA}</span>
+              </div>
+              <div className={`p-3 rounded-xl border flex items-start gap-2.5 ${
+                isDark ? "border-white/5 bg-black/20" : "border-slate-100 bg-slate-50"
+              }`}>
+                <span className="font-black text-cyan-400">2.</span>
+                <span className={isDark ? "text-slate-300" : "text-slate-700"}>{t.rhythmB}</span>
+              </div>
+            </div>
+          </DashboardPanel>
+        </div>
       </section>
 
       {selectedClient && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 p-4">
-          <div className={["w-full max-w-2xl overflow-hidden border shadow-2xl transition-all", isDark ? "rounded-2xl border-transparent bg-[#080b0a]/95" : "rounded-2xl border-[#e4dbc9] bg-[#fffaf2]"].join(" ")}>
-            
-            <div className={["flex items-center justify-between border-b px-5", isDark ? "border-emerald-400/10" : "border-[#e4dbc9]"].join(" ")}>
-              <div className="flex">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-md animate-fadeInUp">
+          <div className={`w-full max-w-3xl overflow-hidden rounded-[32px] border shadow-2xl ${
+            isDark ? "border-white/10 bg-slate-900 text-white" : "border-slate-200 bg-white text-slate-900"
+          }`}>
+            <div className="flex items-center justify-between border-b border-white/5 px-6 py-4">
+              <div className="flex items-center gap-3">
+                <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-emerald-500/15 text-emerald-400 font-display font-black text-sm">
+                  {(selectedClient.name || "D").slice(0, 2).toUpperCase()}
+                </div>
+                <div>
+                  <h3 className="font-display text-sm font-black">{selectedClient.name}</h3>
+                  <div className={`text-[11px] ${isDark ? "text-slate-400" : "text-slate-500"}`}>
+                    {selectedClient.email || selectedClient.phone_number}
+                  </div>
+                </div>
+              </div>
+
+              <div className="flex items-center gap-2">
+                <div className={`flex rounded-xl p-1 border ${isDark ? "border-white/10 bg-black/40" : "border-slate-200 bg-slate-100"}`}>
+                  <button
+                    type="button"
+                    onClick={() => setActiveTab("plans")}
+                    className={`rounded-lg px-3 py-1.5 text-xs font-bold transition ${
+                      activeTab === "plans" ? "bg-emerald-500 text-slate-950 font-black" : "text-slate-400 hover:text-white"
+                    }`}
+                  >
+                    {lang === "tr" ? "Planlar" : "Plans"}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setActiveTab("tracking")}
+                    className={`rounded-lg px-3 py-1.5 text-xs font-bold transition ${
+                      activeTab === "tracking" ? "bg-emerald-500 text-slate-950 font-black" : "text-slate-400 hover:text-white"
+                    }`}
+                  >
+                    {lang === "tr" ? "Ölçüm & Su Grafikleri" : "Biometrics"}
+                  </button>
+                </div>
                 <button
-                  onClick={() => setActiveTab('plans')}
-                  className={["px-4 py-3 text-xs font-black border-b-2 transition-all outline-none", 
-                    activeTab === 'plans' ? "border-emerald-500 text-emerald-400" : isDark ? "border-transparent text-zinc-400 hover:text-white" : "border-transparent text-[#5e776e] hover:text-[#123a32]"
-                  ].join(" ")}
+                  type="button"
+                  onClick={() => setSelectedClient(null)}
+                  className="rounded-xl border border-white/10 p-2 text-slate-400 hover:text-white transition"
                 >
-                  {lang === "tr" ? "Öğün Programları" : "Meal Plans"}
-                </button>
-                <button
-                  onClick={() => setActiveTab('tracking')}
-                  className={["px-4 py-3 text-xs font-black border-b-2 transition-all outline-none", 
-                    activeTab === 'tracking' ? "border-emerald-500 text-emerald-400" : isDark ? "border-transparent text-zinc-400 hover:text-white" : "border-transparent text-[#5e776e] hover:text-[#123a32]"
-                  ].join(" ")}
-                >
-                  {lang === "tr" ? "Danışan Takibi" : "Client Tracking"}
+                  <XCircle className="h-5 w-5" />
                 </button>
               </div>
-              <button
-                onClick={() => setSelectedClient(null)}
-                className={["rounded-xl border px-3 py-1 text-xs font-black hover:scale-105 transition outline-none", isDark ? "border-transparent bg-white/5 text-zinc-200 hover:bg-white/10" : "border-[#e4dbc9] bg-white text-[#2b574b] hover:bg-gray-100"].join(" ")}
-              >
-                {lang === "tr" ? "Kapat" : "Close"}
-              </button>
             </div>
 
-            <div className="max-h-[60vh] overflow-y-auto p-5">
-              {activeTab === 'plans' && (
-                <>
-                  {loadingPlans ? (
-                    <div className="flex justify-center py-12">
-                      <div className="h-8 w-8 animate-spin rounded-full border-4 border-emerald-500 border-t-transparent"></div>
+            <div className="max-h-[70vh] overflow-y-auto p-6">
+              {activeTab === "plans" ? (
+                loadingPlans ? (
+                  <div className="flex justify-center py-12">
+                    <div className="h-8 w-8 animate-spin rounded-full border-4 border-emerald-500 border-t-transparent" />
+                  </div>
+                ) : clientPlans.length === 0 ? (
+                  <div className="py-12 text-center">
+                    <FileText className="mx-auto h-8 w-8 text-slate-500 mb-2" />
+                    <p className="font-display font-black text-sm">{t.noPlans}</p>
+                    <p className="mt-1 text-xs opacity-75">{t.noPlansSub}</p>
+                    <button
+                      type="button"
+                      onClick={() => navigate(`/meal-planner?clientId=${selectedClient.user_id}`)}
+                      className="mt-6 inline-flex items-center gap-2 rounded-2xl bg-emerald-500 px-6 py-2.5 text-xs font-black text-slate-950 shadow-md shadow-emerald-500/20 hover:bg-emerald-400 transition"
+                    >
+                      <Plus className="h-4 w-4" />
+                      <span>{t.newPlan}</span>
+                    </button>
+                  </div>
+                ) : (
+                  <div className="space-y-3">
+                    <div className="flex justify-between items-center mb-4">
+                      <span className="text-xs font-bold text-slate-400">{clientPlans.length} {lang === "tr" ? "Beslenme Programı" : "Plans Available"}</span>
+                      <button
+                        type="button"
+                        onClick={() => navigate(`/meal-planner?clientId=${selectedClient.user_id}`)}
+                        className="rounded-xl bg-emerald-500 px-3.5 py-1.5 text-xs font-black text-slate-950 hover:bg-emerald-400 transition flex items-center gap-1.5"
+                      >
+                        <Plus className="h-3.5 w-3.5" />
+                        <span>{t.newPlan}</span>
+                      </button>
                     </div>
-                  ) : clientPlans.length === 0 ? (
-                    <div className="py-10 text-center">
-                      <div className={["mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-xl", isDark ? "bg-emerald-500/10 text-emerald-300" : "bg-[#edf6ec] text-[#285743]"].join(" ")}>
-                        <svg className="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
-                        </svg>
-                      </div>
-                      <p className="text-sm font-black">
-                        {t.noPlans}
-                      </p>
-                      <p className={["mt-1 text-xs", isDark ? "text-zinc-500" : "text-[#7a7160]"].join(" ")}>
-                        {t.noPlansSub}
-                      </p>
-                    </div>
-                  ) : (
-                    <div className="space-y-3">
-                    <div className="space-y-3">
-                      {(() => {
-                        const isPastPlan = (plan: any) => {
-                          let startStr = "";
-                          const m = plan.description?.match(/Başlangıç Tarihi:\s*(\d{4}-\d{2}-\d{2})/);
-                          if (m) startStr = m[1];
-                          else startStr = plan.created_at?.split('T')[0];
 
-                          if (!startStr) return false;
-
-                          const startDate = new Date(startStr);
-                          let days = 7;
-                          if (plan.plan_type === 'daily') days = 1;
-                          else if (plan.plan_type === 'monthly') days = 30;
-
-                          const endDate = new Date(startDate.getTime() + (days * 24 * 60 * 60 * 1000));
-                          const today = new Date();
-                          today.setHours(0,0,0,0);
-                          
-                          return endDate < today;
-                        };
-
-                        const currentPlans = clientPlans.filter(p => !isPastPlan(p));
-                        const pastPlans = clientPlans.filter(p => isPastPlan(p));
-
-                        const renderPlan = (plan: any) => (
-                          <div key={plan.id} className={["flex flex-col gap-3 border p-3 transition sm:flex-row sm:items-center sm:justify-between", isDark ? "rounded-2xl border-transparent bg-black/20 shadow-[inset_0_1px_0_rgba(16,185,129,0.08)] hover:border-transparent" : "rounded-2xl border-[#e4dbc9] bg-[#fffaf2] hover:border-[#d4c9b5]"].join(" ")}>
-                            <div className="min-w-0">
-                              <div className="flex flex-wrap items-center gap-2">
-                                <h4 className={["truncate text-sm font-black", isDark ? "text-white" : "text-[#123a32]"].join(" ")}>{plan.title}</h4>
-                                {plan.is_active && (
-                                  <span className={["rounded-full border px-2 py-0.5 text-[10px] font-black uppercase", isDark ? "border-emerald-300/20 bg-emerald-500/10 text-emerald-100" : "border-[#dce8dc] bg-[#edf6ec] text-[#285743]"].join(" ")}>{t.active}</span>
-                                )}
-                              </div>
-                              <p className={["mt-1 text-[11px] font-black uppercase", isDark ? "text-zinc-500" : "text-[#4d6b62]"].join(" ")}>
-                                {planTypeLabel(plan.plan_type)} Plan
-                              </p>
-                              <p className={["mt-1 text-[11px]", isDark ? "text-zinc-600" : "text-[#7a7160]"].join(" ")}>
-                                {t.createdAt}: {new Date(plan.created_at).toLocaleDateString(lang === "tr" ? "tr-TR" : "en-US")}
-                              </p>
-                            </div>
-                            
-                            <button 
-                              onClick={() => navigate(`/plan/${plan.id}`)}
-                              className={["flex h-9 shrink-0 items-center justify-center px-4 text-xs font-black transition", isDark ? "rounded-xl bg-emerald-400 text-zinc-950 hover:brightness-110" : "rounded-xl bg-[#2f6154] text-white hover:bg-[#244f44]"].join(" ")}
-                            >
-                              {t.viewPlan}
-                            </button>
+                    {clientPlans.map((plan) => (
+                      <div
+                        key={plan.id}
+                        className={`p-4 rounded-2xl border flex items-center justify-between gap-4 ${
+                          isDark ? "border-white/10 bg-black/20" : "border-slate-100 bg-slate-50"
+                        }`}
+                      >
+                        <div>
+                          <div className="flex items-center gap-2">
+                            <h4 className={`font-display text-sm sm:text-base font-black ${isDark ? "text-white" : "text-slate-900"}`}>{plan.title}</h4>
+                            <span className="rounded-full border border-emerald-500/30 bg-emerald-500/10 px-2.5 py-0.5 text-xs font-bold text-emerald-400 uppercase">
+                              {plan.plan_type}
+                            </span>
                           </div>
-                        );
+                          <div className="text-xs text-slate-400 font-medium mt-1">
+                            {new Date(plan.created_at).toLocaleDateString(lang === "tr" ? "tr-TR" : "en-US")} • {plan.meals?.length || 0} {lang === "tr" ? "Öğün" : "Meals"}
+                          </div>
+                        </div>
 
-                        return (
-                          <>
-                            {currentPlans.length > 0 ? currentPlans.map(renderPlan) : (
-                              <div className={["text-xs font-semibold text-center py-4 rounded-xl", isDark ? "text-zinc-500 bg-black/20" : "text-[#7a7160] bg-white"].join(" ")}>
-                                {lang === "tr" ? "Güncel veya gelecek plan bulunmuyor." : "No current or future plans found."}
-                              </div>
-                            )}
-
-                            {pastPlans.length > 0 && (
-                              <div className="mt-6">
-                                <button
-                                  onClick={() => setShowPastPlans(!showPastPlans)}
-                                  className={["w-full flex items-center justify-between px-4 py-3 rounded-xl border text-xs font-black transition", isDark ? "border-white/10 bg-black/40 text-zinc-300 hover:bg-white/5" : "border-[#e4dbc9] bg-white text-[#2b574b] hover:bg-gray-50"].join(" ")}
-                                >
-                                  <span>{lang === "tr" ? "Geçmiş Programlar" : "Past Plans"} ({pastPlans.length})</span>
-                                  <svg className={["w-4 h-4 transition-transform", showPastPlans ? "rotate-180" : ""].join(" ")} fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                                  </svg>
-                                </button>
-                                
-                                {showPastPlans && (
-                                  <div className="mt-3 space-y-3">
-                                    {pastPlans.map(renderPlan)}
-                                  </div>
-                                )}
-                              </div>
-                            )}
-                          </>
-                        );
-                      })()}
-                    </div>
-                    </div>
-                  )}
-                </>
-              )}
-
-              {activeTab === 'tracking' && (
+                        <button
+                          type="button"
+                          onClick={() => navigate(`/plan/${plan.id}`)}
+                          className="rounded-xl border border-white/10 px-4 py-2 text-xs font-bold hover:bg-white/5 transition flex items-center gap-1.5"
+                        >
+                          <span>{t.viewPlan}</span>
+                          <ExternalLink className="h-3.5 w-3.5" />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                )
+              ) : (
                 <div className="space-y-6">
                   {loadingTracking ? (
-                    <div className="flex justify-center py-12">
-                      <div className="h-8 w-8 animate-spin rounded-full border-4 border-emerald-500 border-t-transparent"></div>
+                    <div className="py-12 text-center text-xs text-slate-400 font-bold">
+                      {lang === "tr" ? "Yükleniyor..." : "Loading..."}
                     </div>
                   ) : (
                     <>
-                      {/* Measurements AreaChart */}
+                      {/* Weight & Body Fat AreaChart */}
+
                       <div>
-                        <h4 className={["text-xs font-black uppercase tracking-wider mb-2", isDark ? "text-zinc-400" : "text-[#4d6b62]"].join(" ")}>
-                          {lang === "tr" ? "Ölçüm Geçmişi (Son 30 Gün)" : "Measurement History (30 Days)"}
+                        <h4 className="text-xs sm:text-sm font-bold uppercase tracking-wider mb-2 text-slate-300">
+                          {lang === "tr" ? "Kilo ve Yağ Oranı Geçmişi" : "Weight & Body Fat History"}
                         </h4>
                         {clientMeasurements.length === 0 ? (
-                          <div className={["text-xs font-semibold text-center py-6 border border-dashed rounded-2xl", isDark ? "border-zinc-800 text-zinc-500" : "border-gray-200 text-[#7a7160]"].join(" ")}>
+                          <div className="text-xs sm:text-sm font-medium text-center py-8 border border-dashed rounded-2xl border-white/10 text-slate-400">
                             {lang === "tr" ? "Ölçüm verisi bulunmamaktadır." : "No measurements found."}
                           </div>
                         ) : (
-                          <div className="h-[200px] w-full text-[10px] font-semibold bg-black/10 p-2 rounded-2xl">
-                            {(() => {
-                              const strokeColor1 = isDark ? "#34d399" : "#10b981";
-                              const strokeColor2 = isDark ? "#f59e0b" : "#d97706";
-                              return (
-                                <ResponsiveContainer width="100%" height="100%">
-                                  <AreaChart data={clientMeasurements.map(m => ({ date: m.date, Kilo: m.weight != null ? Number(m.weight) : null, Yağ: m.body_fat != null ? Number(m.body_fat) : null }))} margin={{ top: 5, right: 5, left: -25, bottom: 0 }}>
-                                    <CartesianGrid strokeDasharray="3 3" stroke={isDark ? "rgba(255,255,255,0.05)" : "rgba(0,0,0,0.05)"} />
-                                    <XAxis dataKey="date" stroke={isDark ? "#71717a" : "#4e6f65"} />
-                                    <YAxis yAxisId="left" stroke={strokeColor1} domain={['dataMin - 5', 'dataMax + 5']} />
-                                    <YAxis yAxisId="right" orientation="right" stroke={strokeColor2} domain={['dataMin - 2', 'dataMax + 2']} />
-                                    <Tooltip contentStyle={{ backgroundColor: isDark ? '#0d1114' : '#fff', borderColor: 'rgba(16,185,129,0.2)', color: isDark ? '#fff' : '#000' }} />
-                                    <Area yAxisId="left" type="monotone" dataKey="Kilo" stroke={strokeColor1} strokeWidth={2} fill={isDark ? "rgba(52,211,153,0.05)" : "rgba(16,185,129,0.05)"} connectNulls />
-                                    <Area yAxisId="right" type="monotone" dataKey="Yağ" stroke={strokeColor2} strokeWidth={2} fill={isDark ? "rgba(245,158,11,0.05)" : "rgba(217,119,6,0.05)"} connectNulls />
-                                  </AreaChart>
-                                </ResponsiveContainer>
-                              );
-                            })()}
+                          <div className="h-[220px] w-full text-xs font-semibold bg-black/20 p-3 rounded-2xl">
+                            <ResponsiveContainer width="100%" height="100%">
+                              <AreaChart data={clientMeasurements.map(m => ({ date: m.date, Kilo: m.weight != null ? Number(m.weight) : null, Yağ: m.body_fat != null ? Number(m.body_fat) : null }))} margin={{ top: 5, right: 5, left: -25, bottom: 0 }}>
+                                <CartesianGrid strokeDasharray="3 3" stroke={isDark ? "rgba(255,255,255,0.05)" : "rgba(0,0,0,0.05)"} />
+                                <XAxis dataKey="date" stroke={isDark ? "#94a3b8" : "#475569"} />
+                                <YAxis yAxisId="left" stroke="#10b981" domain={['dataMin - 5', 'dataMax + 5']} />
+                                <YAxis yAxisId="right" orientation="right" stroke="#f59e0b" domain={['dataMin - 2', 'dataMax + 2']} />
+                                <Tooltip contentStyle={{ backgroundColor: isDark ? '#0d1114' : '#fff', borderColor: 'rgba(16,185,129,0.2)', color: isDark ? '#fff' : '#000', borderRadius: '12px' }} />
+                                <Area yAxisId="left" type="monotone" dataKey="Kilo" stroke="#10b981" strokeWidth={2} fill="rgba(16,185,129,0.1)" connectNulls />
+                                <Area yAxisId="right" type="monotone" dataKey="Yağ" stroke="#f59e0b" strokeWidth={2} fill="rgba(245,158,11,0.1)" connectNulls />
+                              </AreaChart>
+                            </ResponsiveContainer>
                           </div>
                         )}
                       </div>
 
                       {/* Water logs BarChart */}
                       <div>
-                        <h4 className={["text-xs font-black uppercase tracking-wider mb-2", isDark ? "text-zinc-400" : "text-[#4d6b62]"].join(" ")}>
+                        <h4 className="text-xs sm:text-sm font-bold uppercase tracking-wider mb-2 text-slate-300">
                           {lang === "tr" ? "Su Tüketimi (Son 7 Gün)" : "Water Consumption (7 Days)"}
                         </h4>
                         {clientWaterLogs.length === 0 ? (
-                          <div className={["text-xs font-semibold text-center py-6 border border-dashed rounded-2xl", isDark ? "border-zinc-800 text-zinc-500" : "border-gray-200 text-[#7a7160]"].join(" ")}>
+                          <div className="text-xs sm:text-sm font-medium text-center py-8 border border-dashed rounded-2xl border-white/10 text-slate-400">
                             {lang === "tr" ? "Su tüketim verisi bulunmamaktadır." : "No water tracking logs found."}
                           </div>
                         ) : (
-                          <div className="h-[180px] w-full text-[10px] font-semibold bg-black/10 p-2 rounded-2xl">
+                          <div className="h-[200px] w-full text-xs font-semibold bg-black/20 p-3 rounded-2xl">
+
                             <ResponsiveContainer width="100%" height="100%">
                               <BarChart data={clientWaterLogs.map(w => ({ date: w.date, Su: Number(w.amount) }))} margin={{ top: 5, right: 5, left: -20, bottom: 0 }}>
                                 <CartesianGrid strokeDasharray="3 3" stroke={isDark ? "rgba(255,255,255,0.05)" : "rgba(0,0,0,0.05)"} />
                                 <XAxis dataKey="date" stroke={isDark ? "#71717a" : "#4e6f65"} />
                                 <YAxis stroke="#3b82f6" />
-                                <Tooltip contentStyle={{ backgroundColor: isDark ? '#0d1114' : '#fff', borderColor: 'rgba(59,130,246,0.2)', color: isDark ? '#fff' : '#000' }} />
+                                <Tooltip contentStyle={{ backgroundColor: isDark ? '#0d1114' : '#fff', borderColor: 'rgba(59,130,246,0.2)', color: isDark ? '#fff' : '#000', borderRadius: '12px' }} />
                                 <Bar dataKey="Su" fill="#3b82f6" radius={[6, 6, 0, 0]} />
                               </BarChart>
                             </ResponsiveContainer>
@@ -838,24 +811,13 @@ export default function DietitianHome({ profile, isAdmin }: { profile: Profile; 
                 </div>
               )}
             </div>
-            
-            {activeTab === 'plans' && (
-              <div className={["border-t px-5 py-4", isDark ? "border-emerald-400/10 bg-black/20" : "border-[#e4dbc9] bg-[#f9f6ec]"].join(" ")}>
-                <button 
-                  onClick={() => navigate(`/meal-planner?clientId=${selectedClient.user_id}`)}
-                  className={["w-full py-2.5 text-sm font-black transition active:scale-[0.99]", isDark ? "rounded-xl bg-emerald-400 text-zinc-950 hover:brightness-110" : "rounded-xl bg-[#2f6154] text-white hover:bg-[#244f44]"].join(" ")}
-                >
-                  + {t.newPlan}
-                </button>
-              </div>
-            )}
           </div>
         </div>
       )}
-
     </DashboardShell>
   );
 }
+
 
 function ClientQueueRow({
   isDark,

@@ -47,7 +47,7 @@ const I18N_PATH = fs.existsSync(DIST_I18N_PATH) ? DIST_I18N_PATH : SRC_I18N_PATH
         password: configService.get('DB_PASSWORD'),
         database: (configService.get('DB_DATABASE') as string) || 'smartDiet',
         autoLoadEntities: true,
-        synchronize: (configService.get('DB_SYNCHRONIZE') || 'true') === 'true',
+        synchronize: configService.get('DB_SYNCHRONIZE') === 'true',
       }),
     }),
 

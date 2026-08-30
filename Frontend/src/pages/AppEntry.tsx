@@ -26,7 +26,7 @@ type Profile = {
   clinic_name?: string | null;
 };
 
-const API_BASE = "http://localhost:3000";
+import { API_BASE_URL as API_BASE } from "../lib/api";
 
 export default function AppEntry() {
   const { accessToken, userJson } = useAuthSession();

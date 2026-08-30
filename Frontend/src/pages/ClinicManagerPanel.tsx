@@ -50,7 +50,7 @@ type PagedResponse<T> = {
   totalPages: number;
 };
 
-const API_BASE = "http://localhost:3000";
+import { API_BASE_URL as API_BASE } from "../lib/api";
 
 const COPY = {
   tr: {
@@ -445,17 +445,9 @@ export default function ClinicManagerPanel() {
       title={`${t.welcome} ${displayName}`}
       subtitle={t.subtitle}
       actions={
-        <>
-          <button type="button" onClick={() => void fetchDietitians()} className={dashboardButtonClass(isDark)}>
-            {t.refresh}
-          </button>
-          <Link to="/profile" className={dashboardButtonClass(isDark)}>
-            {t.profile}
-          </Link>
-          <button type="button" onClick={logout} className={dashboardButtonClass(isDark, "danger")}>
-            {t.logout}
-          </button>
-        </>
+        <button type="button" onClick={() => void fetchDietitians()} className={dashboardButtonClass(isDark)}>
+          {t.refresh}
+        </button>
       }
     >
       <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">

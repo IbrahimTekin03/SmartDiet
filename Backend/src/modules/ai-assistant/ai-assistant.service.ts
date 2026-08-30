@@ -271,7 +271,7 @@ Markdown veya başka hiçbir metin biçimlendirmesi kullanma, sadece saf JSON me
     if (geminiApiKey) {
       console.log('Using Google Gemini 1.5 Flash (v1 endpoint) for image analysis...');
       try {
-        const url = `https://generativelanguage.googleapis.com/v1/models/gemini-1.5-flash:generateContent?key=${geminiApiKey}`;
+        const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.6-flash:generateContent?key=${geminiApiKey}`;
         const payload = {
           contents: [
             {

@@ -1,7 +1,21 @@
 import { type ReactNode, useCallback, useEffect, useState, useRef } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useAppSettings } from "../context/AppSettingsContext";
-import { parseStoredUser, useAuthSession } from "../lib/authSession";
+import { clearAuthSession, parseStoredUser, useAuthSession } from "../lib/authSession";
+import { API_BASE_URL } from "../lib/api";
+import { 
+  Bell, 
+  ChevronLeft, 
+  LogOut, 
+  MessageSquare, 
+  Sparkles, 
+  Plus, 
+  Trash2, 
+  CheckCheck, 
+  Activity,
+  Lightbulb,
+  X
+} from "lucide-react";
 
 export function DashboardShell({
   isDark,
@@ -22,18 +36,103 @@ export function DashboardShell({
 }) {
   const { lang } = useAppSettings();
   const navigate = useNavigate();
+  const { userJson } = useAuthSession();
+  const user = parseStoredUser<{ first_name?: string; last_name?: string; display_name?: string; email?: string }>(userJson);
+  const userName = user?.display_name || (user?.first_name ? `${user.first_name} ${user.last_name || ''}`.trim() : user?.email || (lang === "tr" ? "Kullanıcı" : "User"));
+
+  const handleLogout = () => {
+    clearAuthSession();
+    navigate("/login");
+  };
 
   return (
-    <div className={["relative min-h-screen w-screen overflow-x-hidden", isDark ? "text-white" : "bg-[#f7f1e7] text-[#2f2b22]"].join(" ")}>
-      <div className="pointer-events-none absolute inset-0">
-        <div className={isDark ? "absolute inset-0 [background:radial-gradient(1100px_700px_at_18%_10%,rgba(16,185,129,0.20),transparent_60%),radial-gradient(900px_700px_at_92%_16%,rgba(20,184,166,0.13),transparent_60%),radial-gradient(920px_420px_at_50%_100%,rgba(16,185,129,0.16),transparent_66%),linear-gradient(180deg,#050608,#07090b_55%,#050608)]" : "absolute inset-0 [background:linear-gradient(135deg,rgba(31,107,80,0.14)_0%,rgba(247,241,231,0.98)_28%,#f7f1e7_58%,rgba(225,239,225,0.72)_100%)]"} />
-        <div className={isDark ? "absolute inset-0 opacity-[0.08] [background-image:radial-gradient(rgba(255,255,255,0.14)_1px,transparent_1px)] [background-size:18px_18px]" : "absolute inset-0 opacity-[0.32] [background-image:linear-gradient(rgba(47,97,84,0.08)_1px,transparent_1px),linear-gradient(90deg,rgba(47,97,84,0.08)_1px,transparent_1px)] [background-size:36px_36px]"} />
-        <div className={isDark ? "absolute inset-x-0 top-0 h-40 bg-gradient-to-b from-emerald-400/10 to-transparent" : "absolute inset-x-0 top-0 h-44 bg-gradient-to-b from-[#dcefe2] to-transparent"} />
-        {isDark ? <div className="absolute inset-x-0 bottom-0 h-56 bg-gradient-to-t from-emerald-500/10 to-transparent" /> : null}
+    <div className="relative min-h-screen w-full overflow-x-hidden transition-colors duration-300">
+      {/* Background Ambient Glows & Grid */}
+      <div className="pointer-events-none fixed inset-0 z-0">
+        {isDark ? (
+          <>
+            <div className="absolute inset-0 bg-[#040711]" />
+            <div className="absolute -top-[20%] left-[10%] h-[500px] w-[500px] rounded-full bg-emerald-500/10 blur-[130px]" />
+            <div className="absolute top-[30%] -right-[10%] h-[600px] w-[600px] rounded-full bg-cyan-500/10 blur-[150px]" />
+            <div className="absolute -bottom-[20%] left-[30%] h-[500px] w-[500px] rounded-full bg-indigo-500/08 blur-[140px]" />
+            <div className="absolute inset-0 bg-grid-pattern opacity-60" />
+          </>
+        ) : (
+          <>
+            <div className="absolute inset-0 bg-[#f8fafc]" />
+            <div className="absolute -top-[15%] left-[5%] h-[450px] w-[450px] rounded-full bg-emerald-400/15 blur-[120px]" />
+            <div className="absolute top-[20%] -right-[5%] h-[550px] w-[550px] rounded-full bg-cyan-400/12 blur-[130px]" />
+            <div className="absolute inset-0 bg-grid-pattern opacity-40" />
+          </>
+        )}
       </div>
 
-      <main className="relative z-10 mx-auto w-full max-w-6xl px-4 pb-10 pt-5 sm:px-5 lg:px-6">
-        <header className={panelClass(isDark, "px-4 py-3.5")}>
+      {/* Top Glass Navigation Bar */}
+      <nav className={`sticky top-0 z-40 w-full border-b backdrop-blur-xl transition-all duration-200 ${
+        isDark 
+          ? "border-white/10 bg-[#040711]/80 shadow-[0_10px_30px_rgba(0,0,0,0.5)]" 
+          : "border-slate-200/80 bg-white/80 shadow-[0_4px_20px_rgba(0,0,0,0.03)]"
+      }`}>
+        <div className="mx-auto flex max-w-7xl items-center justify-between px-4 py-3 sm:px-6 lg:px-8">
+          {/* Brand Logo */}
+          <Link to="/" className="group flex items-center gap-3">
+            <div className="relative flex h-10 w-10 items-center justify-center rounded-2xl bg-gradient-to-tr from-emerald-600 via-emerald-500 to-teal-400 p-0.5 shadow-lg shadow-emerald-500/25 transition-transform duration-300 group-hover:scale-105">
+              <div className="flex h-full w-full items-center justify-center rounded-[14px] bg-[#040711] text-white">
+                <Activity className="h-5 w-5 text-emerald-400 transition-transform duration-300 group-hover:rotate-12" />
+              </div>
+            </div>
+            <div className="flex flex-col">
+              <div className="flex items-center gap-1.5">
+                <span className="font-display text-lg font-black tracking-tight">SmartDiet</span>
+                <span className="relative flex h-2 w-2">
+                  <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-75"></span>
+                  <span className="relative inline-flex h-2 w-2 rounded-full bg-emerald-500"></span>
+                </span>
+              </div>
+              <span className={`text-[10px] font-bold uppercase tracking-wider ${isDark ? "text-emerald-400/80" : "text-emerald-700"}`}>
+                {lang === "tr" ? "Sağlık & Beslenme" : "Health & Nutrition"}
+              </span>
+            </div>
+          </Link>
+
+          {/* Quick Right Action Controls */}
+          <div className="flex items-center gap-2.5 sm:gap-3">
+            <DashboardMessagesLink isDark={isDark} unreadCount={0} label={lang === "tr" ? "Mesajlar" : "Messages"} />
+            <NotificationBell isDark={isDark} />
+
+            <Link
+              to="/profile"
+              className={`group flex items-center gap-2.5 rounded-2xl border px-3 py-1.5 text-xs font-bold transition-all duration-200 hover:scale-[1.02] ${
+                isDark 
+                  ? "border-white/10 bg-white/5 text-slate-200 hover:border-emerald-500/40 hover:bg-emerald-500/10" 
+                  : "border-slate-200 bg-white text-slate-800 shadow-sm hover:border-emerald-500/40 hover:bg-emerald-50/50"
+              }`}
+            >
+              <div className="flex h-7 w-7 items-center justify-center rounded-xl bg-gradient-to-tr from-emerald-500 to-teal-400 font-display text-xs font-black text-white shadow-sm shadow-emerald-500/30">
+                {userName.charAt(0).toUpperCase()}
+              </div>
+              <span className="hidden max-w-[120px] truncate sm:inline">{userName}</span>
+            </Link>
+
+            <button
+              type="button"
+              onClick={handleLogout}
+              title={lang === "tr" ? "Çıkış Yap" : "Logout"}
+              className={`flex h-9 w-9 items-center justify-center rounded-2xl border transition-all duration-200 hover:scale-105 ${
+                isDark 
+                  ? "border-rose-500/30 bg-rose-500/10 text-rose-300 hover:bg-rose-500/20" 
+                  : "border-rose-200 bg-rose-50 text-rose-600 hover:bg-rose-100"
+              }`}
+            >
+              <LogOut className="h-4 w-4 stroke-[2.2]" />
+            </button>
+          </div>
+        </div>
+      </nav>
+
+      {/* Main Content Area */}
+      <main className="relative z-10 mx-auto w-full max-w-7xl px-4 pb-16 pt-5 sm:px-6 lg:px-8">
+        <header className={panelClass(isDark, "p-4 sm:p-5 rounded-[24px]")}>
           <div className="flex flex-wrap items-center justify-between gap-3">
             <div className="max-w-3xl">
               {backUrl ? (
@@ -42,58 +141,60 @@ export function DashboardShell({
                     <button
                       type="button"
                       onClick={() => navigate(-1)}
-                      className={[
-                        "inline-flex items-center gap-1.5 text-[11px] font-black transition rounded-full px-3 py-1.5",
+                      className={`inline-flex items-center gap-1.5 rounded-xl border px-2.5 py-1 text-xs font-bold transition-all hover:scale-[1.02] ${
                         isDark
-                          ? "border border-transparent bg-emerald-950/40 text-emerald-300 hover:bg-emerald-900/40 shadow-[0_4px_16px_rgba(0,0,0,0.2)]"
-                          : "border border-[#2f6154]/25 bg-[#edf6ec] text-[#285743] hover:bg-white shadow-sm",
-                      ].join(" ")}
+                          ? "border-white/10 bg-white/5 text-emerald-400 hover:bg-white/10"
+                          : "border-slate-200 bg-slate-50 text-emerald-700 hover:bg-white shadow-sm"
+                      }`}
                     >
-                      <svg className="h-3 w-3 shrink-0 stroke-current" viewBox="0 0 24 24" fill="none" strokeWidth="2.5">
-                        <path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" />
-                      </svg>
-                      {lang === "tr" ? "Geri" : "Back"}
+                      <ChevronLeft className="h-3.5 w-3.5 stroke-[2.5]" />
+                      {lang === "tr" ? "Geri Dön" : "Go Back"}
                     </button>
                   ) : (
                     <Link
                       to={backUrl}
-                      className={[
-                        "inline-flex items-center gap-1.5 text-[11px] font-black transition rounded-full px-3 py-1.5",
+                      className={`inline-flex items-center gap-1.5 rounded-xl border px-2.5 py-1 text-xs font-bold transition-all hover:scale-[1.02] ${
                         isDark
-                          ? "border border-transparent bg-emerald-950/40 text-emerald-300 hover:bg-emerald-900/40 shadow-[0_4px_16px_rgba(0,0,0,0.2)]"
-                          : "border border-[#2f6154]/25 bg-[#edf6ec] text-[#285743] hover:bg-white shadow-sm",
-                      ].join(" ")}
+                          ? "border-white/10 bg-white/5 text-emerald-400 hover:bg-white/10"
+                          : "border-slate-200 bg-slate-50 text-emerald-700 hover:bg-white shadow-sm"
+                      }`}
                     >
-                      <svg className="h-3 w-3 shrink-0 stroke-current" viewBox="0 0 24 24" fill="none" strokeWidth="2.5">
-                        <path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" />
-                      </svg>
-                      {lang === "tr" ? "Geri" : "Back"}
+                      <ChevronLeft className="h-3.5 w-3.5 stroke-[2.5]" />
+                      {lang === "tr" ? "Geri Dön" : "Go Back"}
                     </Link>
                   )}
                 </div>
               ) : null}
+
               {badge ? (
-                <div className={isDark ? "inline-flex rounded-full bg-emerald-500/10 px-3 py-1 text-[11px] font-black uppercase text-emerald-100" : "inline-flex rounded-xl border border-[#e4dbc9] bg-[#edf6ec] px-3 py-1 text-[11px] font-black uppercase text-[#285743]"}>
+                <div className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-[10px] font-black uppercase tracking-wider ${
+                  isDark 
+                    ? "border border-emerald-500/30 bg-emerald-500/10 text-emerald-300 shadow-[0_0_20px_rgba(16,185,129,0.15)]" 
+                    : "border border-emerald-300 bg-emerald-50 text-emerald-800"
+                }`}>
+                  <Sparkles className="h-3 w-3" />
                   {badge}
                 </div>
               ) : null}
-              <h1 className="mt-2 text-2xl font-black leading-tight">{title}</h1>
+
+              <h1 className="mt-1 font-display text-xl sm:text-2xl font-black tracking-tight">
+                {title}
+              </h1>
+
               {subtitle ? (
-                <p className={["mt-1 max-w-2xl text-xs leading-5", isDark ? "text-zinc-400" : "text-[#4d6b62]"].join(" ")}>
+                <p className={`mt-0.5 max-w-2xl text-xs sm:text-sm leading-relaxed ${isDark ? "text-slate-400" : "text-slate-600"}`}>
                   {subtitle}
                 </p>
               ) : null}
             </div>
-            <div className="flex flex-wrap items-center gap-2">
-              <NotificationBell isDark={isDark} />
-              {actions ? <div className="flex flex-wrap gap-2">{actions}</div> : null}
-            </div>
+
+            {actions ? <div className="flex flex-wrap items-center gap-2">{actions}</div> : null}
           </div>
         </header>
 
         <DietFactTicker isDark={isDark} />
 
-        <div className="mt-3 space-y-3">{children}</div>
+        <div className="mt-6 space-y-6">{children}</div>
       </main>
     </div>
   );
@@ -246,82 +347,93 @@ function DietFactTicker({ isDark }: { isDark: boolean }) {
 
   return (
     <section
-      className={[
-        "mt-3 overflow-hidden px-4 py-3",
+      className={`mt-4 overflow-hidden rounded-2xl border p-4 transition-all duration-300 ${
         isDark
-          ? "rounded-2xl bg-emerald-400/[0.075] shadow-[0_18px_54px_rgba(0,0,0,0.22),inset_0_1px_0_rgba(110,231,183,0.10)]"
-          : "rounded-2xl bg-[#edf6ec]/90 shadow-[0_14px_38px_rgba(47,97,84,0.08),inset_0_1px_0_rgba(255,255,255,0.72)]",
-      ].join(" ")}
+          ? "border-emerald-500/20 bg-emerald-950/20 shadow-[0_10px_30px_rgba(0,0,0,0.3)] backdrop-blur-xl"
+          : "border-emerald-200/80 bg-emerald-50/70 shadow-sm backdrop-blur-xl"
+      }`}
     >
-      <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-        <div className="flex min-w-0 items-start gap-3">
-          <div className={["mt-0.5 grid h-8 w-8 shrink-0 place-items-center rounded-xl", isDark ? "bg-emerald-300/14 text-emerald-200" : "bg-white text-[#285743]"].join(" ")}>
-            <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 3v3m0 12v3m7.8-15.8-2.1 2.1M6.3 17.7l-2.1 2.1M21 12h-3M6 12H3m16.8 6.8-2.1-2.1M6.3 6.3 4.2 4.2" />
-            </svg>
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <div className="flex min-w-0 items-start gap-3.5">
+          <div className={`mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-xl shadow-sm ${
+            isDark ? "bg-emerald-500/20 text-emerald-300" : "bg-white text-emerald-700"
+          }`}>
+            <Lightbulb className="h-4 w-4" />
           </div>
           <div className="min-w-0">
-            <div className={["text-[10px] font-black uppercase", isDark ? "text-emerald-200" : "text-[#285743]"].join(" ")}>
-              {lang === "tr" ? "Beslenme Notu" : "Nutrition Note"}
+            <div className={`text-[11px] font-black uppercase tracking-wider ${isDark ? "text-emerald-400" : "text-emerald-800"}`}>
+              {lang === "tr" ? "Günün Beslenme İpucu" : "Daily Nutrition Tip"}
             </div>
-            <div className={["mt-1 min-h-[36px] text-sm font-semibold leading-5 sm:min-h-0", isDark ? "text-zinc-100" : "text-[#123a32]"].join(" ")}>
+            <div className={`mt-1 text-xs font-semibold leading-relaxed sm:text-sm ${isDark ? "text-slate-200" : "text-slate-800"}`}>
               {facts[factIndex]}
             </div>
           </div>
         </div>
-        <div className={["shrink-0 text-[10px] font-black", isDark ? "text-zinc-500" : "text-[#6c7c70]"].join(" ")}>
-          {factIndex + 1}/{facts.length}
+        <div className={`shrink-0 rounded-full px-2.5 py-1 text-[10px] font-black ${
+          isDark ? "bg-white/5 text-slate-400" : "bg-white/80 text-slate-500"
+        }`}>
+          {factIndex + 1} / {facts.length}
         </div>
       </div>
+
       {canManage ? (
-        <div className={["mt-3 pt-3", isDark ? "bg-gradient-to-r from-emerald-300/10 via-transparent to-transparent" : "bg-gradient-to-r from-[#dce8dc]/70 via-transparent to-transparent"].join(" ")}>
+        <div className="mt-3 border-t border-emerald-500/10 pt-3">
           <div className="flex flex-wrap items-center justify-between gap-2">
             <button
               type="button"
               onClick={() => setEditorOpen((value) => !value)}
-              className={["rounded-xl px-3 py-1.5 text-xs font-black transition", isDark ? "bg-emerald-400/12 text-emerald-100 hover:bg-emerald-400/18" : "bg-white text-[#285743] shadow-sm hover:bg-[#f7fbf5]"].join(" ")}
+              className={`inline-flex items-center gap-1.5 rounded-xl px-3 py-1.5 text-xs font-bold transition ${
+                isDark ? "bg-white/5 text-emerald-300 hover:bg-white/10" : "bg-white text-emerald-800 shadow-sm hover:bg-emerald-50"
+              }`}
             >
-              {editorOpen ? (lang === "tr" ? "Kapat" : "Close") : lang === "tr" ? "Beslenme bilgisi ekle" : "Add nutrition note"}
+              {editorOpen ? <X className="h-3.5 w-3.5" /> : <Plus className="h-3.5 w-3.5" />}
+              {editorOpen ? (lang === "tr" ? "Kapat" : "Close") : lang === "tr" ? "Özel İpucu Ekle" : "Add Custom Tip"}
             </button>
             {customFacts.length ? (
-              <span className={["text-[10px] font-black uppercase", isDark ? "text-zinc-500" : "text-[#6c7c70]"].join(" ")}>
-                {lang === "tr" ? "Özel not" : "Custom notes"}: {customFacts.length}
+              <span className={`text-[10px] font-bold ${isDark ? "text-slate-500" : "text-slate-500"}`}>
+                {lang === "tr" ? "Eklenen İpuçları" : "Custom tips"}: {customFacts.length}
               </span>
             ) : null}
           </div>
+
           {editorOpen ? (
-            <div className="mt-3 grid gap-2">
+            <div className="mt-3 space-y-2.5">
               <div className="flex flex-col gap-2 sm:flex-row">
                 <input
                   value={factDraft}
                   onChange={(event) => setFactDraft(event.target.value)}
                   maxLength={180}
-                  placeholder={lang === "tr" ? "Danışanların göreceği kısa bir bilgi yaz..." : "Write a short note clients will see..."}
-                  className={[
-                    "min-h-10 flex-1 rounded-xl border px-3 py-2 text-xs font-semibold outline-none transition",
-                    isDark ? "border-transparent bg-black/25 text-white placeholder:text-zinc-500 focus:bg-black/35" : "border-transparent bg-white text-[#123a32] placeholder:text-[#6c7c70] shadow-sm focus:bg-white",
-                  ].join(" ")}
+                  placeholder={lang === "tr" ? "Danışanların göreceği faydalı bir bilgi yazın..." : "Write a helpful tip for clients..."}
+                  className={`min-h-10 flex-1 rounded-xl border px-3.5 py-2 text-xs font-medium outline-none transition ${
+                    isDark 
+                      ? "border-white/10 bg-black/40 text-white placeholder:text-slate-500 focus:border-emerald-500/50" 
+                      : "border-slate-200 bg-white text-slate-900 placeholder:text-slate-400 focus:border-emerald-500"
+                  }`}
                 />
                 <button
                   type="button"
                   onClick={addCustomFact}
                   disabled={factDraft.trim().length < 8}
-                  className={["rounded-xl px-4 py-2 text-xs font-black transition disabled:opacity-45", isDark ? "bg-emerald-400 text-zinc-950 hover:brightness-110" : "bg-[#2f6154] text-white hover:bg-[#244f44]"].join(" ")}
+                  className="inline-flex items-center justify-center gap-1.5 rounded-xl bg-emerald-500 px-4 py-2 text-xs font-bold text-slate-950 transition hover:bg-emerald-400 disabled:opacity-40"
                 >
-                  {lang === "tr" ? "Ekle" : "Add"}
+                  <Plus className="h-3.5 w-3.5" />
+                  {lang === "tr" ? "Kaydet" : "Save"}
                 </button>
               </div>
+
               {customFacts.length ? (
-                <div className="grid gap-1.5">
+                <div className="space-y-1.5">
                   {customFacts.slice(-3).reverse().map((item) => (
-                    <div key={item.id} className={["flex items-center justify-between gap-2 rounded-xl px-3 py-2", isDark ? "bg-black/20" : "bg-white shadow-sm"].join(" ")}>
-                      <span className={["line-clamp-1 text-xs font-semibold", isDark ? "text-zinc-300" : "text-[#123a32]"].join(" ")}>{item.text}</span>
+                    <div key={item.id} className={`flex items-center justify-between gap-2 rounded-xl border px-3 py-2 text-xs ${
+                      isDark ? "border-white/5 bg-black/20 text-slate-300" : "border-slate-100 bg-white text-slate-700 shadow-sm"
+                    }`}>
+                      <span className="line-clamp-1">{item.text}</span>
                       <button
                         type="button"
                         onClick={() => removeCustomFact(item.id)}
-                        className={["shrink-0 rounded-lg px-2 py-1 text-[10px] font-black transition", isDark ? "text-rose-200 hover:bg-rose-500/10" : "text-rose-700 hover:bg-rose-50"].join(" ")}
+                        className="rounded-lg p-1 text-rose-400 transition hover:bg-rose-500/10 hover:text-rose-300"
                       >
-                        {lang === "tr" ? "Sil" : "Delete"}
+                        <Trash2 className="h-3.5 w-3.5" />
                       </button>
                     </div>
                   ))}
@@ -344,19 +456,21 @@ export function DashboardLoadingScreen({
 }) {
   const { lang } = useAppSettings();
   return (
-    <div className={["relative min-h-screen w-screen overflow-x-hidden", isDark ? "text-white" : "bg-[#f7f1e7] text-[#2f2b22]"].join(" ")}>
-      <div className="pointer-events-none absolute inset-0">
-        <div className={isDark ? "absolute inset-0 [background:radial-gradient(1000px_620px_at_18%_6%,rgba(16,185,129,0.20),transparent_58%),linear-gradient(180deg,#050608,#07090b_56%,#050608)]" : "absolute inset-0 bg-[#f7f1e7]"} />
+    <div className={`relative grid min-h-screen w-full place-items-center px-4 ${isDark ? "bg-[#040711] text-white" : "bg-[#f8fafc] text-slate-900"}`}>
+      <div className="pointer-events-none absolute inset-0 z-0">
+        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 h-96 w-96 rounded-full bg-emerald-500/15 blur-[120px]" />
       </div>
-      <main className="relative grid min-h-screen place-items-center px-4">
-        <div className={panelClass(isDark, "w-full max-w-md px-5 py-5 text-center")}>
-          <div className={["mx-auto h-10 w-10 animate-pulse rounded-xl", isDark ? "bg-emerald-400/30" : "bg-[#dbece4]"].join(" ")} />
-          <h1 className="mt-4 text-xl font-black">{message}</h1>
-          <p className={["mt-2 text-xs", isDark ? "text-zinc-400" : "text-[#4d6b62]"].join(" ")}>
-            {lang === "tr" ? "Panel hazırlanıyor." : "Preparing dashboard."}
-          </p>
+      <div className={panelClass(isDark, "relative z-10 w-full max-w-sm p-8 text-center")}>
+        <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-gradient-to-tr from-emerald-500 to-teal-400 p-0.5 shadow-xl shadow-emerald-500/25">
+          <div className="flex h-full w-full items-center justify-center rounded-[14px] bg-[#040711]">
+            <Activity className="h-7 w-7 animate-pulse text-emerald-400" />
+          </div>
         </div>
-      </main>
+        <h1 className="mt-5 font-display text-xl font-black">{message}</h1>
+        <p className={`mt-1.5 text-xs ${isDark ? "text-slate-400" : "text-slate-600"}`}>
+          {lang === "tr" ? "Verileriniz yükleniyor, lütfen bekleyin..." : "Loading data, please wait..."}
+        </p>
+      </div>
     </div>
   );
 }
@@ -370,7 +484,7 @@ export function DashboardPanel({
   className?: string;
   children: ReactNode;
 }) {
-  return <div className={`${panelClass(isDark, "p-3.5")} ${className}`.trim()}>{children}</div>;
+  return <div className={`${panelClass(isDark, "p-5 sm:p-6")} ${className}`.trim()}>{children}</div>;
 }
 
 export function DashboardSectionHeader({
@@ -385,9 +499,9 @@ export function DashboardSectionHeader({
   aside?: ReactNode;
 }) {
   return (
-    <div className="mb-3 flex flex-wrap items-start justify-between gap-3">
+    <div className="mb-4 flex flex-wrap items-start justify-between gap-3">
       <div>
-        <h2 className="text-sm font-black">{title}</h2>
+        <h2 className="font-display text-lg font-black tracking-tight">{title}</h2>
         {subtitle ? <p className={mutedTextClass(isDark)}>{subtitle}</p> : null}
       </div>
       {aside}
@@ -399,7 +513,7 @@ export function DashboardStatCard({
   isDark,
   title,
   value,
-  accent = "from-emerald-400/20 to-teal-300/10",
+  accent = "from-emerald-400 to-cyan-400",
 }: {
   isDark: boolean;
   title: string;
@@ -407,29 +521,32 @@ export function DashboardStatCard({
   accent?: string;
 }) {
   return (
-    <DashboardPanel isDark={isDark} className="p-3">
-      <div className={`mb-3 h-1.5 w-14 rounded-full bg-gradient-to-r ${accent}`} />
+    <div className={`relative overflow-hidden rounded-3xl border p-6 backdrop-blur-xl transition-all duration-300 hover:-translate-y-1 ${
+      isDark
+        ? "border-white/10 bg-slate-900/60 shadow-[0_15px_35px_rgba(0,0,0,0.5)] hover:border-emerald-500/30 hover:shadow-emerald-500/10"
+        : "border-slate-200/80 bg-white/90 shadow-[0_10px_30px_rgba(0,0,0,0.04)] hover:border-emerald-300 hover:shadow-emerald-500/10"
+    }`}>
+      <div className={`absolute top-0 left-0 right-0 h-1 bg-gradient-to-r ${accent}`} />
       <div className={labelTextClass(isDark)}>{title}</div>
-      <div className="mt-1 text-xl font-black leading-none">{value}</div>
-      <div className={["mt-3 h-px w-full", isDark ? "bg-gradient-to-r from-emerald-300/25 to-transparent" : "bg-gradient-to-r from-[#2f6154]/18 to-transparent"].join(" ")} />
-    </DashboardPanel>
+      <div className="mt-2 font-display text-3xl font-black tracking-tight">{value}</div>
+    </div>
   );
 }
 
 export function dashboardButtonClass(isDark: boolean, variant: "default" | "danger" | "primary" = "default") {
   if (variant === "primary") {
-    return "rounded-2xl bg-gradient-to-r from-emerald-400 to-teal-300 px-3 py-1.5 text-xs font-black text-zinc-950 transition hover:brightness-110";
+    return "inline-flex items-center justify-center gap-2 rounded-2xl bg-gradient-to-r from-emerald-500 to-teal-500 px-5 py-2.5 text-xs font-black text-slate-950 shadow-lg shadow-emerald-500/25 transition-all hover:scale-[1.02] active:scale-[0.98] hover:brightness-110";
   }
   if (variant === "danger") {
-    return [
-      "px-3 py-1.5 text-xs font-bold transition",
-      isDark ? "rounded-full border border-rose-400/25 bg-rose-500/10 text-rose-100 hover:bg-rose-500/15" : "rounded-xl border border-rose-200 bg-rose-50 text-rose-700 hover:bg-rose-100",
-    ].join(" ");
+    return `inline-flex items-center justify-center gap-2 rounded-2xl border px-4 py-2 text-xs font-bold transition-all hover:scale-[1.02] active:scale-[0.98] ${
+      isDark ? "border-rose-500/30 bg-rose-500/15 text-rose-200 hover:bg-rose-500/25" : "border-rose-200 bg-rose-50 text-rose-700 hover:bg-rose-100"
+    }`;
   }
-  return [
-    "px-3 py-1.5 text-xs font-bold transition",
-      isDark ? "rounded-full bg-white/5 text-zinc-100 hover:bg-white/10" : "rounded-xl border border-[#e4dbc9] bg-[#fffaf2] text-[#285743] hover:bg-white",
-  ].join(" ");
+  return `inline-flex items-center justify-center gap-2 rounded-2xl border px-4 py-2 text-xs font-bold transition-all hover:scale-[1.02] active:scale-[0.98] ${
+    isDark 
+      ? "border-white/10 bg-white/5 text-slate-200 hover:border-emerald-500/40 hover:bg-white/10" 
+      : "border-slate-200 bg-white text-slate-800 shadow-sm hover:border-emerald-500/40 hover:bg-emerald-50/50"
+  }`;
 }
 
 export function DashboardMessagesLink({
@@ -445,54 +562,37 @@ export function DashboardMessagesLink({
     <Link
       to="/messages"
       aria-label={unreadCount > 0 ? `${label}: ${unreadCount}` : label}
-      className={[
-        "group relative inline-flex items-center gap-2 overflow-hidden border px-3 py-1.5 text-xs font-black shadow-sm transition",
-        isDark
-          ? "rounded-2xl border-transparent bg-emerald-400 text-zinc-950 shadow-[0_14px_42px_rgba(16,185,129,0.18)] hover:brightness-110"
-          : "rounded-xl border-[#2f6154]/20 bg-[#2f6154] text-white shadow-[0_12px_34px_rgba(47,97,84,0.14)] hover:bg-[#244f44]",
-      ].join(" ")}
+      className={`group relative inline-flex items-center gap-2 rounded-2xl border px-3 py-1.5 text-xs font-bold transition-all hover:scale-[1.02] ${
+        isDark 
+          ? "border-white/10 bg-white/5 text-slate-200 hover:border-emerald-500/40 hover:bg-emerald-500/10" 
+          : "border-slate-200 bg-white text-slate-800 shadow-sm hover:border-emerald-500/40 hover:bg-emerald-50/50"
+      }`}
     >
-      <span
-        className={[
-          "flex h-5 w-5 items-center justify-center rounded-lg",
-          isDark ? "bg-zinc-950/10 text-zinc-950" : "bg-white/10 text-white",
-        ].join(" ")}
-      >
-        <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.2} d="M21 12a8.5 8.5 0 0 1-8.5 8.5 9 9 0 0 1-3.66-.78L3 21l1.35-4.33A8.46 8.46 0 0 1 4 12a8.5 8.5 0 1 1 17 0Z" />
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.2} d="M8.5 11.5h.01M12 11.5h.01M15.5 11.5h.01" />
-        </svg>
-      </span>
-      <span>{label}</span>
-      {unreadCount > 0 ? (
-        <span
-          className={[
-            "ml-0.5 flex h-5 min-w-5 items-center justify-center rounded-full px-1.5 text-[10px] font-black",
-            isDark ? "bg-zinc-950 text-emerald-200" : "bg-white text-[#285743]",
-          ].join(" ")}
-        >
-          {unreadCount > 99 ? "99+" : unreadCount}
+      <MessageSquare className="h-4 w-4 text-emerald-400 transition-transform group-hover:scale-110" />
+      <span className="hidden sm:inline">{label}</span>
+      {unreadCount > 0 && (
+        <span className="rounded-full bg-emerald-500 px-1.5 py-0.5 text-[10px] font-black text-slate-950">
+          {unreadCount}
         </span>
-      ) : null}
+      )}
     </Link>
   );
 }
 
 export function labelTextClass(isDark: boolean) {
-  return ["text-[10px] font-bold uppercase", isDark ? "text-zinc-400" : "text-[#5e776e]"].join(" ");
+  return `text-[11px] font-black uppercase tracking-wider ${isDark ? "text-emerald-400" : "text-emerald-700"}`;
 }
 
 export function mutedTextClass(isDark: boolean) {
-  return ["mt-1 text-xs leading-5", isDark ? "text-zinc-400" : "text-[#4d6b62]"].join(" ");
+  return `mt-1 text-xs leading-relaxed ${isDark ? "text-slate-400" : "text-slate-500"}`;
 }
 
 function panelClass(isDark: boolean, padding: string) {
-  return [
-    padding,
+  return `${padding} rounded-[32px] border backdrop-blur-2xl transition-all duration-300 ${
     isDark
-      ? "rounded-2xl bg-[linear-gradient(180deg,rgba(255,255,255,0.055),rgba(16,185,129,0.045))] shadow-[0_22px_70px_rgba(0,0,0,0.34),inset_0_-1px_0_rgba(16,185,129,0.10)]"
-      : "rounded-2xl border border-[#e4dbc9] bg-[#fffaf2]/95 shadow-[0_16px_46px_rgba(54,78,66,0.08)]",
-  ].join(" ");
+      ? "border-white/10 bg-slate-900/60 shadow-[0_20px_50px_rgba(0,0,0,0.6)] hover:border-white/15"
+      : "border-slate-200/80 bg-white/90 shadow-[0_15px_40px_rgba(0,0,0,0.03)] hover:border-slate-300"
+  }`;
 }
 
 export function NotificationBell({ isDark }: { isDark: boolean }) {
@@ -509,7 +609,7 @@ export function NotificationBell({ isDark }: { isDark: boolean }) {
       return;
     }
     try {
-      const resCount = await fetch("http://localhost:3000/api/notifications/unread-count", {
+      const resCount = await fetch(`${API_BASE_URL}/api/notifications/unread-count`, {
         headers: { Authorization: `Bearer ${token}` }
       });
       const dataCount = await resCount.json();
@@ -518,15 +618,15 @@ export function NotificationBell({ isDark }: { isDark: boolean }) {
   }, []);
 
   const fetchNotifications = useCallback(async () => {
-      const token = localStorage.getItem("access_token");
-      if (!token) return;
-      try {
-        const resAll = await fetch("http://localhost:3000/api/notifications", {
-          headers: { Authorization: `Bearer ${token}` }
-        });
-        const dataAll = await resAll.json();
-        setNotifications(Array.isArray(dataAll?.data) ? dataAll.data : []);
-      } catch (err) {}
+    const token = localStorage.getItem("access_token");
+    if (!token) return;
+    try {
+      const resAll = await fetch(`${API_BASE_URL}/api/notifications`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      const dataAll = await resAll.json();
+      setNotifications(Array.isArray(dataAll?.data) ? dataAll.data : []);
+    } catch (err) {}
   }, []);
 
   useEffect(() => {
@@ -549,12 +649,6 @@ export function NotificationBell({ isDark }: { isDark: boolean }) {
   }, [fetchNotifications, open]);
 
   useEffect(() => {
-    if (!open) return;
-    const interval = setInterval(fetchNotifications, 60000);
-    return () => clearInterval(interval);
-  }, [fetchNotifications, open]);
-
-  useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       if (ref.current && !ref.current.contains(event.target as Node)) {
         setOpen(false);
@@ -568,7 +662,7 @@ export function NotificationBell({ isDark }: { isDark: boolean }) {
     const token = localStorage.getItem("access_token");
     if (!token) return;
     try {
-      await fetch(`http://localhost:3000/api/notifications/${id}/read`, {
+      await fetch(`${API_BASE_URL}/api/notifications/${id}/read`, {
         method: 'PATCH',
         headers: { Authorization: `Bearer ${token}` }
       });
@@ -581,7 +675,7 @@ export function NotificationBell({ isDark }: { isDark: boolean }) {
     const token = localStorage.getItem("access_token");
     if (!token) return;
     try {
-      await fetch(`http://localhost:3000/api/notifications/read-all`, {
+      await fetch(`${API_BASE_URL}/api/notifications/read-all`, {
         method: 'PATCH',
         headers: { Authorization: `Bearer ${token}` }
       });
@@ -594,66 +688,71 @@ export function NotificationBell({ isDark }: { isDark: boolean }) {
     <div className="relative" ref={ref}>
       <button 
         onClick={() => setOpen(!open)}
-        className={[
-          "relative flex h-9 w-9 items-center justify-center border transition",
-          isDark ? "rounded-2xl border-transparent bg-white/5 hover:bg-white/10" : "rounded-xl border-[#e4dbc9] bg-[#fffaf2] text-[#285743] hover:bg-white"
-        ].join(" ")}
+        className={`relative flex h-9 w-9 items-center justify-center rounded-2xl border transition-all hover:scale-105 ${
+          isDark 
+            ? "border-white/10 bg-white/5 text-slate-300 hover:bg-white/10 hover:text-white" 
+            : "border-slate-200 bg-white text-slate-700 shadow-sm hover:bg-slate-50"
+        }`}
       >
-        <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
-        </svg>
+        <Bell className="h-4 w-4 stroke-[2.2]" />
         {unreadCount > 0 && (
-          <span className="absolute -top-1 -right-1 flex h-4 w-4 items-center justify-center rounded-full bg-rose-500 text-[10px] font-bold text-white">
+          <span className="absolute -top-1 -right-1 flex h-4 w-4 items-center justify-center rounded-full bg-emerald-500 text-[10px] font-black text-slate-950 shadow-md shadow-emerald-500/40">
             {unreadCount}
           </span>
         )}
       </button>
 
       {open && (
-        <div className={[
-          "absolute right-0 top-12 z-50 w-80 overflow-hidden border shadow-2xl",
-          isDark ? "rounded-2xl border-transparent bg-[#080b0a]/95" : "rounded-2xl border-[#e4dbc9] bg-[#fffaf2]"
-        ].join(" ")}>
-          <div className={[
-            "flex items-center justify-between border-b px-4 py-3",
-            isDark ? "border-transparent bg-white/5" : "border-[#e4dbc9] bg-[#f9f6ec]"
-          ].join(" ")}>
-            <h3 className="font-extrabold text-sm">{lang === "tr" ? "Bildirimler" : "Notifications"}</h3>
+        <div className={`absolute right-0 top-12 z-50 w-80 sm:w-96 overflow-hidden rounded-3xl border shadow-2xl backdrop-blur-2xl animate-fadeInUp ${
+          isDark ? "border-white/15 bg-slate-900/95 text-white shadow-black/80" : "border-slate-200 bg-white/95 text-slate-900 shadow-slate-300/50"
+        }`}>
+          <div className={`flex items-center justify-between border-b px-5 py-4 ${
+            isDark ? "border-white/10 bg-white/5" : "border-slate-100 bg-slate-50/70"
+          }`}>
+            <div className="flex items-center gap-2 font-display text-sm font-black">
+              <Bell className="h-4 w-4 text-emerald-400" />
+              {lang === "tr" ? "Bildirimler" : "Notifications"}
+            </div>
             {unreadCount > 0 && (
-              <button onClick={markAllAsRead} className={["text-xs font-black transition", isDark ? "text-emerald-300 hover:text-emerald-200" : "text-[#285743] hover:text-[#123a32]"].join(" ")}>
-                {lang === "tr" ? "Tümünü okundu işaretle" : "Mark all as read"}
+              <button 
+                onClick={markAllAsRead} 
+                className="inline-flex items-center gap-1 text-xs font-bold text-emerald-400 transition hover:text-emerald-300"
+              >
+                <CheckCheck className="h-3.5 w-3.5" />
+                {lang === "tr" ? "Tümünü Oku" : "Mark all read"}
               </button>
             )}
           </div>
           
-          <div className="max-h-96 overflow-y-auto">
+          <div className="max-h-[380px] overflow-y-auto divide-y divide-white/5">
             {notifications.length === 0 ? (
-              <div className={["px-4 py-8 text-center text-sm", isDark ? "text-zinc-500" : "text-[#7a7160]"].join(" ")}>
-                {lang === "tr" ? "Henüz bir bildiriminiz yok." : "You do not have any notifications yet."}
+              <div className={`px-4 py-12 text-center text-xs ${isDark ? "text-slate-500" : "text-slate-400"}`}>
+                <Bell className="mx-auto mb-2 h-8 w-8 stroke-1 opacity-40" />
+                {lang === "tr" ? "Yeni bildiriminiz bulunmuyor." : "No new notifications."}
               </div>
             ) : (
               notifications.map((notif) => (
                 <div 
                   key={notif.id} 
                   onClick={() => !notif.is_read && markAsRead(notif.id)}
-                  className={[
-                    "px-4 py-3 border-b last:border-0 cursor-pointer transition",
-                    isDark ? "border-transparent hover:bg-white/5" : "border-[#d8e5d8] hover:bg-white",
-                    !notif.is_read ? (isDark ? "bg-emerald-500/5" : "bg-[#edf6ec]") : ""
-                  ].join(" ")}
+                  className={`p-4 transition-colors cursor-pointer ${
+                    !notif.is_read 
+                      ? isDark ? "bg-emerald-500/10 hover:bg-emerald-500/15" : "bg-emerald-50/70 hover:bg-emerald-50" 
+                      : isDark ? "hover:bg-white/5" : "hover:bg-slate-50"
+                  }`}
                 >
-                  <div className="flex items-start justify-between gap-2">
-                    <div className="flex-1">
-                      <div className="font-bold text-sm flex items-center gap-2">
-                        {!notif.is_read && <span className="h-2 w-2 rounded-full bg-emerald-500 shrink-0"></span>}
-                        {notif.title}
-                      </div>
-                      <div className={["text-xs mt-1 leading-relaxed", isDark ? "text-zinc-400" : "text-[#4d6b62]"].join(" ")}>
+                  <div className="flex items-start gap-3">
+                    {!notif.is_read && (
+                      <span className="mt-1.5 h-2 w-2 shrink-0 rounded-full bg-emerald-400 shadow-sm shadow-emerald-400" />
+                    )}
+                    <div className="flex-1 min-w-0">
+                      <h4 className="text-xs font-black tracking-tight">{notif.title}</h4>
+                      <p className={`mt-1 text-xs leading-relaxed ${isDark ? "text-slate-400" : "text-slate-600"}`}>
                         {notif.message}
-                      </div>
-                      <div className={["text-[10px] mt-2", isDark ? "text-zinc-600" : "text-[#789188]"].join(" ")}>
+                      </p>
+                      <span className={`mt-2 block text-[10px] font-semibold ${isDark ? "text-slate-500" : "text-slate-400"}`}>
                         {new Date(notif.created_at).toLocaleString(lang === "tr" ? "tr-TR" : "en-US")}
-                      </div>
+                      </span>
                     </div>
                   </div>
                 </div>
@@ -665,3 +764,4 @@ export function NotificationBell({ isDark }: { isDark: boolean }) {
     </div>
   );
 }
+

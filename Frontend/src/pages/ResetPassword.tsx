@@ -1,51 +1,52 @@
 import { useMemo, useState } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { useAppSettings } from "../context/AppSettingsContext";
+import { API_BASE_URL as API_BASE } from "../lib/api";
+import { Lock, Eye, EyeOff, KeyRound, CheckCircle2, AlertCircle, ArrowRight, Activity } from "lucide-react";
 
 type Lang = "tr" | "en";
 
-const API_BASE = "http://localhost:3000";
 const RESET_PASSWORD_URL = `${API_BASE}/api/auth/reset-password`;
 const PASSWORD_REGEX = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{8,}$/;
 
 const COPY = {
   tr: {
     title: "Yeni Şifre Belirle",
-    subtitle: "E-postana gönderilen bağlantı ile şifreni güvenli şekilde yenile.",
+    subtitle: "E-postanıza gönderilen güvenli bağlantı ile şifrenizi yenileyin.",
     password: "Yeni Şifre",
-    confirmPassword: "Şifre Tekrar",
-    hint: "Şifren en az 8 karakter olmalı; büyük harf, küçük harf, rakam ve özel karakter içermelidir.",
+    confirmPassword: "Yeni Şifre (Tekrar)",
+    hint: "En az 8 karakter, büyük/küçük harf, rakam ve özel karakter içermelidir.",
     submit: "Şifreyi Güncelle",
     submitting: "Güncelleniyor...",
-    success: "Şifren güncellendi. Artık giriş yapabilirsin.",
-    invalidToken: "Bağlantı geçersiz olabilir veya süresi dolmuş olabilir.",
-    mismatch: "Şifre alanları birbiriyle aynı olmalıdır.",
-    passwordRule: "Lütfen daha güçlü bir şifre belirle.",
-    goLogin: "Girişe Dön",
-    backHome: "Ana sayfa",
+    success: "Şifreniz başarıyla güncellendi! Giriş sayfasına yönlendiriliyorsunuz.",
+    invalidToken: "Şifre yenileme bağlantısı geçersiz veya süresi dolmuş.",
+    mismatch: "Girdiğiniz şifreler birbiriyle eşleşmiyor.",
+    passwordRule: "Lütfen kriterlere uygun güçlü bir şifre belirleyin.",
+    goLogin: "Giriş Yap",
+    backHome: "Ana Sayfa",
   },
   en: {
-    title: "Set a new password",
-    subtitle: "Use the link from your email to securely update your password.",
-    password: "New password",
-    confirmPassword: "Confirm password",
-    hint: "Use at least 8 characters with upper, lower, number and special character.",
-    submit: "Update password",
+    title: "Set a New Password",
+    subtitle: "Use the secure link from your email to update your password.",
+    password: "New Password",
+    confirmPassword: "Confirm Password",
+    hint: "Use at least 8 characters with uppercase, lowercase, number and symbol.",
+    submit: "Update Password",
     submitting: "Updating...",
-    success: "Your password was updated. You can sign in now.",
-    invalidToken: "This link is invalid or may have expired.",
-    mismatch: "Passwords must match.",
-    passwordRule: "Enter a stronger password.",
-    goLogin: "Back to login",
+    success: "Your password was updated successfully! Redirecting to login.",
+    invalidToken: "This password reset token is invalid or expired.",
+    mismatch: "Passwords do not match.",
+    passwordRule: "Please enter a stronger password meeting all requirements.",
+    goLogin: "Back to Login",
     backHome: "Home",
   },
-} as const;
+};
 
 export default function ResetPassword() {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
   const { lang, isDark } = useAppSettings();
-  const t = COPY[lang as Lang];
+  const t = COPY[lang as Lang] || COPY.tr;
   const token = useMemo(() => searchParams.get("token")?.trim() || "", [searchParams]);
 
   const [password, setPassword] = useState("");
@@ -78,157 +79,135 @@ export default function ResetPassword() {
     try {
       const res = await fetch(RESET_PASSWORD_URL, {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          token,
-          password,
-        }),
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ token, password }),
       });
 
       const data = await res.json().catch(() => ({}));
       if (!res.ok) {
-        const message =
-          typeof data?.message === "string" && data.message.trim()
-            ? data.message
-            : t.invalidToken;
-        throw new Error(message);
+        throw new Error(data?.message || t.invalidToken);
       }
 
       setSuccess(t.success);
       setPassword("");
       setConfirmPassword("");
-      window.setTimeout(() => navigate("/login", { replace: true }), 1200);
+      window.setTimeout(() => navigate("/login", { replace: true }), 1500);
     } catch (err: unknown) {
-      const raw = err instanceof Error ? err.message : "";
-      const normalized = raw.toLowerCase();
-      if (normalized.includes("invalid") || normalized.includes("expired") || normalized.includes("gecersiz") || normalized.includes("suresi")) {
-        setError(t.invalidToken);
-      } else {
-        setError(raw || t.invalidToken);
-      }
+      setError((err as Error).message || t.invalidToken);
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <div className="relative min-h-screen overflow-hidden">
-      <div className="pointer-events-none absolute inset-0">
-        <div
-          className={
-            isDark
-              ? "absolute inset-0 [background:radial-gradient(1000px_640px_at_12%_12%,rgba(16,185,129,0.18),transparent_58%),radial-gradient(900px_620px_at_88%_15%,rgba(20,184,166,0.12),transparent_60%),linear-gradient(180deg,#050608,#07090b_55%,#050608)]"
-              : "absolute inset-0 [background:radial-gradient(1080px_680px_at_10%_0%,rgba(22,128,101,0.22),transparent_58%),radial-gradient(900px_620px_at_90%_10%,rgba(20,120,133,0.16),transparent_56%),linear-gradient(180deg,#edf3ef,#dfe9e2_58%,#dbe5df)]"
-          }
-        />
+    <div className={`relative min-h-screen w-full flex items-center justify-center p-4 ${
+      isDark ? "bg-[#040711] text-white" : "bg-[#f8fafc] text-slate-900"
+    }`}>
+      {/* Glows */}
+      <div className="pointer-events-none fixed inset-0 z-0">
+        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 h-96 w-96 rounded-full bg-emerald-500/10 blur-[130px]" />
       </div>
 
-      <main className="relative z-10 mx-auto grid min-h-screen max-w-6xl place-items-center px-4 py-10 sm:px-6">
-        <section className={isDark ? "w-full max-w-lg rounded-[28px] border border-white/10 bg-white/5 p-6 shadow-[0_40px_140px_rgba(0,0,0,0.65)] sm:p-8" : "w-full max-w-lg rounded-[28px] border border-[#325d51]/20 bg-[#f3f7f4]/90 p-6 shadow-[0_40px_120px_rgba(8,22,20,0.12)] sm:p-8"}>
-          <div className="flex items-center justify-between gap-4">
-            <Link to="/" className={isDark ? "text-xs font-semibold text-zinc-300 hover:text-white" : "text-xs font-semibold text-[#36544c] hover:text-[#123128]"}>
-              {t.backHome}
-            </Link>
-            <Link to="/login" className={isDark ? "text-xs font-semibold text-emerald-200 hover:text-white" : "text-xs font-semibold text-emerald-700 hover:text-emerald-900"}>
-              {t.goLogin}
-            </Link>
+      <div className={`relative z-10 w-full max-w-md rounded-[36px] border p-8 sm:p-10 shadow-2xl backdrop-blur-2xl transition-all ${
+        isDark ? "border-white/10 bg-slate-900/70 shadow-black/80" : "border-slate-200 bg-white/90 shadow-slate-300/40"
+      }`}>
+        {/* Top Header */}
+        <div className="flex items-center justify-between border-b border-white/5 pb-4">
+          <Link to="/" className="inline-flex items-center gap-2 text-xs font-bold text-slate-400 hover:text-white transition">
+            <Activity className="h-4 w-4 text-emerald-400" />
+            <span>{t.backHome}</span>
+          </Link>
+          <Link to="/login" className="text-xs font-bold text-emerald-400 hover:text-emerald-300 transition">
+            {t.goLogin}
+          </Link>
+        </div>
+
+        <div className="mt-6 text-center">
+          <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-emerald-500/15 text-emerald-400 mb-3 shadow-md shadow-emerald-500/15">
+            <KeyRound className="h-7 w-7" />
+          </div>
+          <h1 className="font-display text-2xl font-black tracking-tight">{t.title}</h1>
+          <p className={`mt-2 text-xs leading-relaxed ${isDark ? "text-slate-400" : "text-slate-600"}`}>
+            {t.subtitle}
+          </p>
+        </div>
+
+        {error && (
+          <div className="mt-6 flex items-start gap-2.5 rounded-2xl border border-rose-500/30 bg-rose-500/10 p-3.5 text-xs font-semibold text-rose-300 animate-fadeInUp">
+            <AlertCircle className="h-4 w-4 shrink-0 text-rose-400 mt-0.5" />
+            <span>{error}</span>
+          </div>
+        )}
+
+        {success && (
+          <div className="mt-6 flex items-start gap-2.5 rounded-2xl border border-emerald-500/30 bg-emerald-500/10 p-3.5 text-xs font-semibold text-emerald-300 animate-fadeInUp">
+            <CheckCircle2 className="h-4 w-4 shrink-0 text-emerald-400 mt-0.5" />
+            <span>{success}</span>
+          </div>
+        )}
+
+        <form onSubmit={handleSubmit} className="mt-6 space-y-4">
+          <div>
+            <label className="block text-xs font-bold uppercase tracking-wider text-emerald-400 mb-1.5">{t.password}</label>
+            <div className="relative">
+              <Lock className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+              <input
+                type={showPassword ? "text" : "password"}
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                placeholder="••••••••"
+                className={`w-full rounded-2xl border pl-10 pr-12 py-3 text-xs font-semibold outline-none transition ${
+                  isDark ? "border-white/10 bg-black/40 text-white focus:border-emerald-500" : "border-slate-200 bg-slate-50 text-slate-900 focus:border-emerald-500"
+                }`}
+              />
+              <button
+                type="button"
+                onClick={() => setShowPassword(!showPassword)}
+                className="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-white transition"
+              >
+                {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+              </button>
+            </div>
           </div>
 
-          <div className="mt-6">
-            <h1 className={isDark ? "text-3xl font-extrabold text-white" : "text-3xl font-extrabold text-[#0e2d27]"}>
-              {t.title}
-            </h1>
-            <p className={isDark ? "mt-2 text-sm leading-6 text-zinc-300" : "mt-2 text-sm leading-6 text-[#4d6b62]"}>
-              {t.subtitle}
-            </p>
+          <div>
+            <label className="block text-xs font-bold uppercase tracking-wider text-emerald-400 mb-1.5">{t.confirmPassword}</label>
+            <div className="relative">
+              <Lock className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+              <input
+                type={showConfirmPassword ? "text" : "password"}
+                value={confirmPassword}
+                onChange={(e) => setConfirmPassword(e.target.value)}
+                placeholder="••••••••"
+                className={`w-full rounded-2xl border pl-10 pr-12 py-3 text-xs font-semibold outline-none transition ${
+                  isDark ? "border-white/10 bg-black/40 text-white focus:border-emerald-500" : "border-slate-200 bg-slate-50 text-slate-900 focus:border-emerald-500"
+                }`}
+              />
+              <button
+                type="button"
+                onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                className="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-white transition"
+              >
+                {showConfirmPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+              </button>
+            </div>
           </div>
 
-          {!token ? <div className="mt-5 rounded-2xl border border-rose-500/20 bg-rose-500/10 px-4 py-3 text-sm text-rose-100">{t.invalidToken}</div> : null}
-          {error ? <div className="mt-5 rounded-2xl border border-rose-500/20 bg-rose-500/10 px-4 py-3 text-sm text-rose-100">{error}</div> : null}
-          {success ? <div className="mt-5 rounded-2xl border border-emerald-500/20 bg-emerald-500/10 px-4 py-3 text-sm text-emerald-100">{success}</div> : null}
+          <p className={`text-[11px] leading-relaxed ${isDark ? "text-slate-400" : "text-slate-500"}`}>
+            {t.hint}
+          </p>
 
-          <form onSubmit={handleSubmit} className="mt-6 space-y-4">
-            <PasswordField
-              isDark={isDark}
-              label={t.password}
-              value={password}
-              onChange={(value) => {
-                setPassword(value);
-                setError("");
-              }}
-              show={showPassword}
-              onToggle={() => setShowPassword((current) => !current)}
-            />
-
-            <PasswordField
-              isDark={isDark}
-              label={t.confirmPassword}
-              value={confirmPassword}
-              onChange={(value) => {
-                setConfirmPassword(value);
-                setError("");
-              }}
-              show={showConfirmPassword}
-              onToggle={() => setShowConfirmPassword((current) => !current)}
-            />
-
-            <div className={isDark ? "text-xs text-zinc-400" : "text-xs text-[#4d6b62]"}>{t.hint}</div>
-
-            <button
-              type="submit"
-              disabled={loading || !token}
-              className="w-full rounded-2xl bg-gradient-to-r from-emerald-400 to-teal-300 px-5 py-3 text-sm font-extrabold text-zinc-950 shadow-[0_18px_60px_rgba(16,185,129,0.20)] transition hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-60"
-            >
-              {loading ? t.submitting : t.submit}
-            </button>
-          </form>
-        </section>
-      </main>
-    </div>
-  );
-}
-
-function PasswordField({
-  isDark,
-  label,
-  value,
-  onChange,
-  show,
-  onToggle,
-}: {
-  isDark: boolean;
-  label: string;
-  value: string;
-  onChange: (value: string) => void;
-  show: boolean;
-  onToggle: () => void;
-}) {
-  return (
-    <div>
-      <label className={isDark ? "mb-2 block text-xs font-semibold text-zinc-200" : "mb-2 block text-xs font-semibold text-[#36544c]"}>
-        {label}
-      </label>
-      <div className="relative">
-        <input
-          value={value}
-          onChange={(ev) => onChange(ev.target.value)}
-          type={show ? "text" : "password"}
-          className={[
-            "w-full rounded-2xl border px-4 py-3 pr-12 text-sm outline-none transition",
-            isDark ? "border-white/10 bg-black/20 text-white" : "border-[#325d51]/25 bg-white text-[#0e2d27]",
-            "focus:border-emerald-400/40 focus:ring-4 focus:ring-emerald-500/10",
-          ].join(" ")}
-        />
-        <button
-          type="button"
-          onClick={onToggle}
-          className={isDark ? "absolute right-3 top-1/2 -translate-y-1/2 rounded-xl border border-white/10 bg-white/5 px-2 py-1 text-[11px] font-semibold text-zinc-200 hover:bg-white/10" : "absolute right-3 top-1/2 -translate-y-1/2 rounded-xl border border-[#325d51]/25 bg-[#d7e4de] px-2 py-1 text-[11px] font-semibold text-[#36544c] hover:bg-[#c9dad3]"}
-        >
-          {show ? "Hide" : "Show"}
-        </button>
+          <button
+            type="submit"
+            disabled={loading || !token}
+            className="w-full flex items-center justify-center gap-2 rounded-2xl bg-gradient-to-r from-emerald-500 via-teal-500 to-cyan-500 py-3.5 text-xs font-black text-slate-950 shadow-lg shadow-emerald-500/25 transition hover:brightness-110 active:scale-[0.98] disabled:opacity-50"
+          >
+            <span>{loading ? t.submitting : t.submit}</span>
+            <ArrowRight className="h-4 w-4" />
+          </button>
+        </form>
       </div>
     </div>
   );
 }
+

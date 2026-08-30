@@ -1,6 +1,0 @@
-- [x] typeorm-extension eklendi (npm i typeorm-extension)
-- [x] package.json seed scriptleri typeorm-extension CLI ile güncellendi (seed, seed:run, seed:create)
-- [x] src/database/data-source.ts oluşturuldu; seeds/factories glob patternleri tanımlandı
-- [x] src/database/seeds/0001-initial.seeder.ts eklendi (roller, izinler, admin kullanıcı)
-- [x] Eski typeorm-seeding uyumlu olmayan seed dosyası kaldırıldı: src/database/seeds/1700000000001-InitialSeed.ts
-- [x] Node 22 + TypeORM 0.3 ile çalışacak şekilde seeding doğrulandı (npm run seed:run) 
