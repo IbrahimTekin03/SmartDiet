@@ -359,7 +359,7 @@ export default function Features() {
             </span>
           </h1>
 
-          <p className="text-sm sm:text-base leading-relaxed text-slate-300">
+          <p className={`text-sm sm:text-base leading-relaxed ${isDark ? "text-slate-300" : "text-slate-700"}`}>
             {lang === "tr" 
               ? "Klinik diyetisyenler, bireysel danışanlar ve sağlık yöneticileri için uçtan uca tasarlanmış modern dijital sağlık ekosisteminin tüm fonksiyonlarını keşfedin."
               : "Explore the complete functional matrix designed end-to-end for clinical dietitians, individual clients, and healthcare managers."
@@ -368,14 +368,16 @@ export default function Features() {
 
           {/* Quick Demo Sandbox Banner */}
           <div className={`p-5 rounded-[28px] border text-left mt-6 flex flex-col sm:flex-row items-center justify-between gap-4 backdrop-blur-xl ${
-            isDark ? "border-emerald-500/30 bg-emerald-950/20" : "border-emerald-200 bg-emerald-50/80"
+            isDark ? "border-emerald-500/30 bg-emerald-950/20" : "border-emerald-300/80 bg-emerald-50 shadow-sm"
           }`}>
             <div>
-              <div className="flex items-center gap-2 text-xs font-black text-emerald-400 uppercase tracking-wider">
+              <div className={`flex items-center gap-2 text-xs font-black uppercase tracking-wider ${
+                isDark ? "text-emerald-400" : "text-emerald-800"
+              }`}>
                 <Activity className="h-4 w-4" />
                 <span>{lang === "tr" ? "İK & İnceleyenler İçin Hızlı Canlı Demo" : "Fast Interactive Sandbox for Reviewers"}</span>
               </div>
-              <p className="text-xs text-slate-300 mt-1">
+              <p className={`text-xs mt-1 ${isDark ? "text-slate-300" : "text-slate-700 font-medium"}`}>
                 {lang === "tr" ? "Şifre girmeden tek tıkla canlı sistem panellerini test edin:" : "Experience live panels in one click without typing passwords:"}
               </p>
             </div>
@@ -384,7 +386,7 @@ export default function Features() {
               <button
                 type="button"
                 disabled={demoLoading !== null}
-                onClick={() => handleQuickLogin("ibrahim_tkn033@hotmail.com", "/dietitian-home", "dietitian")}
+                onClick={() => handleQuickLogin("demo.dietitian@smartdiet.com", "/dietitian-home", "dietitian")}
                 className="flex-1 sm:flex-initial flex items-center justify-center gap-2 rounded-2xl bg-gradient-to-r from-emerald-500 to-teal-400 px-4 py-2.5 text-xs font-black text-slate-950 shadow-md shadow-emerald-500/20 hover:brightness-110 transition disabled:opacity-50"
               >
                 <Stethoscope className="h-3.5 w-3.5" />
@@ -394,8 +396,12 @@ export default function Features() {
               <button
                 type="button"
                 disabled={demoLoading !== null}
-                onClick={() => handleQuickLogin("ibrahim_tkn03@hotmail.com", "/client-home", "client")}
-                className="flex-1 sm:flex-initial flex items-center justify-center gap-2 rounded-2xl border border-teal-500/30 bg-teal-500/10 px-4 py-2.5 text-xs font-black text-teal-400 hover:bg-teal-500/20 transition disabled:opacity-50"
+                onClick={() => handleQuickLogin("demo.client@smartdiet.com", "/client-home", "client")}
+                className={`flex-1 sm:flex-initial flex items-center justify-center gap-2 rounded-2xl border px-4 py-2.5 text-xs font-black transition disabled:opacity-50 ${
+                  isDark 
+                    ? "border-teal-500/30 bg-teal-500/10 text-teal-400 hover:bg-teal-500/20" 
+                    : "border-teal-300 bg-teal-50 text-teal-800 hover:bg-teal-100 shadow-sm"
+                }`}
               >
                 <UserCheck className="h-3.5 w-3.5" />
                 <span>{lang === "tr" ? "Danışan Demosu" : "Client Demo"}</span>
@@ -447,27 +453,35 @@ export default function Features() {
                     <div className={`flex h-12 w-12 items-center justify-center rounded-2xl border bg-gradient-to-tr ${f.color}`}>
                       <Icon className="h-6 w-6" />
                     </div>
-                    <span className="inline-flex items-center gap-1 rounded-full border border-white/10 bg-white/5 px-3 py-1 text-[10px] font-black uppercase tracking-wider text-slate-400">
+                    <span className={`inline-flex items-center gap-1 rounded-full border px-3 py-1 text-[10px] font-black uppercase tracking-wider ${
+                      isDark 
+                        ? "border-white/10 bg-white/5 text-slate-400" 
+                        : "border-slate-200 bg-slate-100 text-slate-700"
+                    }`}>
                       {f.badge}
                     </span>
                   </div>
 
-                  <h3 className="font-display text-lg font-black tracking-tight group-hover:text-emerald-400 transition">
+                  <h3 className="font-display text-lg font-black tracking-tight group-hover:text-emerald-500 transition">
                     {f.title}
                   </h3>
 
-                  <p className={`mt-2.5 text-xs sm:text-sm leading-relaxed ${isDark ? "text-slate-300" : "text-slate-600"}`}>
+                  <p className={`mt-2.5 text-xs sm:text-sm leading-relaxed ${isDark ? "text-slate-300" : "text-slate-700 font-medium"}`}>
                     {f.desc}
                   </p>
                 </div>
 
-                <div className="mt-6 pt-5 border-t border-white/5 space-y-2">
-                  <span className="text-[10px] font-black uppercase tracking-wider text-slate-400 block mb-2">
+                <div className={`mt-6 pt-5 border-t space-y-2.5 ${isDark ? "border-white/5" : "border-slate-100"}`}>
+                  <span className={`text-[10px] font-black uppercase tracking-wider block mb-2 ${
+                    isDark ? "text-slate-400" : "text-emerald-800"
+                  }`}>
                     {lang === "tr" ? "Öne Çıkan Yetenekler" : "Key Capabilities"}
                   </span>
                   {f.highlights.map((h, i) => (
-                    <div key={i} className="flex items-center gap-2 text-xs font-semibold text-slate-300">
-                      <CheckCircle2 className="h-3.5 w-3.5 text-emerald-400 shrink-0 stroke-[2.5]" />
+                    <div key={i} className={`flex items-center gap-2 text-xs font-semibold ${
+                      isDark ? "text-slate-300" : "text-slate-800"
+                    }`}>
+                      <CheckCircle2 className="h-3.5 w-3.5 text-emerald-500 shrink-0 stroke-[2.5]" />
                       <span>{h}</span>
                     </div>
                   ))}
@@ -481,13 +495,13 @@ export default function Features() {
         <div className={`mt-14 rounded-[36px] border p-8 sm:p-10 text-center relative overflow-hidden backdrop-blur-2xl ${
           isDark 
             ? "border-emerald-500/20 bg-gradient-to-b from-slate-900/90 to-emerald-950/40 shadow-2xl shadow-emerald-500/10" 
-            : "border-emerald-200 bg-gradient-to-b from-white to-emerald-50 shadow-xl"
+            : "border-emerald-300/80 bg-gradient-to-b from-white to-emerald-50 shadow-xl"
         }`}>
           <div className="max-w-2xl mx-auto space-y-4">
             <h2 className="font-display text-2xl sm:text-3xl font-black tracking-tight">
               {lang === "tr" ? "Platformu Canlı Olarak Deneyimleyin" : "Experience the Platform Live"}
             </h2>
-            <p className="text-xs sm:text-sm text-slate-300 leading-relaxed">
+            <p className={`text-xs sm:text-sm leading-relaxed ${isDark ? "text-slate-300" : "text-slate-700 font-medium"}`}>
               {lang === "tr" 
                 ? "Diyetisyen ve danışan hesapları ile gerçek zamanlı veri akışını, plan oluşturmayı ve WebSocket mesajlaşmasını hemen test edin."
                 : "Explore real-time data flows, meal plan creation, and live chat across dietitian and client portals instantly."
@@ -497,8 +511,8 @@ export default function Features() {
               <button
                 type="button"
                 disabled={demoLoading !== null}
-                onClick={() => handleQuickLogin("ibrahim_tkn033@hotmail.com", "/dietitian-home", "dietitian")}
-                className="flex items-center gap-2 rounded-2xl bg-gradient-to-r from-emerald-500 via-teal-500 to-cyan-400 px-6 py-3.5 text-xs font-black text-slate-950 shadow-xl shadow-emerald-500/25 hover:brightness-110 transition"
+                onClick={() => handleQuickLogin("demo.dietitian@smartdiet.com", "/dietitian-home", "dietitian")}
+                className="flex items-center gap-2 rounded-2xl bg-gradient-to-r from-emerald-500 via-teal-500 to-cyan-400 px-6 py-3.5 text-xs font-black text-slate-950 shadow-xl shadow-emerald-500/25 hover:brightness-110 transition disabled:opacity-50"
               >
                 <span>{lang === "tr" ? "Canlı Diyetisyen Paneli" : "Live Dietitian Dashboard"}</span>
                 <ChevronRight className="h-4 w-4 stroke-[2.5]" />
@@ -507,8 +521,12 @@ export default function Features() {
               <button
                 type="button"
                 disabled={demoLoading !== null}
-                onClick={() => handleQuickLogin("ibrahim_tkn03@hotmail.com", "/client-home", "client")}
-                className="flex items-center gap-2 rounded-2xl border border-teal-500/30 bg-teal-500/10 px-6 py-3.5 text-xs font-black text-teal-400 hover:bg-teal-500/20 transition"
+                onClick={() => handleQuickLogin("demo.client@smartdiet.com", "/client-home", "client")}
+                className={`flex items-center gap-2 rounded-2xl border px-6 py-3.5 text-xs font-black transition disabled:opacity-50 ${
+                  isDark 
+                    ? "border-teal-500/30 bg-teal-500/10 text-teal-400 hover:bg-teal-500/20" 
+                    : "border-teal-300 bg-teal-50 text-teal-800 hover:bg-teal-100 shadow-sm"
+                }`}
               >
                 <span>{lang === "tr" ? "Canlı Danışan Paneli" : "Live Client Portal"}</span>
                 <ChevronRight className="h-4 w-4 stroke-[2.5]" />

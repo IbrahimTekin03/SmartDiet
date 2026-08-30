@@ -737,44 +737,44 @@ export default function Login() {
               </span>
             </h1>
 
-            <p className="text-sm sm:text-base leading-relaxed text-slate-300 max-w-xl">
+            <p className={"text-sm sm:text-base leading-relaxed max-w-xl " + (isDark ? "text-slate-300" : "text-slate-700")}>
               {t.subtitle}
             </p>
 
             {/* Feature Bento Pills */}
             <div className="space-y-3 pt-2">
-              <div className={"flex items-center gap-4 p-4 rounded-2xl border transition " + (isDark ? "border-white/10 bg-slate-900/60" : "border-slate-200 bg-white/80 shadow-sm")}>
-                <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-emerald-500/15 text-emerald-400 font-black">
+              <div className={"flex items-center gap-4 p-4 rounded-2xl border transition " + (isDark ? "border-white/10 bg-slate-900/60" : "border-slate-200 bg-white/90 shadow-sm")}>
+                <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-emerald-500/15 text-emerald-500 font-black">
                   <Activity className="h-5 w-5" />
                 </div>
                 <div>
                   <h4 className="text-sm font-bold font-display">{t.pillA}</h4>
-                  <p className="text-xs text-slate-400 mt-0.5">{t.pillAText}</p>
+                  <p className={"text-xs mt-0.5 " + (isDark ? "text-slate-400" : "text-slate-600")}>{t.pillAText}</p>
                 </div>
               </div>
 
-              <div className={"flex items-center gap-4 p-4 rounded-2xl border transition " + (isDark ? "border-white/10 bg-slate-900/60" : "border-slate-200 bg-white/80 shadow-sm")}>
-                <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-teal-500/15 text-teal-400 font-black">
+              <div className={"flex items-center gap-4 p-4 rounded-2xl border transition " + (isDark ? "border-white/10 bg-slate-900/60" : "border-slate-200 bg-white/90 shadow-sm")}>
+                <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-teal-500/15 text-teal-500 font-black">
                   <Stethoscope className="h-5 w-5" />
                 </div>
                 <div>
                   <h4 className="text-sm font-bold font-display">{t.pillB}</h4>
-                  <p className="text-xs text-slate-400 mt-0.5">{t.pillBText}</p>
+                  <p className={"text-xs mt-0.5 " + (isDark ? "text-slate-400" : "text-slate-600")}>{t.pillBText}</p>
                 </div>
               </div>
             </div>
 
             {/* Fast Demo Sandbox Picker */}
             <div className="pt-2">
-              <span className="text-xs font-black uppercase tracking-wider text-slate-400 block mb-2.5">
+              <span className={"text-xs font-black uppercase tracking-wider block mb-2.5 " + (isDark ? "text-slate-400" : "text-emerald-800")}>
                 {t.demoTitle}
               </span>
               <div className="grid sm:grid-cols-2 gap-3">
                 <button
                   type="button"
                   disabled={loading}
-                  onClick={() => handleQuickDemo("ibrahim_tkn033@hotmail.com", "/dietitian-home")}
-                  className="flex items-center justify-between p-3.5 rounded-2xl border border-emerald-500/30 bg-emerald-500/10 text-emerald-400 text-xs font-black hover:bg-emerald-500/20 hover:scale-[1.02] transition disabled:opacity-50"
+                  onClick={() => handleQuickDemo("demo.dietitian@smartdiet.com", "/dietitian-home")}
+                  className={"flex items-center justify-between p-3.5 rounded-2xl border text-xs font-black hover:scale-[1.02] transition disabled:opacity-50 " + (isDark ? "border-emerald-500/30 bg-emerald-500/10 text-emerald-400 hover:bg-emerald-500/20" : "border-emerald-300 bg-emerald-50 text-emerald-900 hover:bg-emerald-100 shadow-sm")}
                 >
                   <div className="flex items-center gap-2.5">
                     <Stethoscope className="h-4 w-4" />
@@ -786,8 +786,8 @@ export default function Login() {
                 <button
                   type="button"
                   disabled={loading}
-                  onClick={() => handleQuickDemo("ibrahim_tkn03@hotmail.com", "/client-home")}
-                  className="flex items-center justify-between p-3.5 rounded-2xl border border-teal-500/30 bg-teal-500/10 text-teal-400 text-xs font-black hover:bg-teal-500/20 hover:scale-[1.02] transition disabled:opacity-50"
+                  onClick={() => handleQuickDemo("demo.client@smartdiet.com", "/client-home")}
+                  className={"flex items-center justify-between p-3.5 rounded-2xl border text-xs font-black hover:scale-[1.02] transition disabled:opacity-50 " + (isDark ? "border-teal-500/30 bg-teal-500/10 text-teal-400 hover:bg-teal-500/20" : "border-teal-300 bg-teal-50 text-teal-900 hover:bg-teal-100 shadow-sm")}
                 >
                   <div className="flex items-center gap-2.5">
                     <UserCheck className="h-4 w-4" />

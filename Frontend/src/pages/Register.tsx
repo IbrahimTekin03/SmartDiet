@@ -397,32 +397,32 @@ export default function Register() {
               </span>
             </h1>
 
-            <p className="text-sm sm:text-base leading-relaxed text-slate-300 max-w-xl">
+            <p className={`text-sm sm:text-base leading-relaxed max-w-xl ${isDark ? "text-slate-300" : "text-slate-700"}`}>
               {t.subtitle}
             </p>
 
             <div className="space-y-3 pt-2">
               <div className={`flex items-center gap-4 p-4 rounded-2xl border transition ${
-                isDark ? "border-white/10 bg-slate-900/60" : "border-slate-200 bg-white/80 shadow-sm"
+                isDark ? "border-white/10 bg-slate-900/60" : "border-slate-200 bg-white/90 shadow-sm"
               }`}>
-                <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-emerald-500/15 text-emerald-400 font-black">
+                <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-emerald-500/15 text-emerald-500 font-black">
                   <Activity className="h-5 w-5" />
                 </div>
                 <div>
                   <h4 className="text-sm font-bold font-display">Akıllı Makro Analizi</h4>
-                  <p className="text-xs text-slate-400 mt-0.5">Günlük hedeflerinize göre anlık besin değerleri hesaplaması.</p>
+                  <p className={`text-xs mt-0.5 ${isDark ? "text-slate-400" : "text-slate-600"}`}>Günlük hedeflerinize göre anlık besin değerleri hesaplaması.</p>
                 </div>
               </div>
 
               <div className={`flex items-center gap-4 p-4 rounded-2xl border transition ${
-                isDark ? "border-white/10 bg-slate-900/60" : "border-slate-200 bg-white/80 shadow-sm"
+                isDark ? "border-white/10 bg-slate-900/60" : "border-slate-200 bg-white/90 shadow-sm"
               }`}>
-                <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-teal-500/15 text-teal-400 font-black">
+                <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-teal-500/15 text-teal-500 font-black">
                   <Stethoscope className="h-5 w-5" />
                 </div>
                 <div>
                   <h4 className="text-sm font-bold font-display">Diyetisyen & Klinik Entegrasyonu</h4>
-                  <p className="text-xs text-slate-400 mt-0.5">Uzmanınızla kesintisiz iletişim ve randevu koordinasyonu.</p>
+                  <p className={`text-xs mt-0.5 ${isDark ? "text-slate-400" : "text-slate-600"}`}>Uzmanınızla kesintisiz iletişim ve randevu koordinasyonu.</p>
                 </div>
               </div>
             </div>

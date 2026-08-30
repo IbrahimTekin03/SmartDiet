@@ -80,8 +80,8 @@ En hızlı ve kararlı ücretsiz PostgreSQL sağlayıcıları:
 ## ⚡ Adım 4: Demo Hesaplar & Veri Başlatma
 
 Demo kullanıcılar:
-* Diyetisyen Demo: `ibrahim_tkn033@hotmail.com` / `admin123` (**Demo Diyetisyen**)
-* Danışan Demo: `ibrahim_tkn03@hotmail.com` / `admin123` (**Demo Danışan**)
+* Diyetisyen Demo: `demo.dietitian@smartdiet.com` / `admin123` (**Demo Diyetisyen**)
+* Danışan Demo: `demo.client@smartdiet.com` / `admin123` (**Demo Danışan**)
 * Yönetici Demo: `admin@example.com` / `admin123` (**Sistem Yöneticisi**)
 
 ---

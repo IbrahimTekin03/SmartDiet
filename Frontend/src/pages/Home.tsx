@@ -1,85 +1,73 @@
-import { useEffect, useMemo, useState } from "react";
+import { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
-import { useAppSettings } from "../context/AppSettingsContext";
-import { setAuthSession, parseStoredUser, useAuthSession } from "../lib/authSession";
-import { API_BASE_URL as API_BASE } from "../lib/api";
 import { 
   Activity, 
   ArrowRight, 
   Sparkles, 
-  ShieldCheck, 
+  Stethoscope, 
+  TrendingUp, 
+  MessageSquare, 
+  Building2, 
+  Zap, 
   Users, 
   FileText, 
-  TrendingUp, 
-  Zap, 
-  MessageSquare, 
-  Utensils, 
   ChevronRight,
-  Stethoscope,
+  Sun,
+  Moon,
+  Globe,
   UserCheck
 } from "lucide-react";
-
-type SessionUser = {
-  id?: string;
-  first_name?: string;
-  last_name?: string;
-  full_name?: string;
-  display_name?: string;
-  email?: string;
-  phone_number?: string;
-};
+import { API_BASE_URL as API_BASE } from "../lib/api";
+import { useAppSettings } from "../context/AppSettingsContext";
+import { useAuthSession, setAuthSession } from "../lib/authSession";
 
 type LandingStats = {
-  totalDietitians: number;
-  approvedDietitians: number;
-  totalUsers: number;
-  activeUsers: number;
-  totalPlans: number;
-  totalMeasurements: number;
+  totalDietitians?: number;
+  approvedDietitians?: number;
+  totalUsers?: number;
+  activeUsers?: number;
+  totalPlans?: number;
+  totalMeasurements?: number;
 };
 
 const COPY = {
   tr: {
-    badge: "Yapay Zeka Destekli Klinik & Beslenme Ekosistemi",
-    titleMain: "Sağlıklı Bir Geleceği",
-    titleGradient: "Uzman Diyetisyenlerle",
-    titleEnd: "Birlikte İnşa Edin.",
-    subtitle:
-      "SmartDiet; diyetisyenlerle danışanları tek bir akıllı platformda buluşturur. Bireiselleştirilmiş beslenme programları, canlı vücut analizleri ve anlık iletişimle sağlıklı yaşamı zahmetsiz hale getirin.",
-    ctaStart: "Hemen Ücretsiz Başla",
+    badge: "Yapay Zeka Destekli Klinik Beslenme Ekosistemi",
+    heroTitleA: "Sağlıklı Geleceği",
+    heroTitleB: "Birlikte Şekillendirin",
+    heroSubtitle: "Klinik diyetisyenler ve danışanlar için yeni nesil beslenme planlama, biyometrik takip, yapay zeka analitiği ve kesintisiz iletişim platformu.",
+    ctaStart: "Hemen Başlayın",
     ctaLogin: "Giriş Yap",
-    demoTitle: "Hızlı Demo & İK İnceleme Girişi",
-    demoSub: "Şifre girmeden tek tıkla canlı sistem panellerini test edin",
+    demoTitle: "İK & İnceleyenler İçin Hızlı Canlı Demo",
+    demoSub: "Şifre girmeden tek tıkla canlı sistem panellerini test edin:",
     demoDietitian: "Diyetisyen Paneli Demosu",
     demoClient: "Danışan Paneli Demosu",
-    stat1: "Onaylı Diyetisyen",
-    stat2: "Kayıtlı Danışan",
-    stat3: "Oluşturulan Beslenme Planı",
-    stat4: "Tamamlanan Ölçüm Kaydı",
-    featuresTitle: "Gelişmiş Klinik Deneyimi",
-    featuresSub: "Her adımda uzmanlığı ve teknolojiyi bir araya getiren güçlü araçlar",
-    feat1Title: "Kişiselleştirilmiş Beslenme Planları",
-    feat1Desc: "Kalori, makro ve mikro besin ögelerini anlık hesaplayın, danışana özel tarifler ekleyin.",
-    feat2Title: "Vücut Ölçümü & Trend Analizi",
-    feat2Desc: "Kilo, yağ oranı ve antropometrik ölçümleri interaktif grafiklerle anlık takip edin.",
-    feat3Title: "Anlık İletişim ve Takip",
-    feat3Desc: "Danışanlarınızla güvenli sohbet edin, öğün fotoğraflarını ve geri bildirimleri canlı inceleyin.",
-    feat4Title: "Klinik & Ekip Yönetimi",
-    feat4Desc: "Çoklu diyetisyen yönetimi, randevu takibi ve kurumsal performans göstergeleri.",
-    liveTitle: "Canlı Performans Metrikleri",
-    footerCopy: "Tüm hakları saklıdır. Sağlıklı bir yaşam için tasarlandı.",
+    stat1: "Kayıtlı Diyetisyen",
+    stat2: "Aktif Danışan",
+    stat3: "Oluşturulan Plan",
+    stat4: "Kaydedilen Ölçüm",
+    featuresTitle: "Klinik Deneyimi Zirveye Taşıyan Yetenekler",
+    featuresSub: "Beslenme sonuçlarını maksimize etmek için özel olarak geliştirilmiş güçlü araçlar",
+    feat1Title: "Hassas Öğün Planlama",
+    feat1Desc: "Geniş Türk mutfağı ve besin kütüphanesinden anlık kalori ve makro besin hesaplamaları yapın.",
+    feat2Title: "Biyometrik Trend Analitiği",
+    feat2Desc: "Danışanlarınızın kilo, vücut yağı ve ölçüm geçmişini interaktif zaman serisi grafiklerinde izleyin.",
+    feat3Title: "Gerçek Zamanlı İletişim",
+    feat3Desc: "WebSocket tabanlı anlık mesajlaşma, öğün onayları ve kesintisiz danışan desteği.",
+    feat4Title: "Klinik & Şube Yönetimi",
+    feat4Desc: "Çoklu diyetisyen yönetimi, randevu takvimi ve kurumsal performans göstergeleri.",
+    liveTitle: "Canlı Platform Verileri",
+    footerCopy: "Tüm hakları saklıdır. Daha sağlıklı nesiller için geliştirildi.",
   },
   en: {
     badge: "AI-Powered Clinical Nutrition Ecosystem",
-    titleMain: "Build a Healthier Future",
-    titleGradient: "With Verified Experts",
-    titleEnd: "And Smart Insights.",
-    subtitle:
-      "SmartDiet seamlessly bridges the gap between dietitians and clients with personalized meal plans, dynamic bio-tracking, and secure real-time communication.",
-    ctaStart: "Get Started Free",
+    heroTitleA: "Shape a Healthier Future,",
+    heroTitleB: "Together",
+    heroSubtitle: "Next-generation nutrition planning, biometric tracking, AI analytics, and instant communication platform for clinical dietitians and clients.",
+    ctaStart: "Get Started Now",
     ctaLogin: "Sign In",
     demoTitle: "Recruiter & Quick Demo Sandbox",
-    demoSub: "One-click instant login to experience both dietitian and client panels",
+    demoSub: "One-click instant login to experience both dietitian and client panels:",
     demoDietitian: "Dietitian Dashboard Demo",
     demoClient: "Client Portal Demo",
     stat1: "Verified Dietitians",
@@ -110,7 +98,7 @@ export default function Home() {
     totalPlans: 0,
     totalMeasurements: 0,
   };
-  const { lang, isDark } = useAppSettings();
+  const { lang, setLang, isDark, toggleTheme } = useAppSettings();
   const { accessToken } = useAuthSession();
   const [stats, setStats] = useState<LandingStats>(initialStats);
   const [statsLoading, setStatsLoading] = useState(true);
@@ -120,32 +108,19 @@ export default function Home() {
 
   useEffect(() => {
     let cancelled = false;
-    const fetchStats = async () => {
-      try {
-        const res = await fetch(`${API_BASE}/api/auth/public/landing-stats`);
-        const data = await res.json().catch(() => ({}));
-        if (!res.ok) return;
-        const payload = data?.data ?? data;
-        if (cancelled) return;
-        setStats({
-          totalDietitians: Number(payload?.totalDietitians ?? 0),
-          approvedDietitians: Number(payload?.approvedDietitians ?? 0),
-          totalUsers: Number(payload?.totalUsers ?? 0),
-          activeUsers: Number(payload?.activeUsers ?? 0),
-          totalPlans: Number(payload?.totalPlans ?? 0),
-          totalMeasurements: Number(payload?.totalMeasurements ?? 0),
-        });
-      } catch {
-      } finally {
+    fetch(`${API_BASE}/api/auth/landing-stats`)
+      .then((r) => r.json())
+      .then((data) => {
+        if (!cancelled && data.success && data.data) {
+          setStats(data.data);
+        }
+      })
+      .catch(() => {})
+      .finally(() => {
         if (!cancelled) setStatsLoading(false);
-      }
-    };
-
-    fetchStats();
-    const timer = window.setInterval(fetchStats, 30000);
+      });
     return () => {
       cancelled = true;
-      window.clearInterval(timer);
     };
   }, []);
 
@@ -159,7 +134,10 @@ export default function Home() {
       });
       const data = await res.json();
       if (data.success && data.data?.access_token) {
-        setAuthSession({ accessToken: data.data.access_token, user: data.data.user });
+        setAuthSession({
+          accessToken: data.data.access_token,
+          user: data.data.user,
+        });
         window.location.href = targetPath;
       } else {
         alert(lang === "tr" ? "Demo hesaba giriş yapılamadı." : "Failed to log in to demo account.");
@@ -171,30 +149,37 @@ export default function Home() {
     }
   };
 
-  const formatNum = (val: number) => Number(val || 0).toLocaleString(lang === "tr" ? "tr-TR" : "en-US");
+  const formatNum = (num?: number) => {
+    if (!num) return "0";
+    return num.toLocaleString(lang === "tr" ? "tr-TR" : "en-US");
+  };
 
   return (
     <div className={`relative min-h-screen w-full overflow-x-hidden ${isDark ? "bg-[#040711] text-white" : "bg-[#f8fafc] text-slate-900"}`}>
+      {/* Dynamic Background Glows */}
       <div className="pointer-events-none fixed inset-0 z-0 overflow-hidden">
         {isDark ? (
           <>
             <div className="absolute -top-[10%] left-[20%] h-[600px] w-[600px] rounded-full bg-emerald-500/12 blur-[150px]" />
             <div className="absolute top-[25%] -right-[5%] h-[700px] w-[700px] rounded-full bg-cyan-500/10 blur-[160px]" />
             <div className="absolute bottom-[5%] left-[10%] h-[600px] w-[600px] rounded-full bg-indigo-500/08 blur-[160px]" />
+            <div className="absolute inset-0 bg-grid-pattern opacity-100" />
           </>
         ) : (
           <>
             <div className="absolute -top-[10%] left-[15%] h-[500px] w-[500px] rounded-full bg-emerald-400/18 blur-[130px]" />
             <div className="absolute top-[20%] -right-[5%] h-[600px] w-[600px] rounded-full bg-cyan-400/15 blur-[140px]" />
+            <div className="absolute inset-0 bg-grid-pattern opacity-40" />
           </>
         )}
       </div>
 
+      {/* Floating Header */}
       <header className="fixed top-4 left-0 right-0 z-50 px-4 sm:px-6">
         <div className={`mx-auto flex max-w-6xl items-center justify-between rounded-full border px-4 py-2.5 backdrop-blur-2xl transition-all duration-300 ${
           isDark 
             ? "border-white/10 bg-slate-900/70 shadow-[0_10px_40px_rgba(0,0,0,0.6)]" 
-            : "border-slate-200/80 bg-white/80 shadow-[0_10px_30px_rgba(0,0,0,0.06)]"
+            : "border-slate-200/80 bg-white/90 shadow-[0_10px_30px_rgba(0,0,0,0.06)]"
         }`}>
           <Link to="/" className="flex items-center gap-2.5">
             <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-tr from-emerald-500 to-teal-400 p-0.5 shadow-md shadow-emerald-500/25">
@@ -215,6 +200,27 @@ export default function Home() {
               <Sparkles className="h-3.5 w-3.5" />
               <span>{lang === "tr" ? "Özellikler" : "Features"}</span>
             </Link>
+
+            <button
+              type="button"
+              onClick={toggleTheme}
+              className={`p-2 rounded-full border transition hover:scale-105 ${
+                isDark ? "border-white/10 bg-white/5 text-amber-400 hover:bg-white/10" : "border-slate-200 bg-white text-slate-700 hover:bg-slate-100 shadow-sm"
+              }`}
+            >
+              {isDark ? <Sun className="h-3.5 w-3.5" /> : <Moon className="h-3.5 w-3.5" />}
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setLang(lang === "tr" ? "en" : "tr")}
+              className={`flex items-center gap-1 px-2.5 py-1 rounded-full border text-xs font-bold transition hover:scale-105 ${
+                isDark ? "border-white/10 bg-white/5 text-slate-300 hover:bg-white/10" : "border-slate-200 bg-white text-slate-700 hover:bg-slate-100 shadow-sm"
+              }`}
+            >
+              <Globe className="h-3 w-3 text-emerald-400" />
+              <span>{lang.toUpperCase()}</span>
+            </button>
 
             {!isLoggedIn ? (
               <>
@@ -246,26 +252,26 @@ export default function Home() {
         </div>
       </header>
 
-      <main className="relative z-10 mx-auto max-w-7xl px-4 pt-32 pb-24 sm:px-6 lg:px-8">
-        <div className="grid items-center gap-12 lg:grid-cols-12">
-          <div className="text-center lg:col-span-7 lg:text-left">
-            <div className={`inline-flex items-center gap-2 rounded-full border px-4 py-1.5 text-xs font-bold transition-all ${
-              isDark 
-                ? "border-emerald-500/30 bg-emerald-500/10 text-emerald-300 shadow-[0_0_25px_rgba(16,185,129,0.15)]" 
-                : "border-emerald-200 bg-emerald-50 text-emerald-800 shadow-sm"
-            }`}>
-              <Sparkles className="h-3.5 w-3.5 text-emerald-400" />
+      {/* Hero Section */}
+      <main className="relative z-10 mx-auto max-w-6xl px-4 pt-32 pb-20 sm:px-6 lg:px-8">
+        <div className="grid lg:grid-cols-12 gap-12 items-center">
+          <div className="lg:col-span-7 text-center lg:text-left space-y-6">
+            <div className="inline-flex items-center gap-2 rounded-full border border-emerald-500/30 bg-emerald-500/10 px-4 py-1.5 text-xs font-black text-emerald-400">
+              <Sparkles className="h-3.5 w-3.5" />
               <span>{t.badge}</span>
             </div>
 
-            <h1 className="mt-6 font-display text-4xl font-black leading-[1.08] tracking-tight sm:text-6xl lg:text-7xl">
-              {t.titleMain} <br />
-              <span className="text-emerald-500">{t.titleGradient}</span> <br />
-              {t.titleEnd}
+            <h1 className="font-display text-4xl sm:text-5xl lg:text-6xl font-black tracking-tight leading-[1.08]">
+              {t.heroTitleA}{" "}
+              <span className="bg-gradient-to-r from-emerald-400 via-teal-300 to-cyan-400 bg-clip-text text-transparent">
+                {t.heroTitleB}
+              </span>
             </h1>
 
-            <p className={`mt-6 max-w-2xl text-base leading-relaxed sm:text-lg lg:mx-0 ${isDark ? "text-slate-300" : "text-slate-600"}`}>
-              {t.subtitle}
+            <p className={`text-base sm:text-lg leading-relaxed max-w-xl mx-auto lg:mx-0 ${
+              isDark ? "text-slate-300" : "text-slate-700"
+            }`}>
+              {t.heroSubtitle}
             </p>
 
             <div className="mt-8 flex flex-col items-center justify-center gap-3.5 sm:flex-row lg:justify-start">
@@ -288,17 +294,18 @@ export default function Home() {
               </Link>
             </div>
 
+            {/* Recruiter & Demo Sandbox Box */}
             <div className={`mt-10 rounded-3xl border p-5 backdrop-blur-2xl transition-all duration-300 ${
               isDark 
                 ? "border-emerald-500/20 bg-slate-900/60 shadow-[0_15px_40px_rgba(0,0,0,0.5)]" 
-                : "border-emerald-200/90 bg-white/90 shadow-[0_10px_30px_rgba(16,185,129,0.06)]"
+                : "border-emerald-300 bg-white/95 shadow-[0_10px_30px_rgba(16,185,129,0.08)]"
             }`}>
-              <div className="flex items-center justify-between gap-2 border-b border-white/5 pb-3">
+              <div className={`flex items-center justify-between gap-2 border-b pb-3 ${isDark ? "border-white/5" : "border-slate-100"}`}>
                 <div className="flex items-center gap-2">
                   <div className="flex h-7 w-7 items-center justify-center rounded-xl bg-amber-500/15 text-amber-400">
                     <Zap className="h-4 w-4" />
                   </div>
-                  <span className="text-xs font-black uppercase tracking-wider text-amber-500">
+                  <span className={`text-xs font-black uppercase tracking-wider ${isDark ? "text-amber-400" : "text-amber-700"}`}>
                     {t.demoTitle}
                   </span>
                 </div>
@@ -308,11 +315,17 @@ export default function Home() {
                 <button
                   type="button"
                   disabled={demoLoading !== null}
-                  onClick={() => handleQuickLogin("ibrahim_tkn033@hotmail.com", "/dietitian-home", "dietitian")}
-                  className="group flex items-center justify-between rounded-2xl border border-emerald-500/30 bg-emerald-500/10 p-3.5 text-left text-xs font-bold text-emerald-400 transition-all hover:bg-emerald-500/20 hover:scale-[1.02] disabled:opacity-50"
+                  onClick={() => handleQuickLogin("demo.dietitian@smartdiet.com", "/dietitian-home", "dietitian")}
+                  className={`group flex items-center justify-between rounded-2xl border p-3.5 text-left text-xs font-bold transition-all hover:scale-[1.02] disabled:opacity-50 ${
+                    isDark
+                      ? "border-emerald-500/30 bg-emerald-500/10 text-emerald-400 hover:bg-emerald-500/20"
+                      : "border-emerald-300 bg-emerald-50 text-emerald-900 hover:bg-emerald-100 shadow-sm"
+                  }`}
                 >
                   <div className="flex items-center gap-3">
-                    <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-emerald-500/20 text-emerald-300">
+                    <div className={`flex h-8 w-8 items-center justify-center rounded-xl ${
+                      isDark ? "bg-emerald-500/20 text-emerald-300" : "bg-emerald-200/70 text-emerald-800"
+                    }`}>
                       <Stethoscope className="h-4 w-4" />
                     </div>
                     <div>
@@ -325,11 +338,17 @@ export default function Home() {
                 <button
                   type="button"
                   disabled={demoLoading !== null}
-                  onClick={() => handleQuickLogin("ibrahim_tkn03@hotmail.com", "/client-home", "client")}
-                  className="group flex items-center justify-between rounded-2xl border border-teal-500/30 bg-teal-500/10 p-3.5 text-left text-xs font-bold text-teal-400 transition-all hover:bg-teal-500/20 hover:scale-[1.02] disabled:opacity-50"
+                  onClick={() => handleQuickLogin("demo.client@smartdiet.com", "/client-home", "client")}
+                  className={`group flex items-center justify-between rounded-2xl border p-3.5 text-left text-xs font-bold transition-all hover:scale-[1.02] disabled:opacity-50 ${
+                    isDark
+                      ? "border-teal-500/30 bg-teal-500/10 text-teal-400 hover:bg-teal-500/20"
+                      : "border-teal-300 bg-teal-50 text-teal-900 hover:bg-teal-100 shadow-sm"
+                  }`}
                 >
                   <div className="flex items-center gap-3">
-                    <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-teal-500/20 text-teal-300">
+                    <div className={`flex h-8 w-8 items-center justify-center rounded-xl ${
+                      isDark ? "bg-teal-500/20 text-teal-300" : "bg-teal-200/70 text-teal-800"
+                    }`}>
                       <UserCheck className="h-4 w-4" />
                     </div>
                     <div>
@@ -342,13 +361,14 @@ export default function Home() {
             </div>
           </div>
 
+          {/* Right Bento Box - Live Stats */}
           <div className="lg:col-span-5">
             <div className={`relative overflow-hidden rounded-[36px] border p-6 sm:p-7 backdrop-blur-2xl shadow-2xl transition-all ${
               isDark 
                 ? "border-white/10 bg-slate-900/70 shadow-black/80" 
-                : "border-slate-200 bg-white/90 shadow-slate-300/40"
+                : "border-slate-200 bg-white/95 shadow-slate-300/40"
             }`}>
-              <div className="flex items-center justify-between border-b border-white/5 pb-4">
+              <div className={`flex items-center justify-between border-b pb-4 ${isDark ? "border-white/5" : "border-slate-100"}`}>
                 <div className="flex items-center gap-2">
                   <div className="h-3 w-3 rounded-full bg-rose-500/80" />
                   <div className="h-3 w-3 rounded-full bg-amber-500/80" />
@@ -361,42 +381,42 @@ export default function Home() {
               </div>
 
               <div className="mt-4 grid grid-cols-2 gap-3">
-                <div className="rounded-2xl border border-white/5 bg-white/5 p-3.5">
-                  <div className="flex items-center gap-2 text-slate-400">
-                    <Stethoscope className="h-3.5 w-3.5 text-emerald-400" />
+                <div className={`rounded-2xl border p-3.5 ${isDark ? "border-white/5 bg-white/5" : "border-slate-100 bg-slate-50/80"}`}>
+                  <div className={`flex items-center gap-2 ${isDark ? "text-slate-400" : "text-slate-600"}`}>
+                    <Stethoscope className="h-3.5 w-3.5 text-emerald-500" />
                     <span className="text-[10px] font-bold uppercase">{t.stat1}</span>
                   </div>
-                  <div className="mt-1 font-display text-xl font-black text-emerald-400">
+                  <div className="mt-1 font-display text-xl font-black text-emerald-500">
                     {statsLoading ? "..." : `${formatNum(stats.approvedDietitians || 24)}+`}
                   </div>
                 </div>
 
-                <div className="rounded-2xl border border-white/5 bg-white/5 p-3.5">
-                  <div className="flex items-center gap-2 text-slate-400">
-                    <Users className="h-3.5 w-3.5 text-cyan-400" />
+                <div className={`rounded-2xl border p-3.5 ${isDark ? "border-white/5 bg-white/5" : "border-slate-100 bg-slate-50/80"}`}>
+                  <div className={`flex items-center gap-2 ${isDark ? "text-slate-400" : "text-slate-600"}`}>
+                    <Users className="h-3.5 w-3.5 text-cyan-500" />
                     <span className="text-[10px] font-bold uppercase">{t.stat2}</span>
                   </div>
-                  <div className="mt-1 font-display text-xl font-black text-cyan-400">
+                  <div className="mt-1 font-display text-xl font-black text-cyan-500">
                     {statsLoading ? "..." : `${formatNum(stats.totalUsers || 1200)}+`}
                   </div>
                 </div>
 
-                <div className="rounded-2xl border border-white/5 bg-white/5 p-3.5">
-                  <div className="flex items-center gap-2 text-slate-400">
-                    <FileText className="h-3.5 w-3.5 text-indigo-400" />
+                <div className={`rounded-2xl border p-3.5 ${isDark ? "border-white/5 bg-white/5" : "border-slate-100 bg-slate-50/80"}`}>
+                  <div className={`flex items-center gap-2 ${isDark ? "text-slate-400" : "text-slate-600"}`}>
+                    <FileText className="h-3.5 w-3.5 text-indigo-500" />
                     <span className="text-[10px] font-bold uppercase">{t.stat3}</span>
                   </div>
-                  <div className="mt-1 font-display text-xl font-black text-indigo-400">
+                  <div className="mt-1 font-display text-xl font-black text-indigo-500">
                     {statsLoading ? "..." : `${formatNum(stats.totalPlans || 3400)}+`}
                   </div>
                 </div>
 
-                <div className="rounded-2xl border border-white/5 bg-white/5 p-3.5">
-                  <div className="flex items-center gap-2 text-slate-400">
-                    <TrendingUp className="h-3.5 w-3.5 text-amber-400" />
+                <div className={`rounded-2xl border p-3.5 ${isDark ? "border-white/5 bg-white/5" : "border-slate-100 bg-slate-50/80"}`}>
+                  <div className={`flex items-center gap-2 ${isDark ? "text-slate-400" : "text-slate-600"}`}>
+                    <TrendingUp className="h-3.5 w-3.5 text-amber-500" />
                     <span className="text-[10px] font-bold uppercase">{t.stat4}</span>
                   </div>
-                  <div className="mt-1 font-display text-xl font-black text-amber-400">
+                  <div className="mt-1 font-display text-xl font-black text-amber-500">
                     {statsLoading ? "..." : `${formatNum(stats.totalMeasurements || 8900)}+`}
                   </div>
                 </div>
@@ -405,37 +425,83 @@ export default function Home() {
           </div>
         </div>
 
+        {/* Feature Grid */}
         <section className="mt-28">
           <div className="text-center max-w-2xl mx-auto">
             <h2 className="font-display text-3xl font-black tracking-tight sm:text-4xl">
               {t.featuresTitle}
             </h2>
+            <p className={`mt-3 text-sm leading-relaxed ${isDark ? "text-slate-300" : "text-slate-700 font-medium"}`}>
+              {t.featuresSub}
+            </p>
           </div>
 
           <div className="mt-12 grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
-            {[ { icon: Utensils, title: t.feat1Title, desc: t.feat1Desc }, { icon: TrendingUp, title: t.feat2Title, desc: t.feat2Desc }, { icon: MessageSquare, title: t.feat3Title, desc: t.feat3Desc }, { icon: ShieldCheck, title: t.feat4Title, desc: t.feat4Desc } ].map((f, i) => (
-              <div key={i} className={`group rounded-3xl border p-6 backdrop-blur-xl transition-all duration-300 hover:-translate-y-2 ${isDark ? "border-white/10 bg-slate-900/60" : "border-slate-200 bg-white/90"}`}>
-                <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-emerald-500/15 text-emerald-400 transition-transform">
-                  <f.icon className="h-6 w-6" />
-                </div>
-                <h3 className="mt-5 font-display text-lg font-black">{f.title}</h3>
-                <p className={`mt-2 text-xs leading-relaxed ${isDark ? "text-slate-400" : "text-slate-600"}`}>
-                  {f.desc}
-                </p>
+            <div className={`group rounded-3xl border p-6 backdrop-blur-xl transition-all duration-300 hover:-translate-y-1 ${
+              isDark
+                ? "border-white/10 bg-slate-900/60 shadow-[0_15px_35px_rgba(0,0,0,0.5)] hover:border-emerald-500/30 hover:shadow-emerald-500/10"
+                : "border-slate-200/80 bg-white/95 shadow-[0_10px_30px_rgba(0,0,0,0.04)] hover:border-emerald-300 hover:shadow-emerald-500/10"
+            }`}>
+              <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-emerald-500/15 text-emerald-500 font-black">
+                <Sparkles className="h-6 w-6" />
               </div>
-            ))}
+              <h3 className="mt-5 font-display text-lg font-black tracking-tight">{t.feat1Title}</h3>
+              <p className={`mt-2 text-xs leading-relaxed ${isDark ? "text-slate-300" : "text-slate-700 font-medium"}`}>{t.feat1Desc}</p>
+            </div>
+
+            <div className={`group rounded-3xl border p-6 backdrop-blur-xl transition-all duration-300 hover:-translate-y-1 ${
+              isDark
+                ? "border-white/10 bg-slate-900/60 shadow-[0_15px_35px_rgba(0,0,0,0.5)] hover:border-teal-500/30 hover:shadow-teal-500/10"
+                : "border-slate-200/80 bg-white/95 shadow-[0_10px_30px_rgba(0,0,0,0.04)] hover:border-teal-300 hover:shadow-teal-500/10"
+            }`}>
+              <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-teal-500/15 text-teal-500 font-black">
+                <TrendingUp className="h-6 w-6" />
+              </div>
+              <h3 className="mt-5 font-display text-lg font-black tracking-tight">{t.feat2Title}</h3>
+              <p className={`mt-2 text-xs leading-relaxed ${isDark ? "text-slate-300" : "text-slate-700 font-medium"}`}>{t.feat2Desc}</p>
+            </div>
+
+            <div className={`group rounded-3xl border p-6 backdrop-blur-xl transition-all duration-300 hover:-translate-y-1 ${
+              isDark
+                ? "border-white/10 bg-slate-900/60 shadow-[0_15px_35px_rgba(0,0,0,0.5)] hover:border-cyan-500/30 hover:shadow-cyan-500/10"
+                : "border-slate-200/80 bg-white/95 shadow-[0_10px_30px_rgba(0,0,0,0.04)] hover:border-cyan-300 hover:shadow-cyan-500/10"
+            }`}>
+              <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-cyan-500/15 text-cyan-500 font-black">
+                <MessageSquare className="h-6 w-6" />
+              </div>
+              <h3 className="mt-5 font-display text-lg font-black tracking-tight">{t.feat3Title}</h3>
+              <p className={`mt-2 text-xs leading-relaxed ${isDark ? "text-slate-300" : "text-slate-700 font-medium"}`}>{t.feat3Desc}</p>
+            </div>
+
+            <div className={`group rounded-3xl border p-6 backdrop-blur-xl transition-all duration-300 hover:-translate-y-1 ${
+              isDark
+                ? "border-white/10 bg-slate-900/60 shadow-[0_15px_35px_rgba(0,0,0,0.5)] hover:border-indigo-500/30 hover:shadow-indigo-500/10"
+                : "border-slate-200/80 bg-white/95 shadow-[0_10px_30px_rgba(0,0,0,0.04)] hover:border-indigo-300 hover:shadow-indigo-500/10"
+            }`}>
+              <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-indigo-500/15 text-indigo-500 font-black">
+                <Building2 className="h-6 w-6" />
+              </div>
+              <h3 className="mt-5 font-display text-lg font-black tracking-tight">{t.feat4Title}</h3>
+              <p className={`mt-2 text-xs leading-relaxed ${isDark ? "text-slate-300" : "text-slate-700 font-medium"}`}>{t.feat4Desc}</p>
+            </div>
           </div>
         </section>
-
-        <footer className={`mt-28 flex flex-col items-center justify-between gap-4 border-t py-8 text-xs sm:flex-row ${
-          isDark ? "border-white/10 text-slate-500" : "border-slate-200 text-slate-500"
-        }`}>
-          <div className="flex items-center gap-2">
-            <Activity className="h-4 w-4 text-emerald-400" />
-            <span className="font-bold">SmartDiet © {new Date().getFullYear()}</span>
-          </div>
-        </footer>
       </main>
+
+      {/* Footer */}
+      <footer className="relative z-10 border-t border-white/5 py-8 text-center text-xs text-slate-400">
+        <div className="max-w-6xl mx-auto px-4 flex flex-col sm:flex-row items-center justify-between gap-4">
+          <div>
+            © {new Date().getFullYear()} SmartDiet. {t.footerCopy}
+          </div>
+          <div className="flex items-center gap-6">
+            <Link to="/" className="hover:text-emerald-400 transition">{lang === "tr" ? "Ana Sayfa" : "Home"}</Link>
+            <Link to="/features" className="hover:text-emerald-400 transition font-bold text-emerald-400">{lang === "tr" ? "Özellikler" : "Features"}</Link>
+            <Link to="/login" className="hover:text-emerald-400 transition">{lang === "tr" ? "Giriş Yap" : "Login"}</Link>
+            <Link to="/register" className="hover:text-emerald-400 transition">{lang === "tr" ? "Kayıt Ol" : "Register"}</Link>
+          </div>
+        </div>
+      </footer>
     </div>
   );
 }
