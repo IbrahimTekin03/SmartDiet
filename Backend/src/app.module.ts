@@ -39,18 +39,26 @@ const I18N_PATH = fs.existsSync(DIST_I18N_PATH) ? DIST_I18N_PATH : SRC_I18N_PATH
     TypeOrmModule.forRootAsync({
       imports: [ConfigModule],
       inject: [ConfigService],
-      useFactory: (configService: ConfigService) => ({
-        type: 'postgres' as any, // <-- KRİTİK: undefined olmasın
-        host: configService.get('DB_HOST') || 'localhost',
-        port: Number(configService.get('DB_PORT')) || 5432,
-        username: configService.get('DB_USERNAME') || 'postgres',
-        password: configService.get('DB_PASSWORD'),
-        database: (configService.get('DB_DATABASE') as string) || 'smartDiet',
-        autoLoadEntities: true,
-        synchronize: configService.get('DB_SYNCHRONIZE') === 'true',
-      }),
-    }),
+      useFactory: (configService: ConfigService) => {
+        const isProd = configService.get('NODE_ENV') === 'production';
+        const dbSsl = configService.get('DB_SSL');
+        const dbHost = configService.get('DB_HOST') || 'localhost';
+        const useSsl = dbSsl === 'true' || (isProd && dbHost !== 'localhost');
 
+        return {
+          type: 'postgres' as any,
+          host: dbHost,
+          port: Number(configService.get('DB_PORT')) || 5432,
+          username: configService.get('DB_USERNAME') || 'postgres',
+          password: configService.get('DB_PASSWORD'),
+          database: (configService.get('DB_DATABASE') as string) || 'smartDiet',
+          autoLoadEntities: true,
+          synchronize: configService.get('DB_SYNCHRONIZE', 'true') === 'true',
+          ssl: useSsl ? { rejectUnauthorized: false } : false,
+          extra: useSsl ? { ssl: { rejectUnauthorized: false } } : undefined,
+        };
+      },
+    }),
 
     // Rate Limiting
     ThrottlerModule.forRootAsync({
@@ -67,7 +75,7 @@ const I18N_PATH = fs.existsSync(DIST_I18N_PATH) ? DIST_I18N_PATH : SRC_I18N_PATH
       fallbackLanguage: 'tr',
       loaderOptions: {
         path: I18N_PATH,
-        watch: true,
+        watch: false,
       },
       resolvers: [
         { use: QueryResolver, options: ['lang'] },
