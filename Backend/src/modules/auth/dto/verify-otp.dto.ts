@@ -22,6 +22,7 @@ export class VerifyOtpDto {
   identity: string;
 
   @ApiProperty({ description: 'Kullanıcıya gönderilen OTP kodu' })
+  @Transform(({ value }) => String(value || '').replace(/\D/g, '').trim())
   @IsString()
   @IsNotEmpty()
   code: string;

@@ -211,7 +211,7 @@ export class AuthController {
 
   @Get('dietitian/clients')
   @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles('Diyetisyen')
+  @Roles('Diyetisyen', 'dietitian', 'diyetisyen', 'admin')
   @ApiOperation({ summary: 'Diyetisyene atanmış danışanları getir' })
   @ApiResponse({ status: 200, description: 'Atanmış danışan listesi', type: ResponseDto })
   async getDietitianClients(@Request() req) {

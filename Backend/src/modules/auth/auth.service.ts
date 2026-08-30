@@ -1490,14 +1490,30 @@ export class AuthService {
       };
     }
 
-    if (profile.account_type === AccountType.Dietitian || isAdmin || isClinicManager) {
+    const isDietitian =
+      profile.account_type === AccountType.Dietitian ||
+      profile.account_type === AccountType.OldDietitian ||
+      String(profile.account_type).toLowerCase() === 'dietitian' ||
+      String(profile.account_type).toLowerCase() === 'diyetisyen' ||
+      (user?.roles || []).some((r: any) => r.name === 'dietitian' || r.name === 'diyetisyen');
+
+    if (isDietitian || isAdmin || isClinicManager) {
       // Diyetisyen ise veya yetkili ise, kendisine bağlı danışanları çek
       const assignments = await this.userAssignedDietitianRepository.find({
         where: { dietitianId: userId },
         order: { assignedAt: 'DESC' },
       });
+
+      const subscriptions = await this.subscriptionRepository.find({
+        where: { dietitian_id: userId },
+      });
       
-      const clientIds = assignments.map((a) => a.clientId);
+      const clientIdSet = new Set<string>([
+        ...assignments.map((a) => a.clientId),
+        ...subscriptions.map((s) => s.client_id),
+      ]);
+      const clientIds = Array.from(clientIdSet);
+
       const clientUsers =
         clientIds.length > 0
           ? await this.userRepository.find({

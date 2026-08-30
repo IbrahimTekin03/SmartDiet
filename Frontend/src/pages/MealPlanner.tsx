@@ -220,12 +220,15 @@ export default function MealPlanner() {
     })
       .then((res) => res.json())
       .then((data) => {
-        const clientList = data.data || [];
+        const raw = data?.data;
+        const clientList = Array.isArray(raw) ? raw : (raw?.clients || []);
         setClients(clientList);
 
         if (clientIdFromUrl) {
           const found = clientList.find((c: any) => c.user_id === clientIdFromUrl);
           if (found) setSelectedClient(found);
+        } else if (clientList.length > 0 && !selectedClient) {
+          setSelectedClient(clientList[0]);
         }
         setLoading(false);
       })

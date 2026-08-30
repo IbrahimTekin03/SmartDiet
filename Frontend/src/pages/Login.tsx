@@ -609,7 +609,8 @@ export default function Login() {
       setOtpError(t.otpExpired);
       return;
     }
-    if (!/^d{6}$/.test(otpCode.trim())) {
+    const cleanOtp = otpCode.replace(/\D/g, "").trim();
+    if (cleanOtp.length !== 6) {
       setOtpError(t.otpInvalid);
       return;
     }
@@ -626,7 +627,7 @@ export default function Login() {
         body: JSON.stringify({
           identityType: numericType,
           identity: otpIdentity,
-          code: otpCode.trim(),
+          code: cleanOtp,
           purpose: 2,
         }),
       });
@@ -985,7 +986,12 @@ export default function Login() {
                     maxLength={6}
                     placeholder={t.codePh}
                     value={otpCode}
-                    onChange={(e) => setOtpCode(e.target.value)}
+                    onChange={(e) => setOtpCode(e.target.value.replace(/\D/g, "").slice(0, 6))}
+                    onPaste={(e) => {
+                      e.preventDefault();
+                      const pasted = e.clipboardData.getData("text").replace(/\D/g, "").slice(0, 6);
+                      setOtpCode(pasted);
+                    }}
                     className="w-full rounded-2xl border border-white/10 bg-black/40 py-3 text-center font-mono text-xl font-bold tracking-widest outline-none focus:border-emerald-500 text-white"
                   />
                 </div>
