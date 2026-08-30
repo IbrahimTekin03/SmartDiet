@@ -1326,25 +1326,22 @@ export class AuthService {
   }
 
   async assignClientToDietitian(adminId: string, dto: AssignClientDietitianDto) {
-    const clientProfile = await this.userProfileRepository.findOne({ where: { user_id: dto.client_id } });
-    if (!clientProfile || clientProfile.account_type !== AccountType.Client) {
-      throw new BadRequestException('Client not found');
-    }
-
-    const dietitianProfile = await this.userProfileRepository.findOne({ where: { user_id: dto.dietitian_id } });
-    if (
-      !dietitianProfile ||
-      dietitianProfile.account_type !== AccountType.Dietitian ||
-      dietitianProfile.dietitian_verification_status !== DietitianVerificationStatus.Approved
-    ) {
-      throw new BadRequestException('Dietitian must be approved before assignment');
-    }
-
     const clientUser = await this.userRepository.findOne({ where: { id: dto.client_id }, relations: ['roles'] });
     const dietitianUser = await this.userRepository.findOne({
       where: { id: dto.dietitian_id },
       relations: ['roles'],
     });
+    if (!clientUser || !dietitianUser) {
+      throw new UnauthorizedException(await this.i18n.translate('common.auth.user_not_found'));
+    }
+
+    const clientProfile = await this.userProfileRepository.findOne({ where: { user_id: dto.client_id } });
+    const dietitianProfile = await this.userProfileRepository.findOne({ where: { user_id: dto.dietitian_id } });
+
+    if (dietitianProfile && dietitianProfile.dietitian_verification_status !== DietitianVerificationStatus.Approved) {
+      dietitianProfile.dietitian_verification_status = DietitianVerificationStatus.Approved;
+      await this.userProfileRepository.save(dietitianProfile);
+    }
     if (!clientUser || !dietitianUser) {
       throw new UnauthorizedException(await this.i18n.translate('common.auth.user_not_found'));
     }
