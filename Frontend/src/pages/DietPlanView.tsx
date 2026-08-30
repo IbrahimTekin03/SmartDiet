@@ -431,21 +431,69 @@ export default function DietPlanView() {
   const getRatio = (amount: number, unit?: string) => {
     const num = Number(amount) || 0;
     const lowerUnit = (unit || "g").toLowerCase().trim();
-    if (lowerUnit === "100g" || lowerUnit === "100 g") {
-      return num > 5 ? num / 100 : num;
+
+    // 1. Gramaj veya 100g bazlı birimler
+    if (
+      lowerUnit.includes("100g") ||
+      lowerUnit.includes("100 g") ||
+      lowerUnit.includes("100ml") ||
+      lowerUnit === "g" ||
+      lowerUnit === "gr" ||
+      lowerUnit === "gram" ||
+      lowerUnit.startsWith("gram")
+    ) {
+      return num / 100;
     }
-    const isPer100 = ["g", "ml", "gram", "100ml", "100 ml"].includes(lowerUnit);
-    return isPer100 ? num / 100 : num;
+
+    // 2. Parantez içi gramaj içeren birimler (örn: "dilim (30g)", "adet (50g)", "porsiyon (100g)")
+    const gramMatch = lowerUnit.match(/\((\d+)\s*g\)/);
+    if (gramMatch) {
+      const perUnitGrams = Number(gramMatch[1]);
+      if (num >= 30) {
+        return num / 100; // Kullanıcı doğrudan gramaj girdiyse
+      }
+      return (num * perUnitGrams) / 100;
+    }
+
+    // 3. Eğer miktar >= 25 ise ve adet/dilim görünse bile muhtemelen gramaj girilmiştir (örn: 100g peynir/tavuk)
+    if (num >= 25 && !lowerUnit.includes("kaşık")) {
+      return num / 100;
+    }
+
+    // 4. Standart adet / porsiyon / dilim / kase
+    return num;
   };
 
   const getDisplayAmountAndUnit = (amount: number, unit?: string) => {
     const num = Number(amount) || 0;
     const numStr = num.toString();
     const lowerUnit = (unit || "g").toLowerCase().trim();
-    if (lowerUnit === "100g" || lowerUnit === "100 g") {
-      return num > 5 ? `${numStr} g` : `${numStr} adet 100g`;
+
+    if (
+      lowerUnit.includes("100g") ||
+      lowerUnit.includes("100 g") ||
+      lowerUnit === "g" ||
+      lowerUnit === "gr" ||
+      lowerUnit === "gram" ||
+      lowerUnit.startsWith("gram")
+    ) {
+      return `${numStr} g`;
     }
-    return `${numStr} ${unit || "g"}`;
+
+    const gramMatch = lowerUnit.match(/\((\d+)\s*g\)/);
+    if (gramMatch) {
+      if (num >= 30) {
+        return `${numStr} g`;
+      }
+      const unitClean = lowerUnit.split("(")[0].trim() || "adet";
+      return `${numStr} ${unitClean}`;
+    }
+
+    if (num >= 25 && !lowerUnit.includes("kaşık")) {
+      return `${numStr} g`;
+    }
+
+    return `${numStr} ${unit || "adet"}`;
   };
 
   const exportToExcel = () => {

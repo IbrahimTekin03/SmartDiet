@@ -191,9 +191,10 @@ export class DietPlansService {
     const plan = await this.dietPlanRepository.findOne({ where: { id: planId } });
     if (!plan) throw new NotFoundException('Diyet planı bulunamadı');
     const clientId = plan.client_id;
+    const cleanDate = String(date || '').split('T')[0];
 
     let tracking = await this.trackingRepository.findOne({
-      where: { client_id: clientId, plan_id: planId, meal_item_id: mealItemId, date },
+      where: { client_id: clientId, plan_id: planId, meal_item_id: mealItemId, date: cleanDate },
     });
 
     if (tracking) {
@@ -203,7 +204,7 @@ export class DietPlansService {
         client_id: clientId,
         plan_id: planId,
         meal_item_id: mealItemId,
-        date,
+        date: cleanDate,
         is_consumed: isConsumed,
       });
     }
@@ -215,9 +216,10 @@ export class DietPlansService {
     const plan = await this.dietPlanRepository.findOne({ where: { id: planId } });
     if (!plan) throw new NotFoundException('Diyet planı bulunamadı');
     const clientId = plan.client_id;
+    const cleanDate = String(date || '').split('T')[0];
 
     return this.trackingRepository.find({
-      where: { client_id: clientId, plan_id: planId, date },
+      where: { client_id: clientId, plan_id: planId, date: cleanDate },
     });
   }
 
@@ -225,10 +227,11 @@ export class DietPlansService {
     const plan = await this.dietPlanRepository.findOne({ where: { id: planId } });
     if (!plan) throw new NotFoundException('Diyet planı bulunamadı');
     const clientId = plan.client_id;
+    const cleanDate = String(date || '').split('T')[0];
 
     // 1. Get existing records for this date
     const existing = await this.trackingRepository.find({
-      where: { client_id: clientId, plan_id: planId, date },
+      where: { client_id: clientId, plan_id: planId, date: cleanDate },
     });
     
     const trackingMap = new Map(existing.map(t => [t.meal_item_id, t]));
@@ -239,16 +242,14 @@ export class DietPlansService {
     for (const item of items) {
       const track = trackingMap.get(item.meal_item_id);
       if (track) {
-        if (track.is_consumed !== item.is_consumed) {
-          track.is_consumed = item.is_consumed;
-          toSave.push(track);
-        }
+        track.is_consumed = item.is_consumed;
+        toSave.push(track);
       } else {
         toSave.push(this.trackingRepository.create({
           client_id: clientId,
           plan_id: planId,
           meal_item_id: item.meal_item_id,
-          date,
+          date: cleanDate,
           is_consumed: item.is_consumed,
         }));
       }
