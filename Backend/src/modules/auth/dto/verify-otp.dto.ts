@@ -1,9 +1,18 @@
 import { ApiProperty } from '@nestjs/swagger';
 import { IsEnum, IsNotEmpty, IsOptional, IsString } from 'class-validator';
+import { Transform } from 'class-transformer';
 import { OtpIdentityType, OtpPurpose } from '../otp/entities/otp-code.entity';
 
 export class VerifyOtpDto {
   @ApiProperty({ enum: OtpIdentityType })
+  @Transform(({ value }) => {
+    if (typeof value === 'string') {
+      const v = value.toLowerCase().trim();
+      if (v === 'email') return OtpIdentityType.Email;
+      if (v === 'phone') return OtpIdentityType.Phone;
+    }
+    return Number(value);
+  })
   @IsEnum(OtpIdentityType)
   identityType: OtpIdentityType;
 
@@ -18,6 +27,14 @@ export class VerifyOtpDto {
   code: string;
 
   @ApiProperty({ enum: OtpPurpose })
+  @Transform(({ value }) => {
+    if (typeof value === 'string') {
+      const v = value.toLowerCase().trim();
+      if (v === 'signup') return OtpPurpose.Signup;
+      if (v === 'login') return OtpPurpose.Login;
+    }
+    return Number(value);
+  })
   @IsEnum(OtpPurpose)
   purpose: OtpPurpose;
 

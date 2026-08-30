@@ -420,6 +420,7 @@ export default function Login() {
   };
 
   const requestOtp = async (identityType: "email" | "phone", identity: string) => {
+    const numericType = identityType === "email" ? 1 : 2;
     const res = await fetch(REQUEST_OTP_URL, {
       method: "POST",
       headers: {
@@ -427,7 +428,7 @@ export default function Login() {
         "x-device-id": deviceId,
       },
       body: JSON.stringify({
-        identityType,
+        identityType: numericType,
         identity,
         purpose: 2,
       }),
@@ -615,6 +616,7 @@ export default function Login() {
 
     setOtpVerifying(true);
     try {
+      const numericType = otpIdentityType === "email" ? 1 : 2;
       const res = await fetch(VERIFY_OTP_URL, {
         method: "POST",
         headers: {
@@ -622,7 +624,7 @@ export default function Login() {
           "x-device-id": deviceId,
         },
         body: JSON.stringify({
-          identityType: otpIdentityType,
+          identityType: numericType,
           identity: otpIdentity,
           code: otpCode.trim(),
           purpose: 2,

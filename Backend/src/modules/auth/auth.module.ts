@@ -22,6 +22,8 @@ import { UserAssignedDietitian } from '../users/entities/user-assigned-dietitian
 import { NotificationsModule } from '../notifications/notifications.module';
 import { Clinic } from '../clinics/entities/clinic.entity';
 
+import { AutoSeedService } from './auto-seed.service';
+
 @Module({
   imports: [
     UsersModule,
@@ -50,7 +52,7 @@ import { Clinic } from '../clinics/entities/clinic.entity';
     NotificationsModule,
   ],
   controllers: [AuthController],
-  providers: [AuthService, LocalStrategy, JwtStrategy, OtpService],
+  providers: [AuthService, LocalStrategy, JwtStrategy, OtpService, AutoSeedService],
   exports: [AuthService],
 })
 export class AuthModule {} 
