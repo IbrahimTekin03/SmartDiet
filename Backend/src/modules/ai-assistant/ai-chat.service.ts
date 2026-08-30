@@ -939,12 +939,16 @@ ${dbSchemaInfo}`;
             // tool_use yapısı
             const parts = m.content.map((block: any) => {
               if (block.type === 'tool_use') {
-                return {
+                const partObj: any = {
                   functionCall: {
                     name: block.name,
-                    args: block.input
-                  }
+                    args: block.input,
+                  },
                 };
+                if (block.thoughtSignature) {
+                  partObj.thoughtSignature = block.thoughtSignature;
+                }
+                return partObj;
               }
               return { text: block.text || '' };
             });
@@ -1016,7 +1020,8 @@ ${dbSchemaInfo}`;
           type: 'tool_use',
           id: toolUseId,
           name: fc.name,
-          input: fc.args
+          input: fc.args,
+          thoughtSignature: call.thoughtSignature || call.thought_signature || undefined,
         };
       });
 

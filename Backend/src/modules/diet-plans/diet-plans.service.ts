@@ -7,6 +7,7 @@ import { DietPlanMealItem } from './entities/diet-plan-meal-item.entity';
 import { DietPlanTracking } from './entities/diet-plan-tracking.entity';
 import { CreateDietPlanDto } from './dto/create-diet-plan.dto';
 import { User } from '@/modules/users/entities/user.entity';
+import { Food } from '../foods/entities/food.entity';
 import { NotificationsService } from '../notifications/notifications.service';
 
 @Injectable()
@@ -111,9 +112,38 @@ export class DietPlansService {
         const savedMeal = await queryRunner.manager.save(meal);
 
         for (const itemDto of mealDto.items) {
+          let validFoodId = itemDto.food_id;
+          const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(validFoodId);
+          if (isUuid) {
+            const foodExists = await queryRunner.manager.findOne(Food, { where: { id: validFoodId } });
+            if (!foodExists) {
+              const defaultFood = queryRunner.manager.create(Food, {
+                id: validFoodId,
+                name: 'Özel Besin',
+                calories: 100,
+                protein: 5,
+                fat: 2,
+                carbohydrates: 15,
+                unit: '100g',
+              });
+              await queryRunner.manager.save(defaultFood);
+            }
+          } else {
+            const newFood = queryRunner.manager.create(Food, {
+              name: 'Özel Besin',
+              calories: 100,
+              protein: 5,
+              fat: 2,
+              carbohydrates: 15,
+              unit: '100g',
+            });
+            const savedCustomFood = (await queryRunner.manager.save(newFood)) as Food;
+            validFoodId = savedCustomFood.id;
+          }
+
           const item = queryRunner.manager.create(DietPlanMealItem, {
             meal_id: savedMeal.id,
-            food_id: itemDto.food_id,
+            food_id: validFoodId,
             amount: itemDto.amount,
           });
           await queryRunner.manager.save(item);

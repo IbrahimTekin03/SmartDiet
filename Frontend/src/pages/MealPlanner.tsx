@@ -471,12 +471,16 @@ export default function MealPlanner() {
         body: JSON.stringify(payload),
       });
 
+      const data = await res.json().catch(() => ({}));
       if (res.ok) {
         setSavedSuccess(true);
         setTimeout(() => setSavedSuccess(false), 4000);
+      } else {
+        const msg = data.message || data.error || (lang === "tr" ? "Plan kaydedilemedi." : "Failed to save plan.");
+        alert(Array.isArray(msg) ? msg.join(", ") : msg);
       }
     } catch {
-      alert("Error saving plan");
+      alert(lang === "tr" ? "Sunucuya bağlanılamadı." : "Error saving plan");
     } finally {
       setIsSaving(false);
     }

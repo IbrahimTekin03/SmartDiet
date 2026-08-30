@@ -16,7 +16,7 @@ export class DietPlansController {
 
   @Post()
   @UseGuards(RolesGuard)
-  @Roles('Diyetisyen')
+  @Roles('Diyetisyen', 'dietitian', 'diyetisyen', 'admin')
   @ApiOperation({ summary: 'Yeni bir diyet planı oluştur' })
   @ApiResponse({ status: 201, description: 'Diyet planı başarıyla oluşturuldu' })
   async create(@Request() req, @Body() createDietPlanDto: CreateDietPlanDto) {
@@ -80,7 +80,7 @@ export class DietPlansController {
 
   @Put('meal-item/:id')
   @UseGuards(RolesGuard)
-  @Roles('Diyetisyen')
+  @Roles('Diyetisyen', 'dietitian', 'diyetisyen', 'admin')
   @ApiOperation({ summary: 'Diyet planındaki bir besini güncelle' })
   async updateMealItem(
     @Param('id') id: string,
@@ -92,7 +92,7 @@ export class DietPlansController {
 
   @Delete('meal-item/:id')
   @UseGuards(RolesGuard)
-  @Roles('Diyetisyen')
+  @Roles('Diyetisyen', 'dietitian', 'diyetisyen', 'admin')
   @ApiOperation({ summary: 'Diyet planındaki bir besini sil' })
   async deleteMealItem(@Param('id') id: string) {
     const result = await this.dietPlansService.deleteMealItem(id);

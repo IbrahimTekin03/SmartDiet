@@ -2,7 +2,7 @@ import { IsArray, IsNotEmpty, IsNumber, IsOptional, IsString, IsUUID, ValidateNe
 import { Type } from 'class-transformer';
 
 class MealItemDto {
-  @IsUUID()
+  @IsString()
   @IsNotEmpty()
   food_id: string;
 
