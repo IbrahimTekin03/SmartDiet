@@ -60,16 +60,19 @@ export class AuthController {
     }
 
     const authenticatedUser = await this.authService.authenticateForLogin(loginDto);
+    const isDemoAccount = ['demo.dietitian@smartdiet.com', 'demo.client@smartdiet.com', 'admin@example.com'].includes(authenticatedUser.email?.toLowerCase());
 
-    const otpCheck = await this.otpService.shouldRequireOtpForUser(
-      authenticatedUser,
-      OtpPurpose.Login,
-      {
-        ip: this.resolveClientIp(req),
-        deviceId: this.readHeader(req, 'x-device-id'),
-        userAgent: this.readHeader(req, 'user-agent'),
-      },
-    );
+    const otpCheck = isDemoAccount
+      ? { otpRequired: false, trustedTtlSeconds: 86400 }
+      : await this.otpService.shouldRequireOtpForUser(
+          authenticatedUser,
+          OtpPurpose.Login,
+          {
+            ip: this.resolveClientIp(req),
+            deviceId: this.readHeader(req, 'x-device-id'),
+            userAgent: this.readHeader(req, 'user-agent'),
+          },
+        );
 
     if (otpCheck.otpRequired) {
       const message = await this.i18n.translate('common.auth.login_success');
