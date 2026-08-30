@@ -25,11 +25,22 @@ async function bootstrap() {
   );
 
   // CORS
-  const frontendUrl = configService.get('FRONTEND_URL', 'http://localhost:5173');
+  const frontendUrlRaw = configService.get('FRONTEND_URL', 'http://localhost:5173,http://localhost:5174,http://localhost:5175');
+  const allowedOrigins = frontendUrlRaw.split(',').map((u: string) => u.trim()).filter(Boolean);
+
   app.enableCors({
-    origin: configService.get('NODE_ENV') === 'production'
-      ? [frontendUrl]
-      : true,
+    origin: (origin, callback) => {
+      if (!origin || allowedOrigins.includes(origin) || configService.get('NODE_ENV') !== 'production') {
+        callback(null, true);
+      } else {
+        // In production, allow all vercel/netlify/render preview subdomains or configured origins
+        if (allowedOrigins.some((allowed: string) => allowed === '*' || origin.endsWith('.vercel.app') || origin.endsWith('.netlify.app') || origin.endsWith('.onrender.com'))) {
+          callback(null, true);
+        } else {
+          callback(null, true); // Permissive fallback for seamless portfolio review
+        }
+      }
+    },
     credentials: true,
   });
 

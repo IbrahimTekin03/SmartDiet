@@ -205,7 +205,17 @@ export default function Home() {
             <span className="font-display text-lg font-black tracking-tight">SmartDiet</span>
           </Link>
 
-          <div className="flex items-center gap-2.5 sm:gap-3">
+          <div className="flex items-center gap-2 sm:gap-3">
+            <Link
+              to="/features"
+              className={`flex items-center gap-1.5 rounded-full px-3.5 py-1.5 text-xs font-bold transition-all hover:scale-105 ${
+                isDark ? "text-emerald-400 hover:text-emerald-300 hover:bg-white/5" : "text-emerald-700 hover:text-emerald-800 hover:bg-slate-100"
+              }`}
+            >
+              <Sparkles className="h-3.5 w-3.5" />
+              <span>{lang === "tr" ? "Özellikler" : "Features"}</span>
+            </Link>
+
             {!isLoggedIn ? (
               <>
                 <Link

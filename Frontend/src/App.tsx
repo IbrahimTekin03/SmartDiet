@@ -14,12 +14,14 @@ import ProtectedRoute from "./components/ProtectedRoute";
 import SettingsDrawer from "./components/SettingsDrawer";
 import AIAssistantWidget from "./components/AIAssistantWidget";
 import Messages from "./pages/Messages";
+import Features from "./pages/Features";
 
 export default function App() {
   return (
     <>
       <Routes>
         <Route path="/" element={<AppEntry />} />
+        <Route path="/features" element={<Features />} />
 
         <Route path="/login" element={<Login />} />
         <Route path="/register" element={<Register />} />

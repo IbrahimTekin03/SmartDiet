@@ -685,6 +685,14 @@ export default function Login() {
         </Link>
 
         <div className="flex items-center gap-3">
+          <Link
+            to="/features"
+            className={"hidden sm:inline-flex items-center gap-1.5 px-3.5 py-2 rounded-2xl border text-xs font-black transition hover:scale-105 " + (isDark ? "border-emerald-500/30 bg-emerald-500/10 text-emerald-400 hover:bg-emerald-500/20" : "border-emerald-300 bg-emerald-50 text-emerald-800 hover:bg-emerald-100 shadow-sm")}
+          >
+            <Sparkles className="h-3.5 w-3.5" />
+            <span>{lang === "tr" ? "Özellikler" : "Features"}</span>
+          </Link>
+
           <button
             type="button"
             onClick={toggleTheme}
