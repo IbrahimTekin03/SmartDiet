@@ -39,7 +39,7 @@ export default function Features() {
       const res = await fetch(`${API_BASE}/api/auth/login`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email, password: "Password123!" }),
+        body: JSON.stringify({ email, password: "admin123" }),
       });
       const data = await res.json();
       const payload = data.data || data;

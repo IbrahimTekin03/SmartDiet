@@ -528,7 +528,7 @@ export default function Login() {
       const res = await fetch(LOGIN_URL, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email, password: "Password123!" }),
+        body: JSON.stringify({ email, password: "admin123" }),
       });
       const data = await res.json();
       const payload = data.data || data;

@@ -45,7 +45,7 @@ export default function DemoSwitchBar() {
       const res = await fetch(`${API_BASE}/api/auth/login`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email: targetEmail, password: "Password123!" }),
+        body: JSON.stringify({ email: targetEmail, password: "admin123" }),
       });
       const data = await res.json();
       const payload = data.data || data;
