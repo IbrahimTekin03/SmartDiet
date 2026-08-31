@@ -478,11 +478,12 @@ Danışan size diyetindeki bir yiyeceğin (örneğin "somon balığı") yerine e
 6. KOMPLE ÖĞÜN DEĞİŞİMİ VE TEKİL BESİN FARKI: Eğer danışan "Öğle yemeğim yerine 1 tabak tavuk ızgara yedim" diyorsa, yani 3-4 kalemlik eski yemeğin TAMAMINI tek/yeni bir yemekle değiştirmek istiyorsa \`update_meal_item\` YERİNE KESİNLİKLE \`replace_meal_items\` aracını kullan! Bu araç, o öğündeki (meal_id) tüm eski yemekleri silip sadece senin gönderdiğin yeni yemekleri ekler. Ancak sadece tek bir besin değişecekse (örn: Hamsi yerine Levrek), sadece o besini güncellemek için \`update_meal_item\` kullan; tüm öğünü SİLME!
 
 FOTOĞRAFTAN TARANAN YEMEĞİ DİYET PLANINA EKLEME:
-Danışan "Az önce analiz ettiğin X yemeğini bugünkü planıma ekle" gibi bir istekte bulunursa:
-1. "get_my_active_plan" aracı veya SQL (database_query) ile danışanın aktif planını ve bugünün öğünlerini (Sabah, Öğle, Akşam vb.) sorgula.
-2. Eğer taranan yemek (örn: "Izgara Tavuklu Salata") veritabanındaki "foods" tablosunda yoksa, "create_food" aracı ile bu yemeği kalori ve makro değerleriyle veritabanına ekle ve yeni food_id'sini al.
-3. "database_query" aracını kullanarak, bugünün uygun olan öğün kaydının ID'sini (meal_id) tespit et ve diet_plan_meal_items tablosuna bu meal_id, food_id ve amount miktarını içeren yeni bir satır INSERT et (Örn: INSERT INTO diet_plan_meal_items (meal_id, food_id, amount) VALUES ('bulunan_meal_id', 'yeni_food_id', miktar)).
-4. İşlem başarıyla tamamlandığında, kullanıcıya yemeğin planına eklendiğini ve güncel planı bildiren şık bir onay mesajı yaz.
+Danışan fotoğraftan taranan yemeği öğüne eklemek veya yeni öğün oluşturmak istediğinde:
+1. Eğer yemek listede yoksa, "create_food" aracı ile gerçekçi besin değerleriyle "foods" tablosuna ekle ve food_id'sini al.
+2. Eğer mevcut bir öğüne (meal_id) eklenecekse, doğrudan "add_meal_items" aracını çağır: { meal_id: '...', items: [{ food_id: '...', amount: ... }] }.
+3. Eğer yeni bir öğün oluşturulup eklenecekse, doğrudan "create_meal_in_plan" aracını çağır: { plan_id: '...', name: '...', time: '...', day_of_week: ..., items: [{ food_id: '...', amount: ... }] }.
+4. Eğer tüm öğün yerine geçecekse "replace_meal_items" aracını çağır.
+5. İşlem başarıyla tamamlandığında danışana yiyeceğin başarıyla eklendiğini bildiren sade ve şık bir onay mesajı ver.
 
 Danışanın ID'si: ${user.id}
 ${dbSchemaInfo}`;
@@ -640,6 +641,53 @@ ${dbSchemaInfo}`;
             }
           },
           required: ['meal_id', 'new_items']
+        }
+      },
+      {
+        name: 'add_meal_items',
+        description: 'Mevcut bir öğüne (meal_id) yeni yiyecekler ekler.',
+        input_schema: {
+          type: 'object',
+          properties: {
+            meal_id: { type: 'string', description: 'Yiyeceklerin ekleneceği öğünün IDsi' },
+            items: {
+              type: 'array',
+              items: {
+                type: 'object',
+                properties: {
+                  food_id: { type: 'string', description: 'Eklenen yiyeceğin food_id si' },
+                  amount: { type: 'number', description: 'Yiyecek miktarı' }
+                },
+                required: ['food_id', 'amount']
+              }
+            }
+          },
+          required: ['meal_id', 'items']
+        }
+      },
+      {
+        name: 'create_meal_in_plan',
+        description: 'Diyet planına yeni bir öğün (örn: Ara Öğün, Gece Atıştırmalığı) ekler ve içine yiyecekleri kaydeder.',
+        input_schema: {
+          type: 'object',
+          properties: {
+            plan_id: { type: 'string', description: 'Planın IDsi' },
+            name: { type: 'string', description: 'Öğün adı (örn: Kuşluk Ara Öğünü)' },
+            time: { type: 'string', description: 'Saat (örn: 11:00)' },
+            day_of_week: { type: 'number', description: 'Haftanın günü (1-7)' },
+            items: {
+              type: 'array',
+              items: {
+                type: 'object',
+                properties: {
+                  food_id: { type: 'string', description: 'Eklenen yiyeceğin food_id si' },
+                  amount: { type: 'number', description: 'Yiyecek miktarı' }
+                },
+                required: ['food_id', 'amount']
+              }
+            }
+          },
+          required: ['plan_id', 'name', 'day_of_week']
         }
       },
       {
@@ -1453,6 +1501,20 @@ ${dbSchemaInfo}`;
       case 'replace_meal_items':
         await this.dietPlansService.replaceMealItems(input.meal_id, input.new_items);
         return JSON.stringify({ success: true, message: 'Tüm öğün içeriği başarıyla değiştirildi' });
+
+      case 'add_meal_items':
+        await this.dietPlansService.addMealItems(input.meal_id, input.items);
+        return JSON.stringify({ success: true, message: 'Yiyecekler öğüne başarıyla eklendi.' });
+
+      case 'create_meal_in_plan':
+        const createdMeal = await this.dietPlansService.createMealInPlan(
+          input.plan_id,
+          input.name,
+          input.time,
+          input.day_of_week,
+          input.items || []
+        );
+        return JSON.stringify({ success: true, meal_id: createdMeal.id, message: 'Yeni öğün ve yiyecekler başarıyla plana eklendi.' });
 
       case 'delete_diet_plan':
         await this.dietPlansService.deletePlan(input.plan_id);

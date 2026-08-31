@@ -562,25 +562,25 @@ export default function AIAssistantWidget() {
         return;
       }
       prompt = lang === "tr"
-        ? `Az önce analiz ettiğin şu yiyecekleri:\n${itemsDescription}\nyeni oluşturacağın "${newMealName}" öğününe (saat "${newMealTime || '12:00'}") ekler misin? Bu yeni öğün "${plan.title}" planımın "${dayName}" günü için olmalıdır. Lütfen database_query aracını kullanarak önce bu yeni öğünü "diet_plan_meals" tablosuna ekle, ardından bu yiyeceklerin her birini "foods" tablosunda aratarak veya yoksa "create_food" aracıyla (veya veritabanına ekleyerek) oluşturup "diet_plan_meal_items" tablosuna ekle. Sonucu bana bildir.`
-        : `Could you please create a new meal named "${newMealName}" (time "${newMealTime || '12:00'}") on "${dayName}" of my plan "${plan.title}", and insert the following ingredients into it:\n${itemsDescription}\nPlease insert these into the database and confirm.`;
+        ? `Az önce analiz ettiğin şu yiyecekleri:\n${itemsDescription}\n"create_meal_in_plan" aracını kullanarak "${plan?.id}" planımın "${dayName}" günü (gün ${selectedDay}) için "${newMealName}" (saat "${newMealTime || '12:00'}") adıyla yeni bir öğün olarak plana ekler misin? Lütfen her bir yiyecek bileşeni için foods tablosunda aratarak veya yoksa "create_food" ile oluşturup "create_meal_in_plan" aracı ile ekle ve sonucu bana bildir.`
+        : `Could you please create a new meal named "${newMealName}" (time "${newMealTime || '12:00'}") on "${dayName}" (day ${selectedDay}) of my plan "${plan?.title}" (plan_id: "${plan?.id}") with the following ingredients:\n${itemsDescription}\nPlease use the create_meal_in_plan tool to execute this and confirm.`;
     } else if (addMode === "add") {
       const mealObj = plan?.meals?.find((m: any) => m.id === selectedMealId);
       prompt = lang === "tr"
-        ? `Az önce analiz ettiğin şu yiyecekleri:\n${itemsDescription}\n"${plan.title}" planımın "${dayName}" günündeki "${mealObj.name}" (meal_id: "${selectedMealId}") öğününe yeni yiyecekler olarak ekler misin? Lütfen her bir yiyecek bileşeni için foods tablosunda aratarak veya yoksa create_food aracıyla oluşturup, database_query veya SQL kullanarak diet_plan_meal_items tablosuna ekle ve güncel planı bana bildir.`
-        : `Could you please add the following ingredients:\n${itemsDescription}\nto the "${mealObj.name}" meal (meal_id: "${selectedMealId}") on "${dayName}" of my plan "${plan.title}"? Please insert them into the database and confirm.`;
+        ? `Az önce analiz ettiğin şu yiyecekleri:\n${itemsDescription}\n"add_meal_items" aracını kullanarak "${plan?.title}" planımdaki "${mealObj?.name}" (meal_id: "${selectedMealId}") öğününe yeni yiyecekler olarak ekler misin? Lütfen her bir yiyecek bileşeni için foods tablosunda aratarak veya yoksa "create_food" ile oluşturup, "add_meal_items" aracı ile ekle ve sonucu bana bildir.`
+        : `Could you please add the following ingredients:\n${itemsDescription}\nto the "${mealObj?.name}" meal (meal_id: "${selectedMealId}") on "${dayName}" of my plan "${plan?.title}" using the add_meal_items tool and confirm.`;
     } else {
       if (selectedMealItemId === "ALL") {
         const mealObj = plan?.meals?.find((m: any) => m.id === selectedMealId);
         prompt = lang === "tr"
-          ? `Az önce analiz ettiğin şu yiyecekleri:\n${itemsDescription}\n"${plan.title}" planımın "${dayName}" günündeki "${mealObj?.name}" (meal_id: "${selectedMealId}") öğününün TAMAMI YERİNE (tüm eski yiyecekleri silip) ekler misin? Lütfen her bir yiyecek bileşeni için foods tablosunda aratarak veya yoksa create_food aracıyla oluşturup, "replace_meal_items" aracı ile tüm öğünü güncellemeyi yap ve sonucu bana bildir.`
-          : `Could you please replace the ENTIRE "${mealObj?.name}" meal (meal_id: "${selectedMealId}") on "${dayName}" of my plan "${plan.title}" with the following ingredients:\n${itemsDescription}? Please use the replace_meal_items tool to execute this update and confirm.`;
+          ? `Az önce analiz ettiğin şu yiyecekleri:\n${itemsDescription}\n"replace_meal_items" aracını kullanarak "${plan?.title}" planımdaki "${mealObj?.name}" (meal_id: "${selectedMealId}") öğününün TAMAMI YERİNE (eski yiyecekleri silip) ekler misin? Lütfen her bir yiyecek bileşeni için foods tablosunda aratarak veya yoksa "create_food" ile oluşturup, "replace_meal_items" aracı ile tüm öğünü güncelle ve sonucu bana bildir.`
+          : `Could you please replace the ENTIRE "${mealObj?.name}" meal (meal_id: "${selectedMealId}") on "${dayName}" of my plan "${plan?.title}" with the following ingredients:\n${itemsDescription}? Please use the replace_meal_items tool to execute this update and confirm.`;
       } else {
         const mealObj = plan?.meals?.find((m: any) => m.id === selectedMealId);
         const itemObj = mealObj?.items?.find((i: any) => i.id === selectedMealItemId);
         prompt = lang === "tr"
-          ? `Az önce analiz ettiğin şu yiyecekleri:\n${itemsDescription}\n"${plan.title}" planımın "${dayName}" günündeki "${mealObj?.name}" öğününde yer alan "${itemObj?.food?.name || 'mevcut yiyecek'}" (meal_item_id: "${selectedMealItemId}") yerine ekleyerek değiştirir misin? Lütfen her bir yiyecek bileşeni için foods tablosunda aratarak veya yoksa create_food aracıyla oluşturup, update_meal_item veya database_query aracı ile güncellemeyi yap ve sonucu bana bildir.`
-          : `Could you please replace "${itemObj?.food?.name || 'existing food'}" (meal_item_id: "${selectedMealItemId}") in the "${mealObj?.name}" meal on "${dayName}" of my plan "${plan.title}" with the following ingredients:\n${itemsDescription}? Please execute this update and confirm.`;
+          ? `Az önce analiz ettiğin şu yiyecekleri:\n${itemsDescription}\n"update_meal_item" aracını kullanarak "${plan?.title}" planımdaki "${mealObj?.name}" öğününde yer alan "${itemObj?.food?.name || 'mevcut yiyecek'}" (meal_item_id: "${selectedMealItemId}") yerine ekleyerek değiştirir misin? Lütfen her bir yiyecek bileşeni için foods tablosunda aratarak veya yoksa "create_food" ile oluşturup, "update_meal_item" aracı ile güncelle ve sonucu bana bildir.`
+          : `Could you please replace "${itemObj?.food?.name || 'existing food'}" (meal_item_id: "${selectedMealItemId}") in the "${mealObj?.name}" meal on "${dayName}" of my plan "${plan?.title}" with the following ingredients:\n${itemsDescription}? Please use the update_meal_item tool and confirm.`;
       }
     }
 

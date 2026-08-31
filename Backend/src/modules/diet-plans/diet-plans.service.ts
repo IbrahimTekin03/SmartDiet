@@ -422,4 +422,70 @@ export class DietPlansService {
     const percentage = (consumedCount / expectedItems.length) * 100;
     return Math.floor(percentage);
   }
+
+  async addMealItems(mealId: string, items: { food_id: string; amount: number }[]) {
+    const meal = await this.mealRepository.findOne({ where: { id: mealId } });
+    if (!meal) throw new NotFoundException('Öğün bulunamadı');
+
+    const createdItems = [];
+    for (const it of items) {
+      let validFoodId = it.food_id;
+      const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(validFoodId);
+      if (isUuid) {
+        const foodExists = await this.dataSource.getRepository(Food).findOne({ where: { id: validFoodId } });
+        if (!foodExists) {
+          const defaultFood = await this.dataSource.getRepository(Food).save(
+            this.dataSource.getRepository(Food).create({
+              id: validFoodId,
+              name: 'Özel Besin',
+              calories: 100,
+              protein: 5,
+              fat: 2,
+              carbohydrates: 15,
+              unit: '100g',
+            }),
+          );
+          validFoodId = defaultFood.id;
+        }
+      } else {
+        const newFood = await this.dataSource.getRepository(Food).save(
+          this.dataSource.getRepository(Food).create({
+            name: 'Özel Besin',
+            calories: 100,
+            protein: 5,
+            fat: 2,
+            carbohydrates: 15,
+            unit: '100g',
+          }),
+        );
+        validFoodId = newFood.id;
+      }
+
+      const mealItem = this.mealItemRepository.create({
+        meal_id: meal.id,
+        food_id: validFoodId,
+        amount: it.amount || 100,
+      });
+      createdItems.push(await this.mealItemRepository.save(mealItem));
+    }
+    return createdItems;
+  }
+
+  async createMealInPlan(planId: string, name: string, time: string, dayOfWeek: number, items: { food_id: string; amount: number }[]) {
+    const plan = await this.dietPlanRepository.findOne({ where: { id: planId } });
+    if (!plan) throw new NotFoundException('Diyet planı bulunamadı');
+
+    const meal = this.mealRepository.create({
+      plan_id: plan.id,
+      name: name || 'Yeni Öğün',
+      time: time || '12:00',
+      day_of_week: dayOfWeek || 1,
+    });
+    const savedMeal = await this.mealRepository.save(meal);
+
+    if (items && items.length > 0) {
+      await this.addMealItems(savedMeal.id, items);
+    }
+    return savedMeal;
+  }
 }
