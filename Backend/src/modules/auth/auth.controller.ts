@@ -646,6 +646,13 @@ export class AuthController {
     return ResponseDto.success('Public landing stats', stats);
   }
 
+  @Post('demo/reset')
+  @ApiOperation({ summary: 'Demo verilerini temiz başlangıç durumuna sıfırla' })
+  async resetDemoData() {
+    const result = await this.authService.resetDemoData();
+    return ResponseDto.success('Demo verileri sıfırlandı', result);
+  }
+
   private readHeader(req: any, key: string): string {
     const value = req?.headers?.[key];
     if (Array.isArray(value)) return String(value[0] || '').trim();

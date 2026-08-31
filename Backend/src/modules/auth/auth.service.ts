@@ -2312,5 +2312,64 @@ export class AuthService {
 
     return { ok: true };
   }
+
+  async resetDemoData() {
+    const clientUser = await this.userRepository.findOne({ where: { email: 'demo.client@smartdiet.com' } });
+    const dietitianUser = await this.userRepository.findOne({ where: { email: 'demo.dietitian@smartdiet.com' } });
+    if (!clientUser || !dietitianUser) {
+      return { message: 'Demo kullanıcıları bulunamadı' };
+    }
+
+    const planRepo = this.userRepository.manager.getRepository('DietPlan');
+    const mealRepo = this.userRepository.manager.getRepository('DietPlanMeal');
+    const trackingRepo = this.userRepository.manager.getRepository('DietPlanTracking');
+
+    const clientPlans = await planRepo.find({ where: { client_id: clientUser.id } });
+    for (const p of clientPlans) {
+      await trackingRepo.delete({ plan_id: (p as any).id });
+      await mealRepo.delete({ plan_id: (p as any).id });
+      await planRepo.delete({ id: (p as any).id });
+    }
+
+    const newPlan = planRepo.create({
+      client_id: clientUser.id,
+      dietitian_id: dietitianUser.id,
+      title: 'Akdeniz Tipi Sağlıklı Beslenme & Kilo Kontrol Programı',
+      description: 'Haftalık dengeli protein ve lif içerikli, danışana özel klinik beslenme programı.',
+      is_active: true,
+      plan_type: 'weekly',
+    });
+    const savedPlan = await planRepo.save(newPlan);
+
+    const meals = [
+      mealRepo.create({
+        plan_id: (savedPlan as any).id,
+        name: 'Sabah Kahvaltısı',
+        time: '08:30',
+        note: '2 adet haşlanmış yumurta, 5 adet az tuzlu siyah zeytin, 1 dilim beyaz peynir ve bol yeşillik (155 kcal).',
+      }),
+      mealRepo.create({
+        plan_id: (savedPlan as any).id,
+        name: 'Öğle Yemeği',
+        time: '13:00',
+        note: '150g ızgara tavuk göğsü, zeytinyağlı mevsim salatası ve 1 kase az yağlı yoğurt (418 kcal).',
+      }),
+      mealRepo.create({
+        plan_id: (savedPlan as any).id,
+        name: 'İkindi Ara Öğün',
+        time: '16:30',
+        note: '10 adet çiğ badem ve 1 fincan yeşil çay (70 kcal).',
+      }),
+      mealRepo.create({
+        plan_id: (savedPlan as any).id,
+        name: 'Akşam Yemeği',
+        time: '19:30',
+        note: '180g fırında somon balığı, buharda brokoli ve limonlu yeşil salata (419 kcal).',
+      }),
+    ];
+    await mealRepo.save(meals);
+
+    return { success: true, message: 'Demo verileri başlangıç durumuna sıfırlandı!' };
+  }
 }
 

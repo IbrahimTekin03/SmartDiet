@@ -39,11 +39,17 @@ export default function Features() {
       const res = await fetch(`${API_BASE}/api/auth/login`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email, password: "admin123" }),
+        body: JSON.stringify({ email, password: "Password123!" }),
       });
       const data = await res.json();
-      if (data.success && data.data?.access_token) {
-        setAuthSession({ accessToken: data.data.access_token, user: data.data.user });
+      const payload = data.data || data;
+      if (res.ok && payload?.access_token) {
+        setAuthSession({
+          accessToken: payload.access_token,
+          refreshToken: payload.refresh_token,
+          user: payload.user,
+          isDemo: true,
+        });
         window.location.href = targetPath;
       } else {
         alert(lang === "tr" ? "Demo hesaba giriş yapılamadı." : "Failed to log in to demo account.");

@@ -12,10 +12,13 @@ export type AuthSessionSnapshot = {
 let cachedSnapshot: AuthSessionSnapshot | null = null;
 
 function readRawSnapshot(): AuthSessionSnapshot {
+  const sessionToken = sessionStorage.getItem("access_token");
+  const localToken = localStorage.getItem("access_token");
+
   return {
-    accessToken: localStorage.getItem("access_token"),
-    refreshToken: localStorage.getItem("refresh_token"),
-    userJson: localStorage.getItem("sd_user"),
+    accessToken: sessionToken || localToken,
+    refreshToken: sessionStorage.getItem("refresh_token") || localStorage.getItem("refresh_token"),
+    userJson: sessionStorage.getItem("sd_user") || localStorage.getItem("sd_user"),
   };
 }
 
@@ -73,29 +76,54 @@ export function parseStoredUser<T>(userJson: string | null): T | null {
 export function setAuthSession(next: {
   accessToken?: string | null;
   refreshToken?: string | null;
-  user?: unknown | null;
+  user?: any | null;
+  isDemo?: boolean;
 }) {
+  const isDemo = next.isDemo || (next.user?.email && String(next.user.email).toLowerCase().startsWith("demo."));
+
   if ("accessToken" in next) {
     if (next.accessToken) {
-      localStorage.setItem("access_token", next.accessToken);
+      if (isDemo) {
+        sessionStorage.setItem("access_token", next.accessToken);
+        localStorage.removeItem("access_token");
+      } else {
+        localStorage.setItem("access_token", next.accessToken);
+        sessionStorage.removeItem("access_token");
+      }
     } else {
       localStorage.removeItem("access_token");
+      sessionStorage.removeItem("access_token");
     }
   }
 
   if ("refreshToken" in next) {
     if (next.refreshToken) {
-      localStorage.setItem("refresh_token", next.refreshToken);
+      if (isDemo) {
+        sessionStorage.setItem("refresh_token", next.refreshToken);
+        localStorage.removeItem("refresh_token");
+      } else {
+        localStorage.setItem("refresh_token", next.refreshToken);
+        sessionStorage.removeItem("refresh_token");
+      }
     } else {
       localStorage.removeItem("refresh_token");
+      sessionStorage.removeItem("refresh_token");
     }
   }
 
   if ("user" in next) {
     if (next.user) {
-      localStorage.setItem("sd_user", JSON.stringify(next.user));
+      const userStr = JSON.stringify(next.user);
+      if (isDemo) {
+        sessionStorage.setItem("sd_user", userStr);
+        localStorage.removeItem("sd_user");
+      } else {
+        localStorage.setItem("sd_user", userStr);
+        sessionStorage.removeItem("sd_user");
+      }
     } else {
       localStorage.removeItem("sd_user");
+      sessionStorage.removeItem("sd_user");
     }
   }
 
@@ -103,9 +131,11 @@ export function setAuthSession(next: {
 }
 
 export function clearAuthSession() {
-  setAuthSession({
-    accessToken: null,
-    refreshToken: null,
-    user: null,
-  });
+  localStorage.removeItem("access_token");
+  localStorage.removeItem("refresh_token");
+  localStorage.removeItem("sd_user");
+  sessionStorage.removeItem("access_token");
+  sessionStorage.removeItem("refresh_token");
+  sessionStorage.removeItem("sd_user");
+  emitAuthSessionChange();
 }

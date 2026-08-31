@@ -15,10 +15,12 @@ import SettingsDrawer from "./components/SettingsDrawer";
 import AIAssistantWidget from "./components/AIAssistantWidget";
 import Messages from "./pages/Messages";
 import Features from "./pages/Features";
+import DemoSwitchBar from "./components/DemoSwitchBar";
 
 export default function App() {
   return (
     <>
+      <DemoSwitchBar />
       <Routes>
         <Route path="/" element={<AppEntry />} />
         <Route path="/features" element={<Features />} />
